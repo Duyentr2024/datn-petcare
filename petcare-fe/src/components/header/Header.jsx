@@ -78,72 +78,103 @@ export default function Header() {
                             className="h-auto w-full"
                         />
                     </div>
-                    <div className="flex flex-col sm:flex-row items-start space-x-8">
-                        <div className="flex-1 w-full sm:w-auto">
-                            <div className="flex items-center space-x-4 relative w-full max-w-lg hidden sm:block">
-                                <input
-                                    type="text"
-                                    placeholder="Nhập từ khoá tìm kiếm..."
-                                    className="border border-yellow-500 rounded-2xl px-4 py-2 pl-4 pr-12 w-full focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-50 transition-all duration-300 ease-in-out"
-                                />
-                                <button
-                                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500">
-                                    <FaSearch size={18}/>
-                                </button>
+                    <div className="items-center">
+                        {/* Search Bar */}
+                        <div className="flex flex-col sm:flex-row items-start space-x-8 ">
+                            <div className="flex-1 w-full sm:w-auto">
+                                <div className="flex items-center space-x-4 relative w-full max-w-lg hidden sm:block">
+                                    <input
+                                        type="text"
+                                        placeholder="Nhập từ khoá tìm kiếm..."
+                                        className="border border-yellow-500 rounded-2xl px-4 py-2 pl-4 pr-12 w-full focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-50 transition-all duration-300 ease-in-out"
+                                    />
+                                    <button
+                                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500">
+                                        <FaSearch size={18}/>
+                                    </button>
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="flex items-center space-x-8">
-                            {/* Hotline */}
-                            <div className="hidden sm:block">
-                                <div className="flex items-center space-x-3">
-                                    <div
-                                        className="bg-yellow-100 p-3 rounded-full flex items-center justify-center hover:ring-2 hover:ring-black transition-all duration-300">
-                                        <FaPhoneAlt className="text-yellow-500 text-xl"/>
-                                    </div>
-                                    <div>
+                            <div className="flex items-center space-x-8">
+                                {/* Hotline */}
+                                <div className="hidden sm:block">
+                                    <div className="flex items-center space-x-3">
+                                        <div
+                                            className="bg-yellow-100 p-3 rounded-full flex items-center justify-center">
+                                            <FaPhoneAlt className="text-yellow-500 text-xl"/>
+                                        </div>
                                         <span className="text-sm text-gray-700">Hotline</span>
                                         <br/>
                                         <span className="font-bold text-yellow-500">0313728397</span>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Tài khoản */}
-                            <div className="flex items-center space-x-3">
-                                <div
-                                    className="bg-amber-200 p-3 rounded-full flex items-center justify-center hover:ring-2 hover:ring-black transition-all duration-300">
-                                    <FaUser className="text-amber-100 text-xl"/>
+                                {/* Tài khoản */}
+                                <div className="flex items-center space-x-3">
+                                    <div className="bg-amber-200 p-3 rounded-full flex items-center justify-center">
+                                        <FaUser className="text-amber-100 text-xl"/>
+                                    </div>
+                                    <div className="hidden sm:block">
+                                        <span className="text-sm text-gray-700">Tài khoản</span>
+                                        <br/>
+                                        <span className="font-bold text-brown-700">Đăng nhập</span>
+                                    </div>
                                 </div>
-                                <div className="hidden sm:block">
-                                    <span className="text-sm text-gray-700">Tài khoản</span>
-                                    <br/>
-                                    <span className="font-bold text-brown-700">Đăng nhập</span>
-                                </div>
-                            </div>
 
-                            {/* Giỏ hàng */}
-                            <div className="flex items-center space-x-3">
-                                <div
-                                    className="bg-green-100 p-3 rounded-full flex items-center justify-center hover:ring-2 hover:ring-black transition-all duration-300">
-                                    <FaShoppingCart className="text-green-700 text-xl"/>
+                                {/* Giỏ hàng */}
+                                <div className="flex items-center space-x-3">
+                                    <div className="bg-green-100 p-3 rounded-full flex items-center justify-center">
+                                        <FaShoppingCart className="text-green-700 text-xl"/>
+                                    </div>
+                                    <div className="hidden sm:block">
+                                        <span className="text-sm text-gray-700">Giỏ hàng</span>
+                                        <br/>
+                                        <span className="font-bold text-green-700">0 Sản phẩm</span>
+                                    </div>
                                 </div>
-                                <div className="hidden sm:block">
-                                    <span className="text-sm text-gray-700">Giỏ hàng</span>
-                                    <br/>
-                                    <span className="font-bold text-green-700">0 Sản phẩm</span>
-                                </div>
-                            </div>
 
-                            {/* Mobile Menu Toggle */}
-                            <div className="lg:hidden flex items-center">
-                                <button onClick={toggleMobileMenu}>
-                                    <FaBars size={24} className="text-gray-700"/>
-                                </button>
+                                {/* Mobile Menu Toggle */}
+                                <div className="lg:hidden flex items-center">
+                                    <button onClick={toggleMobileMenu}>
+                                        <FaBars size={24} className="text-gray-700"/>
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
+
+                        {/* Navigation Desktop */}
+                        <div className="hidden sm:block">
+                            <nav
+                                className="  container pt-10 h-[40px] items-center mx-auto flex justify-center gap-8 text-[#444444] text-[16px] font-['QuickSand'] sticky top-0 z-50">
+                                <a className="menu-item font-bold flex items-center space-x-1 relative" href="#home">
+                                    Trang chủ <i className="fas fa-home text-yellow-500"></i>
+                                    <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
+                                </a>
+                                <a className="menu-item font-bold relative" href="#about">Giới thiệu
+                                    <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
+                                </a>
+                                <a className="menu-item font-bold relative" href="#products">Sản phẩm
+                                    <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
+                                </a>
+                                <a className="menu-item font-bold relative" href="#services">Dịch vụ doanh nghiệp
+                                    <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
+                                </a>
+                                <a className="menu-item font-bold relative" href="#news">Tin tức
+                                    <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
+                                </a>
+                                <a className="menu-item font-bold relative" href="#policy">Chính sách
+                                    <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
+                                </a>
+                                <a className="menu-item font-bold relative" href="#guides">Hướng dẫn mua hàng
+                                    <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
+                                </a>
+                                <a className="menu-item font-bold relative" href="#contact">Liên hệ
+                                    <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
+                                </a>
+                            </nav>
+                        </div>
+                    </div>
                 </div>
             </header>
 
