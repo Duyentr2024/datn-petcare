@@ -55,7 +55,7 @@ const Banner = () => {
     };
 
     return (
-        <div className="flex flex-col md:flex-row h-[50vh]">
+        <div className="flex flex-col md:flex-row">
             {/* Left part (20%) */}
 
             <div className="w-full md:w-1/12 text-white flex flex-col items-center justify-center p-4 relative">
@@ -68,9 +68,9 @@ const Banner = () => {
 
 
             {/* Right part (80%) */}
-            <div className="w-full md:w-11/12 flex items-center justify-center bg-gray-100 p-4">
+            <div className="w-full md:w-10/12 flex items-center justify-center bg-gray-100 p-4">
                 <div
-                    className="relative max-w-full h-[712px] overflow-hidden"
+                    className="relative max-w-full h-[712px] overflow-hidden rounded-lg"
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
