@@ -1,3 +1,42 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* Hiệu ứng đổ màu từ trái qua */
+.load-img {
+    position: relative;
+    overflow: hidden; /* Đảm bảo lớp phủ màu không ra ngoài ảnh */
+  }
+  
+  .load-img::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--primary-color, rgba(251, 179, 33, 1)); /* Màu nền mặc định */
+    z-index: 10;
+    transform: translateX(-100%); /* Bắt đầu từ trái ra ngoài */
+    transition: transform 1.6s ease-out; /* Hiệu ứng di chuyển từ trái qua */
+  }
+  
+  .load-img.in-view::before {
+    transform: translateX(0); /* Khi vào view, màu đổ từ trái sang phải */
+  }
+  
+  .load-img img {
+    display: block; /* Đảm bảo ảnh được hiển thị */
+    width: 100%;
+    height: auto;
+    transition: opacity 1s ease-out; /* Hiệu ứng mờ dần khi ảnh hiện ra */
+    opacity: 0; /* Ảnh ban đầu ẩn */
+  }
+  
+  .load-img.in-view img {
+    opacity: 1; /* Ảnh hiển thị khi vào view */
+  }
+  
+ 
+  
+
+  
