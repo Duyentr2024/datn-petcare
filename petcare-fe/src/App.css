@@ -1,6 +1,8 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+
 /* Hiệu ứng đổ màu từ trái qua */
 .load-img {
     position: relative;
@@ -36,7 +38,8 @@
     opacity: 1; /* Ảnh hiển thị khi vào view */
   }
   
- 
+
   
+ 
 
   
