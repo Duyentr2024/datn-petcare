@@ -50,7 +50,7 @@ const Menu = () => {
                 {showMenu && (
                     <div
                         ref={menuRef}
-                        className="absolute left-0 top-0 mt-2 w-48 bg-white shadow-lg rounded-lg p-4 space-y-4 transition-all duration-300 transform"
+                        className="absolute left-0 top-0 mt-2 w-48 bg-white shadow-lg rounded-lg p-4 space-y-4 transition-all duration-300 transform z-10"
                         style={{
                             transform: showMenu ? "translateX(0)" : "translateX(-100%)",
                             transition: "transform 0.3s ease-in-out", // Smooth transition
