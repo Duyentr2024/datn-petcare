@@ -9,6 +9,7 @@ import Contact from "./pages/Contact.jsx";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import ProductList from "./components/product/ProductPage.jsx";
+import HomeProduct from "./components/product/home/HomeProduct.jsx";
 
 function App() {
     const [count, setCount] = useState(0);
@@ -21,6 +22,7 @@ function App() {
                 <Route path="/good-price" element={<GoodPrice/>}/>
                 <Route path="/" element={<Banner/>}/>
                 <Route path="/product-list" element={<ProductList/>}/>
+                <Route path="/home" element={<HomeProduct/>}/>
             </Routes>
         </Router>
     );

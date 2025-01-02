@@ -10,14 +10,14 @@ function ProductPage() {
             name: 'Mật Ong Hoa Nhãn 1L',
             price: 45000,
             oldPrice: 80000,
-            image: 'https://placehold.co/300x300'
+            image: 'https://placehold.co/250x250'
         },
         {
             id: 2,
             name: 'Mật Ong Rừng Đà Lạt 1L',
             price: 45000,
             oldPrice: 80000,
-            image: 'https://placehold.co/300x300'
+            image: 'https://placehold.co/250x250'
         },
         // Add more products here
     ];
