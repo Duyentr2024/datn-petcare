@@ -49,8 +49,8 @@ const Login = () => {
   return (
     <div className="bg-gradient-to-r flex items-center justify-center min-h-screen">
       <div className="bg-white rounded-3xl shadow-xl flex flex-col lg:flex-row max-w-4xl w-full border p-6 relative hover:bg-white transition-all duration-300">
-        
-        <div className="p-10 flex items-center justify-center w-full lg:w-1/2 rounded-lg load-img">
+
+        <div className="p-10 items-center justify-center w-full lg:w-1/2 rounded-lg load-img hidden lg:flex">
           {/* Ẩn logo trên các màn hình có chiều rộng nhỏ hơn 1024px */}
           <img
             src="https://placehold.co/600x600"
@@ -58,10 +58,10 @@ const Login = () => {
             className="w-full h-auto z-10 hidden md:inline rounded-full shadow-lg"
           />
         </div>
-        
+
         <div className="p-10 w-full lg:w-1/2 flex flex-col justify-center">
           <h2 className="text-4xl font-bold text-yellow-500 mb-6 text-center">Đăng nhập</h2>
-          
+
           <form>
             {/* Input Email */}
             <div className="mb-4">
@@ -77,7 +77,7 @@ const Login = () => {
                 </span>
               </div>
             </div>
-  
+
             {/* Input Password */}
             <div className="mb-6">
               <div className="flex flex-col-reverse relative">
@@ -102,7 +102,7 @@ const Login = () => {
                 </i>
               </div>
             </div>
-  
+
             {/* Other Form Elements */}
             <div className="flex items-center justify-between mb-6">
               <button className="bg-yellow-500 text-white px-6 py-3 rounded-lg flex items-center group space-x-2 hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all duration-300">
@@ -114,31 +114,31 @@ const Login = () => {
               </button>
               {/* Ẩn link quên mật khẩu trên màn hình nhỏ */}
               <a
-                href="#"
-                className="text-yellow-500 hover:underline hidden md:inline"
+                href="/ForgotPassword"
+                className="text-yellow-500 hover:underline hidden md:inline font-bold"
               >
                 Quên mật khẩu?
               </a>
             </div>
-  
+
             <div className="flex items-center justify-center mb-6">
               <span className="text-gray-500">Đăng nhập qua mạng xã hội</span>
             </div>
-  
-            <div className="flex items-center justify-center space-x-4 mb-6">
-              {/* Ẩn các nút mạng xã hội trên màn hình nhỏ */}
-              <button className="bg-yellow-500 text-white p-3 rounded-full hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 hidden sm:inline-block transform hover:scale-110 transition-all duration-300">
+
+            {/* Social Login */}
+            <div className="flex flex-row items-center justify-center space-x-4 mb-6">
+              <button className="bg-yellow-500 text-white p-3 rounded-full hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 transform hover:scale-110 transition-all duration-300">
                 <FaFacebookF className="text-white" />
               </button>
-              <button className="bg-yellow-500 text-white p-3 rounded-full hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 hidden sm:inline-block transform hover:scale-110 transition-all duration-300">
+              <button className="bg-yellow-500 text-white p-3 rounded-full hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 transform hover:scale-110 transition-all duration-300">
                 <FaGoogle className="text-white" />
               </button>
             </div>
-  
+
             <div className="text-center">
               <span className="text-gray-500">
                 Bạn chưa có tài khoản?{" "}
-                <a href="/register" className="text-yellow-500 hover:underline">
+                <a href="/register" className="text-yellow-500 hover:underline font-bold">
                   Đăng ký ngay
                 </a>
               </span>
@@ -148,8 +148,8 @@ const Login = () => {
       </div>
     </div>
   );
-  
-  
+
+
 };
 
 export default Login;
