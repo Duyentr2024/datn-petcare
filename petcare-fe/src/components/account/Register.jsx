@@ -47,7 +47,9 @@ const Register = () => {
   return (
     <div className="bg-gradient-to-r flex items-center justify-center min-h-screen ">
       <div className="bg-white rounded-3xl shadow-xl flex flex-col lg:flex-row max-w-4xl w-full border p-6 relative hover:bg-white transition-all duration-300">
-        <div className="p-10 flex items-center justify-center w-full lg:w-1/2 rounded-lg load-img">
+
+        {/* Hình bên trái */}
+        <div className="p-10 items-center justify-center w-full lg:w-1/2 rounded-lg load-img hidden lg:flex">
           <img
             src="https://placehold.co/600x600"
             alt="Logo with petcare"
@@ -155,7 +157,7 @@ const Register = () => {
             <div className="text-center">
               <span className="text-gray-500">
                 Bạn đã có tài khoản?{" "}
-                <a href="/login" className="text-yellow-500 hover:underline">
+                <a href="/login" className="text-yellow-500 hover:underline font-bold">
                   Đăng nhập ngay
                 </a>
               </span>
