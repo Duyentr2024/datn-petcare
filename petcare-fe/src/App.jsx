@@ -5,11 +5,10 @@ import "./App.css";
 import Login from "./components/account/Login"; // Đảm bảo bạn đã import component Login
 import Register from "./components/account/Register";
 import GoodPrice from "./components/card/GoodPrice.jsx";
-import Contact from "./pages/Contact.jsx";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import ProductList from "./components/product/ProductPage.jsx";
-import HomeProduct from "./components/product/home/HomeProduct.jsx";
+import Contact from "./components/contact/Contact.jsx";
 
 function App() {
     const [count, setCount] = useState(0);
@@ -22,7 +21,7 @@ function App() {
                 <Route path="/good-price" element={<GoodPrice/>}/>
                 <Route path="/" element={<Banner/>}/>
                 <Route path="/product-list" element={<ProductList/>}/>
-                <Route path="/home" element={<HomeProduct/>}/>
+                <Route path="/contact" element={<Contact/>}/>
             </Routes>
         </Router>
     );
