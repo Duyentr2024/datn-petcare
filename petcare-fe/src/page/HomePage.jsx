@@ -2,7 +2,6 @@ import React from "react";
 import Header from "../components/header/Header.jsx";
 import Banner from "../components/banner/banner.jsx";
 import RenderFooter from "../components/footer/Footer.jsx"
-import BannerFooter from "../components/footer/BannerFooter.jsx"
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import ItemPageHome from "./ItemPageHome.jsx";
 import ProductDetail from "../components/productDetail/ProductDetail.jsx";
@@ -14,6 +13,7 @@ import ShoppingCart from "../components/cart/ShoppingCart.jsx";
 import Login from "../components/account/Login.jsx";
 import Register from "../components/account/Register.jsx";
 import ForgotPassword from "../components/account/ForgotPassword.jsx";
+import MyAccount from "../components/account/MyAccount.jsx"
 const HomePage = () => {
 
     return (
@@ -31,6 +31,7 @@ const HomePage = () => {
                 <Route path="/login" element={<Login/>} />
                 <Route path="/register" element={<Register/>} />
                 <Route path="/forgotPassword" element={<ForgotPassword/>} />
+                <Route path="/my-account/*" element={<MyAccount/>} />
             </Routes>
 
             <RenderFooter />
