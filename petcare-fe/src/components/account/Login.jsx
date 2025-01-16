@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { EyeSlashIcon, EyeIcon } from "@heroicons/react/24/solid";
 import { FaArrowCircleRight, FaFacebookF, FaGoogle } from "react-icons/fa";
-
+import Cookies from "js-cookie";
+import Swal from "sweetalert2";
+import { useNavigate } from "react-router-dom"; // Import useNavigate từ React Router
 const Login = () => {
+  // khai báo các state cần thiết
   const [showPassword, setShowPassword] = useState(false);
-
+  const [email, setEmail] = useState(""); // State lưu email
+  const [password, setPassword] = useState(""); // State lưu password
+  const [token, setToken] = useState(null); // Thêm state để lưu token
+  const navigate = useNavigate();
+  // Ẩn hiện mật khẩu
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
@@ -46,11 +53,233 @@ const Login = () => {
     };
   }, []);
 
+  // Xử lý đăng nhập
+  const handleLogin = async () => {
+    try {
+
+      const response = await fetch("http://localhost:8080/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Login response:", data);
+
+        // Lưu token vào cookie
+        Cookies.set("accessToken", data.accessToken, { expires: 7 });
+
+        // Cập nhật token ngay lập tức trong state
+        setToken(data.accessToken);
+
+        // Đóng thông báo loading và hiển thị thông báo thành công
+        Swal.fire({
+          title: "Đăng nhập thành công!",
+          text: `Xin chào ${data.fullName}`,
+          icon: "success",
+          confirmButtonText: "OK",
+        });
+
+        // Điều hướng dựa trên vai trò
+        if (data.roleName === "Admin") {
+          navigate("/admin");
+        } else if (data.roleName === "Nhân viên") {
+          navigate("/staff-dashboard");
+        } else {
+          navigate("/my-account/change-password");
+        }
+      } else {
+        const errorData = await response.json();
+        // Đóng thông báo loading và hiển thị thông báo lỗi
+        Swal.fire({
+          icon: "error",
+          title: "Đăng nhập thất bại!",
+          text: errorData.message || "Vui lòng thử lại.",
+        });
+      }
+    } catch (error) {
+      console.error("Error during login:", error);
+      // Đóng thông báo loading và hiển thị thông báo lỗi nếu có lỗi trong quá trình gọi API
+      Swal.fire({
+        icon: "error",
+        title: "Lỗi!",
+        text: "Đã xảy ra lỗi trong quá trình đăng nhập.",
+      });
+    }
+  };
+
+  // Xử lý submit form
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    handleLogin();
+  };
+
+  // Hàm xử lý đăng nhập bằng Google
+  const handleGoogleLogin = async (response) => {
+    if (response && response.credential) {
+      const token = response.credential;
+      console.log("Token:", token);
+      try {
+        const res = await fetch("http://localhost:8080/api/auth/google-login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ token }), // Gửi token kèm theo trong body
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          // Lưu token vào cookie
+          Cookies.set("accessToken", data.accessToken, { expires: 7 });
+
+          // Cập nhật token ngay lập tức trong state
+          setToken(data.accessToken);
+
+          Swal.fire({
+            title: "Đăng nhập thành công!",
+            text: `Xin chào ${data.fullName}`,
+            icon: "success",
+            confirmButtonText: "OK",
+          });
+
+          navigate("/my-account");
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Đăng nhập Google thất bại!",
+            text: "Vui lòng thử lại.",
+          });
+        }
+      } catch (error) {
+        console.error("Error during Google login:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Lỗi!",
+          text: "Đã xảy ra lỗi trong quá trình đăng nhập Google.",
+        });
+      }
+    } else {
+      // Xử lý trường hợp không lấy được token từ Google hoặc lỗi phản hồi từ Google
+      Swal.fire({
+        icon: "error",
+        title: "Lỗi đăng nhập!",
+        text: "Không thể lấy token từ Google. Vui lòng thử lại.",
+      });
+    }
+  };
+
+  const handleFacebookLogin = (response) => {
+    if (response.authResponse) {
+      // Gọi Facebook API để lấy thông tin người dùng
+      window.FB.api("/me", { fields: "id,name,email" }, async function (user) {
+        try {
+          const res = await fetch(
+            "http://localhost:8080/api/auth/facebook-login",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                id: user.id, // Thêm ID
+                name: user.name,
+                email: user.email,
+                accessToken: response.authResponse.accessToken,
+              }),
+            }
+          );
+
+          if (res.ok) {
+            const data = await res.json();
+            // Lưu token vào cookie
+            Cookies.set("accessToken", data.accessToken, { expires: 7 });
+
+            // Cập nhật token ngay lập tức trong state
+            setToken(data.accessToken);
+            Swal.fire({
+              title: "Đăng nhập thành công!",
+              text: `Xin chào ${data.fullName}`,
+              icon: "success",
+              confirmButtonText: "OK",
+            });
+            navigate("/");
+          } else {
+            const errorData = await res.json();
+            Swal.fire({
+              icon: "error",
+              title: "Đăng nhập Facebook thất bại!",
+              text: errorData.message || "Vui lòng thử lại.",
+            });
+          }
+        } catch (error) {
+          console.error("Error during Facebook login:", error);
+          Swal.fire({
+            icon: "error",
+            title: "Lỗi!",
+            text: "Đã xảy ra lỗi trong quá trình đăng nhập Facebook.",
+          });
+        }
+      });
+    } else {
+      Swal.fire({
+        icon: "warning",
+        title: "Đã hủy đăng nhập!",
+        text: "Vui lòng thử lại.",
+      });
+    }
+  };
+
+
+
+  useEffect(() => {
+    // Khởi tạo Google Sign-In
+    window.google.accounts.id.initialize({
+      client_id:
+        "854614351620-s8cmgi8ticqj4p2jlqedf4drbis3s7oj.apps.googleusercontent.com",
+      callback: handleGoogleLogin,
+    });
+
+    window.google.accounts.id.renderButton(
+      document.getElementById("google-login-button"), // Thêm ID cho button
+      { theme: "outline", size: "large" }
+    );
+
+    // Khởi tạo Facebook SDK
+    window.fbAsyncInit = function () {
+      window.FB.init({
+        appId: "536613939122715", // Thay thế bằng App ID của bạn
+        cookie: true, // Enable cookies để server có thể truy cập phiên
+        xfbml: true, // Parse các social plugin trên trang
+        version: "v16.0", // Phiên bản API của Facebook
+      });
+    };
+
+    // Tải SDK của Facebook
+    (function (d, s, id) {
+      var js,
+        fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) {
+        return;
+      }
+      js = d.createElement(s);
+      js.id = id;
+      js.src = "https://connect.facebook.net/en_US/sdk.js";
+      fjs.parentNode.insertBefore(js, fjs);
+    })(document, "script", "facebook-jssdk");
+  }, []);
+
+  const handleClick = () => {
+    // Mở hộp thoại đăng nhập Google khi nút tùy chỉnh được nhấn
+    window.google.accounts.id.prompt();
+  };
+
+
   return (
     <div className="bg-gradient-to-r flex items-center justify-center min-h-screen">
       <div className="bg-white rounded-3xl shadow-xl flex flex-col lg:flex-row max-w-4xl w-full border p-6 relative hover:bg-white transition-all duration-300">
-
-        <div className="p-10 items-center justify-center w-full lg:w-1/2 rounded-lg load-img hidden lg:flex">
+        <div className="p-10 flex items-center justify-center w-full lg:w-1/2 rounded-lg load-img">
           {/* Ẩn logo trên các màn hình có chiều rộng nhỏ hơn 1024px */}
           <img
             src="https://placehold.co/600x600"
@@ -58,11 +287,13 @@ const Login = () => {
             className="w-full h-auto z-10 hidden md:inline rounded-full shadow-lg"
           />
         </div>
-
+        
         <div className="p-10 w-full lg:w-1/2 flex flex-col justify-center">
-          <h2 className="text-4xl font-bold text-yellow-500 mb-6 text-center">Đăng nhập</h2>
+          <h2 className="text-4xl font-bold text-yellow-500 mb-6 text-center">
+            Đăng nhập
+          </h2>
 
-          <form>
+          <form onSubmit={handleSubmit}>
             {/* Input Email */}
             <div className="mb-4">
               <div className="flex flex-col-reverse relative">
@@ -70,6 +301,8 @@ const Login = () => {
                   type="email"
                   id="email"
                   placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="peer outline-none border pl-2 py-2 duration-500 border-gray-300 focus:border-dashed focus:ring-2 focus:ring-yellow-500 focus:rounded-md rounded-lg shadow-md"
                 />
                 <span className="pl-2 text-gray-500 duration-500 opacity-0 peer-focus:opacity-100 -translate-y-5 peer-focus:translate-y-0">
@@ -85,6 +318,8 @@ const Login = () => {
                   type={showPassword ? "text" : "password"}
                   id="password"
                   placeholder="Mật khẩu"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="peer outline-none border pl-2 py-2 pr-10 duration-500 border-gray-300 focus:border-dashed focus:ring-2 focus:ring-yellow-500 focus:rounded-md w-full rounded-lg shadow-md"
                 />
                 <span className="pl-2 text-gray-500 duration-500 opacity-0 peer-focus:opacity-100 -translate-y-5 peer-focus:translate-y-0">
@@ -105,7 +340,10 @@ const Login = () => {
 
             {/* Other Form Elements */}
             <div className="flex items-center justify-between mb-6">
-              <button className="bg-yellow-500 text-white px-6 py-3 rounded-lg flex items-center group space-x-2 hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all duration-300">
+              <button
+                type="submit"
+                className="bg-yellow-500 text-white px-6 py-3 rounded-lg flex items-center group space-x-2 hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all duration-300"
+              >
                 <span className="relative overflow-hidden">
                   <span className="absolute inset-0 transform translate-x-[-100%] group-hover:translate-x-0 transition-all duration-300"></span>
                   <span className="relative z-10">Đăng nhập</span>
@@ -114,8 +352,8 @@ const Login = () => {
               </button>
               {/* Ẩn link quên mật khẩu trên màn hình nhỏ */}
               <a
-                href="/ForgotPassword"
-                className="text-yellow-500 hover:underline hidden md:inline font-bold"
+                href="#"
+                className="text-yellow-500 hover:underline hidden md:inline"
               >
                 Quên mật khẩu?
               </a>
@@ -125,12 +363,27 @@ const Login = () => {
               <span className="text-gray-500">Đăng nhập qua mạng xã hội</span>
             </div>
 
-            {/* Social Login */}
-            <div className="flex flex-row items-center justify-center space-x-4 mb-6">
-              <button className="bg-yellow-500 text-white p-3 rounded-full hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 transform hover:scale-110 transition-all duration-300">
-                <FaFacebookF className="text-white" />
+            <div className="flex items-center justify-center space-x-4 mb-6">
+              {/* Ẩn các nút mạng xã hội trên màn hình nhỏ */}
+              <button
+               type="button"
+               onClick={() =>
+                   window.FB.login(handleFacebookLogin, {scope: "email"})
+               } // Kích hoạt modal đăng nhập Facebook
+              className="flex items-center justify-center gap-3 h-[40px] border border-gray-300 rounded-md font-medium hover:bg-gray-100 w-[219px] max-w-xs">
+                <img
+                  src="https://www.material-tailwind.com/logos/logo-facebook.png"
+                  alt="facebook"
+                  className="h-6 w-6"
+              />
+              Facebook
               </button>
-              <button className="bg-yellow-500 text-white p-3 rounded-full hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 transform hover:scale-110 transition-all duration-300">
+              <button
+                id="google-login-button"
+                type="button"
+                onClick={() => window.google.accounts.id.prompt()} // Kích hoạt modal đăng nhập Google
+
+              >
                 <FaGoogle className="text-white" />
               </button>
             </div>
@@ -138,7 +391,7 @@ const Login = () => {
             <div className="text-center">
               <span className="text-gray-500">
                 Bạn chưa có tài khoản?{" "}
-                <a href="/register" className="text-yellow-500 hover:underline font-bold">
+                <a href="/register" className="text-yellow-500 hover:underline">
                   Đăng ký ngay
                 </a>
               </span>
