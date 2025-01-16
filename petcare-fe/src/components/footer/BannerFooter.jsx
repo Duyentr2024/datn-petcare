@@ -1,11 +1,11 @@
 import { FaArrowCircleRight } from "react-icons/fa";
 const BannerFooter = () => {
     return (
-        <div className="bg-gradient-to-r from-[#dfebdc] to-[#ffffff] min-h-[50vh] flex flex-col items-center justify-center px-4 md:px-8">
+        <div className="bg-gradient-to-r from-[#dfebdc] to-[#e0e9de] min-h-[50vh] flex flex-col items-center justify-center  ">
             {/* Phần giữa chiếm toàn màn hình */}
-            <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+            <div className="w-full  grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
                 {/* Nội dung bên trái */}
-                <div className="space-y-6 text-center lg:text-left pt-4">
+                <div className="space-y-6 px-[150px] text-center lg:text-left pt-4">
                     <p className="text-yellow-600 text-lg font-semibold uppercase tracking-wide">
                         Ưu đãi
                     </p>
@@ -50,9 +50,9 @@ const BannerFooter = () => {
                 <div className="relative flex justify-end items-end">
                     {/* Chỉnh justify-end và items-end để căn chỉnh bên phải */}
                     <div
-                        className="bg-yellow-500 w-96 h-72 md:w-[28rem] md:h-[23rem] absolute"
+                        className="bg-yellow-500 w-96 h-72 md:w-[28rem] md:h-[23rem] absolute "
                         style={{
-                            borderRadius: '200px 20px 20px 20px', // Góc trên trái (TL), trên phải (TR), dưới phải (BR), dưới trái (BL)
+                            borderRadius: '200px 0px 0px 20px', // Góc trên trái (TL), trên phải (TR), dưới phải (BR), dưới trái (BL)
                         }}
                     ></div>
                     <img
@@ -91,7 +91,7 @@ const BannerFooter = () => {
                         </span>
                     </div>
 
-                    <div className="z-10 absolute bottom-0 left-0 bg-white/80 backdrop-blur-md shadow-lg px-4 py-3 rounded-full flex items-center space-x-3 hover:shadow-xl hover:bg-yellow-50/80 transition duration-300 -translate-y-32 -translate-x-10">
+                    <div className="z-10 absolute bottom-0 right-[450px] bg-white/80 backdrop-blur-md shadow-lg px-4 py-3 rounded-full flex items-center space-x-3 hover:shadow-xl hover:bg-yellow-50/80 transition duration-300 -translate-y-32 -translate-x-10">
                         <img
                             width="32"
                             height="32"

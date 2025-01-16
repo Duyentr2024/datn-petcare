@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { EyeSlashIcon, EyeIcon } from "@heroicons/react/24/solid";
 import { FaArrowCircleRight, FaFacebookF, FaGoogle } from "react-icons/fa";
+import { Link } from "react-router-dom";
 
 const ForgotPassword = () => {
 
@@ -106,19 +107,19 @@ const ForgotPassword = () => {
                         <div className="text-center">
                             <span className="flex-wrap items-center text-gray-500">
                                 Bạn chưa có tài khoản?{" "}
-                                <a
-                                    href="/register"
+                                <Link
+                                    to="/register"
                                     className="text-yellow-500 hover:underline font-bold mx-1"
                                 >
                                     Đăng ký ngay
-                                </a>
+                                </Link>
                                 hoặc{" "}
-                                <a
-                                    href="/login"
+                                <Link
+                                    to="/login"
                                     className="text-yellow-500 hover:underline font-bold mx-1"
                                 >
                                     Đăng nhập
-                                </a>
+                                </Link>
                             </span>
                         </div>
                     </form>

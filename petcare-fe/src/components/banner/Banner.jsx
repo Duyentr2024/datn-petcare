@@ -8,9 +8,6 @@ const Banner = () => {
     const [scrollLeft, setScrollLeft] = useState(0);
    
 
-
-   
-
     // Get the image URL based on the current index for the dots
     const getSlideImage = (index) => {
         if (index === 0) {
@@ -55,22 +52,17 @@ const Banner = () => {
     };
 
     return (
-        <div className="flex flex-col md:flex-row">
+        <div className="flex flex-col justify-end md:flex-row pt-5 pb-5">
             {/* Left part (20%) */}
 
-            <div className="w-full md:w-1/12 text-white flex flex-col items-center justify-center p-4 relative">
-
-
+            <div className=" text-white flex  items-center justify-start p-4 w-[200px] relative">
                 <Menu/>
-
             </div>
 
-
-
             {/* Right part (80%) */}
-            <div className="w-full md:w-10/12 flex items-center justify-center bg-gray-100 p-4">
+            <div className="  items-center bg-gray-100 w-auto">
                 <div
-                    className="relative max-w-full h-[712px] overflow-hidden rounded-lg"
+                    className="relative max-w-full h-[500px] overflow-hidden rounded-lg"
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
@@ -78,7 +70,7 @@ const Banner = () => {
                     style={{ cursor: isDragging ? "grabbing" : "grab" }} // Change cursor based on dragging state
                 >
                     {/* Show image based on currentIndex */}
-                    <div className="h-full w-full transition-transform duration-500 ease-in-out">
+                    <div className="h-[500px] w-full transition-transform duration-500 ease-in-out">
                         {currentIndex === 0 && (
                             <img
                                 src="https://placehold.co/1920x712"

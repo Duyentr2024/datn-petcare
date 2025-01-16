@@ -14,7 +14,7 @@ export default function RenderFooter() {
         <>
             <BannerFooter />
             <svg
-                className="top-0 w-full bg-gradient-to-r from-[#dfebdc] to-[#ffffff]"
+                className="top-0 w-full bg-gradient-to-r from-[#dfebdc] to-[#e0e9de]"
                 height="50px"
                 preserveAspectRatio="none"
                 viewBox="0 0 1728 50"

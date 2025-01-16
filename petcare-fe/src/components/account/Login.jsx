@@ -287,7 +287,7 @@ const Login = () => {
             className="w-full h-auto z-10 hidden md:inline rounded-full shadow-lg"
           />
         </div>
-        
+
         <div className="p-10 w-full lg:w-1/2 flex flex-col justify-center">
           <h2 className="text-4xl font-bold text-yellow-500 mb-6 text-center">
             Đăng nhập

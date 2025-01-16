@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaPlus, FaPaw } from "react-icons/fa";
 import { BsArrowLeft, BsArrowRight } from "react-icons/bs";
+import { Link } from "react-router-dom";
 
 const GoodPrice = () => {
   const [products, setProducts] = useState([
@@ -146,40 +147,41 @@ const GoodPrice = () => {
             >
               <BsArrowLeft />
             </button>
+            <Link to="/productDetail">
+              <div className="flex overflow-hidden">
+                {products.map((product, index) => (
+                  <div
+                    key={index}
+                    className="bg-white rounded-lg shadow-lg p-4 w-64 transition-all duration-500 ease-in-out mx-2 group relative"
+                  >
+                    <div className="relative group overflow-hidden rounded-lg">
+                      <img
+                        alt={product.name}
+                        className="w-full h-50 object-cover rounded-lg transform transition-transform duration-700 ease-out group-hover:scale-110 group-hover:brightness-125"
+                        src={product.imgUrl}
+                      />
+                      {/* Hiệu ứng overlay */}
+                      <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-in-out"></div>
+                    </div>
 
-            <div className="flex overflow-hidden">
-              {products.map((product, index) => (
-                <div
-                  key={index}
-                  className="bg-white rounded-lg shadow-lg p-4 w-64 transition-all duration-500 ease-in-out mx-2 group relative"
-                >
-                  <div className="relative group overflow-hidden rounded-lg">
-                    <img
-                      alt={product.name}
-                      className="w-full h-50 object-cover rounded-lg transform transition-transform duration-700 ease-out group-hover:scale-110 group-hover:brightness-125"
-                      src={product.imgUrl}
-                    />
-                    {/* Hiệu ứng overlay */}
-                    <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-in-out"></div>
+                    <h3 className="text-gray-800 text-lg font-semibold mt-4">
+                      {product.name}
+                    </h3>
+                    <div className="flex justify-between items-center mt-4">
+                      <span className="text-yellow-500 text-xl font-bold">
+                        {product.price}
+                      </span>
+                      <button className="bg-white text-[#FBB321] p-2 rounded-full border-2 border-[#FBB321] relative group">
+                        <FaPlus className="transform group-hover:rotate-45 transition-all duration-300" />
+                        <div className="tooltip absolute right-full top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:-translate-x-2 bg-[#FBB321] text-white text-sm px-2 py-2 whitespace-nowrap rounded transition-all duration-300 ease-in-out">
+                          Xem sản phẩm
+                        </div>
+                      </button>
+                    </div>
                   </div>
-
-                  <h3 className="text-gray-800 text-lg font-semibold mt-4">
-                    {product.name}
-                  </h3>
-                  <div className="flex justify-between items-center mt-4">
-                    <span className="text-yellow-500 text-xl font-bold">
-                      {product.price}
-                    </span>
-                    <button className="bg-white text-[#FBB321] p-2 rounded-full border-2 border-[#FBB321] relative group">
-                      <FaPlus className="transform group-hover:rotate-45 transition-all duration-300" />
-                      <div className="tooltip absolute right-full top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:-translate-x-2 bg-[#FBB321] text-white text-sm px-2 py-2 whitespace-nowrap rounded transition-all duration-300 ease-in-out">
-                        Xem sản phẩm
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </Link>
 
             <button
               onClick={prevProduct}

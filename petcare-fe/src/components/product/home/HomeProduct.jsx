@@ -3,7 +3,7 @@ import {ChevronRight} from 'lucide-react';
 import {ProductCard} from '../ProductCard';
 import ProductSkeleton from '../home/ProductSkeleton';
 
-function App() {
+function HomeProduct() {
     const [loading, setLoading] = useState(true);
     const [products, setProducts] = useState([]);
     const [isHovered, setIsHovered] = useState(false);
@@ -52,11 +52,11 @@ function App() {
     }, []);
 
     return (
-        <div className="min-h-screen">
-            <div className="container mx-auto px-4 py-8">
-                <div className="flex items-center justify-between gap-2 mb-8">
-                    <h1 className="text-4xl font-bold text-[#fbb321]">Sản phẩm nhập khẩu</h1>
-                    <button
+        <div className="">
+            <div className="container mx-32 w-auto px-4 py-8">
+                <div className="flex items-center justify-between gap-2 mb-8  w-[1200px]">
+                    <h1 className="text-4xl mx-[70px] font-bold  text-[#fbb321]">Sản phẩm nhập khẩu</h1>
+                    <button className='mx-[35px]'
                         style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -139,4 +139,4 @@ function App() {
     );
 }
 
-export default App;
+export default HomeProduct;

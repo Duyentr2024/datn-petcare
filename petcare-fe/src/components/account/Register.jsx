@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { EyeSlashIcon, EyeIcon } from "@heroicons/react/24/solid";
 import { FaArrowCircleRight } from "react-icons/fa";
-
+import { Link } from "react-router-dom";
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -157,9 +157,9 @@ const Register = () => {
             <div className="text-center">
               <span className="text-gray-500">
                 Bạn đã có tài khoản?{" "}
-                <a href="/login" className="text-yellow-500 hover:underline font-bold">
+                <Link to="/login" className="text-yellow-500 hover:underline font-bold">
                   Đăng nhập ngay
-                </a>
+                </Link>
               </span>
             </div>
           </form>

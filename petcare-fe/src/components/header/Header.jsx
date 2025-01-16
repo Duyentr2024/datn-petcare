@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { gsap } from "gsap";
 import {
   FaPhoneAlt,
@@ -7,12 +7,15 @@ import {
   FaUser,
   FaBars,
 } from "react-icons/fa";
+import { Link } from "react-router-dom";
+
 
 export default function Header() {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [activeMenuItem, setActiveMenuItem] = useState("");
+  const menuRef = useRef(null);
 
   const toggleMobileMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -20,7 +23,7 @@ export default function Header() {
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
-    const menuItems = document.querySelectorAll(".menu-item");
+    const menuItems = menuRef.current.querySelectorAll(".menu-item");
 
     menuItems.forEach((item) => {
       const underline = item.querySelector(".underline");
@@ -37,19 +40,6 @@ export default function Header() {
         gsap.to(underline, { width: "0%", duration: 0.5, ease: "power4.in" });
       });
 
-      item.addEventListener("click", (e) => {
-        e.preventDefault();
-        const targetId = item.getAttribute("href").substring(1);
-        const targetSection = document.getElementById(targetId);
-
-        if (targetSection) {
-          gsap.to(window, {
-            scrollTo: { y: targetSection.offsetTop, autoKill: false },
-            duration: 1,
-            ease: "power2.inOut",
-          });
-        }
-      });
     });
 
     return () => {
@@ -81,7 +71,7 @@ export default function Header() {
         </span>
       </div>
 
-      <header className="sticky top-0 z-50 bg-white transition-all duration-300 ease-in-out shadow-md">
+      <header className="sticky top-0 z-20 bg-white transition-all duration-300 ease-in-out shadow-md">
         <div className="mx-auto flex items-center justify-center w-full h-[120px] gap-5 ">
           <div className="flex items-center space-x-4 w-[164px] pt-2">
             <img
@@ -130,7 +120,9 @@ export default function Header() {
                   <div className="hidden sm:block">
                     <span className="text-sm text-gray-700">Tài khoản</span>
                     <br />
-                    <span className="font-bold text-brown-700">Đăng nhập</span>
+                    <Link to="/login">
+                      <span className="font-bold text-brown-700">Đăng nhập</span>
+                    </Link>
                   </div>
                 </div>
 
@@ -157,30 +149,27 @@ export default function Header() {
 
             {/* Navigation Desktop */}
             <div className="hidden sm:block">
-              <nav className="  container pt-10 h-[40px] items-center mx-auto flex justify-center gap-8 text-[#444444] text-[16px] font-['QuickSand'] sticky top-0 z-50">
-                <a
-                  className="menu-item font-bold flex items-center space-x-1 relative"
-                  href="#home"
-                >
+              <nav ref={menuRef} className="  container pt-10 h-[40px] items-center mx-auto flex justify-center gap-8 text-[#444444] text-[16px] font-['QuickSand'] sticky top-0 z-50">
+                <Link to="/" className="menu-item font-bold flex items-center space-x-1 relative">
                   Trang chủ <i className="fas fa-home text-yellow-500"></i>
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
-                </a>
-                <a className="menu-item font-bold relative" href="#about">
+                </Link>
+                <a className="menu-item font-bold relative">
                   Giới thiệu
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
                 </a>
-                <a className="menu-item font-bold relative" href="#products">
+                <Link to="/productPage" className="menu-item font-bold relative">
                   Sản phẩm
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
-                </a>
-                <a className="menu-item font-bold relative" href="#services">
+                </Link>
+                <a className="menu-item font-bold relative" >
                   Dịch vụ doanh nghiệp
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
                 </a>
-                <a className="menu-item font-bold relative" href="#news">
+                <Link to="/newsPage" className="menu-item font-bold relative" >
                   Tin tức
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
-                </a>
+                </Link>
                 <a className="menu-item font-bold relative" href="#policy">
                   Chính sách
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
@@ -189,10 +178,10 @@ export default function Header() {
                   Hướng dẫn mua hàng
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
                 </a>
-                <a className="menu-item font-bold relative" href="#contact">
+                <Link to="/contact" className="menu-item font-bold relative" href="#contact">
                   Liên hệ
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
-                </a>
+                </Link>
               </nav>
             </div>
           </div>
@@ -201,9 +190,8 @@ export default function Header() {
 
       {/* Mobile Menu */}
       <div
-        className={`fixed z-50 top-0 left-0 w-[250px] h-full bg-white transform ${
-          isMenuOpen ? "translate-x-0" : "-translate-x-full"
-        } transition-all duration-300 ease-in-out shadow-lg lg:hidden`}
+        className={`fixed z-50 top-0 left-0 w-[250px] h-full bg-white transform ${isMenuOpen ? "translate-x-0" : "-translate-x-full"
+          } transition-all duration-300 ease-in-out shadow-lg lg:hidden`}
       >
         <div className="flex justify-between items-center pl-3 mt-10">
           <span className="text-lg font-bold">Menu</span>
@@ -216,11 +204,10 @@ export default function Header() {
         </div>
         <div className="flex flex-col items-start pl-3 mt-10 space-y-6">
           <div className="border-b w-full">
-            <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "home" ? "text-yellow-500" : ""
-              }`}
-              href="#home"
+            <Link to="/login"
+              className={`menu-item text-sm relative ${activeMenuItem === "home" ? "text-yellow-500" : ""
+                }`}
+              
               onClick={() => {
                 setActiveMenuItem("home");
                 toggleMobileMenu();
@@ -228,13 +215,12 @@ export default function Header() {
             >
               Trang chủ
               <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
-            </a>
+            </Link>
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "about" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "about" ? "text-yellow-500" : ""
+                }`}
               href="#about"
               onClick={() => {
                 setActiveMenuItem("about");
@@ -247,9 +233,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "products" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "products" ? "text-yellow-500" : ""
+                }`}
               href="#products"
               onClick={() => {
                 setActiveMenuItem("products");
@@ -262,9 +247,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "services" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "services" ? "text-yellow-500" : ""
+                }`}
               href="#services"
               onClick={() => {
                 setActiveMenuItem("services");
@@ -277,9 +261,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "news" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "news" ? "text-yellow-500" : ""
+                }`}
               href="#news"
               onClick={() => {
                 setActiveMenuItem("news");
@@ -292,9 +275,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "policy" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "policy" ? "text-yellow-500" : ""
+                }`}
               href="#policy"
               onClick={() => {
                 setActiveMenuItem("policy");
@@ -307,9 +289,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "guides" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "guides" ? "text-yellow-500" : ""
+                }`}
               href="#guides"
               onClick={() => {
                 setActiveMenuItem("guides");
@@ -322,9 +303,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "contact" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "contact" ? "text-yellow-500" : ""
+                }`}
               href="#contact"
               onClick={() => {
                 setActiveMenuItem("contact");

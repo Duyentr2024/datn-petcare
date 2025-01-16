@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import ReactLoading from "react-loading"; // Import the ReactLoading component
 import ProductComments from "./ProductComments.jsx";
 import RelatedProducts from "./RelatedProducts.jsx";
+import { Link } from "react-router-dom";
 
 const ProductDetail = () => {
     const [isExpanded, setIsExpanded] = useState(false);
@@ -94,9 +95,9 @@ const ProductDetail = () => {
                     />
                     <div className="flex space-x-2">
                         {[{ src: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-1.png", size: "M", weight: "1L", color: "Gold" },
-                            { src: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-2.png", size: "L", weight: "500gr", color: "Silver" },
-                            { src: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-3.png", size: "XL", weight: "250gr", color: "Bronze" },
-                            { src: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-1.png", size: "M", weight: "1L", color: "Gold" },
+                        { src: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-2.png", size: "L", weight: "500gr", color: "Silver" },
+                        { src: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-3.png", size: "XL", weight: "250gr", color: "Bronze" },
+                        { src: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-1.png", size: "M", weight: "1L", color: "Gold" },
                         ].map((item, index) => (
                             <img
                                 key={index}
@@ -156,13 +157,12 @@ const ProductDetail = () => {
                                 <button
                                     key={size}
                                     onClick={() => handleSizeChange(size)}
-                                    className={`px-3 py-1 border rounded-full text-sm ${
-                                        selectedSize === size
-                                            ? "bg-yellow-100 text-yellow-600 font-semibold"
-                                            : "hover:bg-yellow-100 text-gray-800"
-                                    } focus:ring-2 focus:ring-yellow-500 transition-all ease-in-out duration-300`}
+                                    className={`px-3 py-1 border rounded-full text-sm ${selectedSize === size
+                                        ? "bg-yellow-100 text-yellow-600 font-semibold"
+                                        : "hover:bg-yellow-100 text-gray-800"
+                                        } focus:ring-2 focus:ring-yellow-500 transition-all ease-in-out duration-300`}
                                 >
-                                    {loadingSize === size ? <Loader/> : size}
+                                    {loadingSize === size ? <Loader /> : size}
                                 </button>
                             ))}
                         </div>
@@ -176,13 +176,12 @@ const ProductDetail = () => {
                                 <button
                                     key={weight}
                                     onClick={() => handleWeightChange(weight)}
-                                    className={`px-3 py-1 border rounded-full text-sm ${
-                                        selectedWeight === weight
-                                            ? "bg-yellow-100 text-yellow-600 font-semibold"
-                                            : "hover:bg-yellow-100 text-gray-800"
-                                    } focus:ring-2 focus:ring-yellow-500 transition-all ease-in-out duration-300`}
+                                    className={`px-3 py-1 border rounded-full text-sm ${selectedWeight === weight
+                                        ? "bg-yellow-100 text-yellow-600 font-semibold"
+                                        : "hover:bg-yellow-100 text-gray-800"
+                                        } focus:ring-2 focus:ring-yellow-500 transition-all ease-in-out duration-300`}
                                 >
-                                    {loadingWeight === weight ? <Loader/> : weight}
+                                    {loadingWeight === weight ? <Loader /> : weight}
                                 </button>
                             ))}
                         </div>
@@ -196,13 +195,12 @@ const ProductDetail = () => {
                                 <button
                                     key={color}
                                     onClick={() => handleColorChange(color)}
-                                    className={`px-3 py-1 border rounded-full text-sm ${
-                                        selectedColor === color
-                                            ? "bg-yellow-100 text-yellow-600 font-semibold"
-                                            : "hover:bg-yellow-100 text-gray-800"
-                                    } focus:ring-2 focus:ring-yellow-500 transition-all ease-in-out duration-300`}
+                                    className={`px-3 py-1 border rounded-full text-sm ${selectedColor === color
+                                        ? "bg-yellow-100 text-yellow-600 font-semibold"
+                                        : "hover:bg-yellow-100 text-gray-800"
+                                        } focus:ring-2 focus:ring-yellow-500 transition-all ease-in-out duration-300`}
                                 >
-                                    {loadingColor === color ? <Loader/> : color}
+                                    {loadingColor === color ? <Loader /> : color}
                                 </button>
                             ))}
                         </div>
@@ -230,26 +228,30 @@ const ProductDetail = () => {
 
                     {/* Action Buttons */}
                     <div className="flex space-x-3">
-                        <button
-                            className="px-5 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white font-semibold rounded-xl hover:from-yellow-600 hover:to-yellow-700 shadow-xl transition-all ease-in-out duration-300"
-                        >
-                            Thanh toán
-                        </button>
-                        <button
-                            className="px-5 py-2 border border-yellow-500 text-yellow-500 font-semibold rounded-xl hover:bg-yellow-100 shadow-md transition-all ease-in-out duration-300"
-                        >
-                            Thêm vào giỏ hàng
-                        </button>
+                        <Link to="/checkout">
+                            <button
+                                className="px-5 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white font-semibold rounded-xl hover:from-yellow-600 hover:to-yellow-700 shadow-xl transition-all ease-in-out duration-300"
+                            >
+                                Thanh toán
+                            </button>
+                        </Link>
+                        <Link to="/shoppingCart">
+                            <button
+                                className="px-5 py-2 border border-yellow-500 text-yellow-500 font-semibold rounded-xl hover:bg-yellow-100 shadow-md transition-all ease-in-out duration-300"
+                            >
+                                Thêm vào giỏ hàng
+                            </button>
+                        </Link>
                     </div>
                 </div>
             </div>
 
             {/* Comments and Related Products */}
             <div className="mt-12">
-                <ProductComments/>
+                <ProductComments />
             </div>
             <div className="mt-12">
-                <RelatedProducts/>
+                <RelatedProducts />
             </div>
         </div>
     );
