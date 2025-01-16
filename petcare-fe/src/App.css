@@ -37,8 +37,12 @@
   .load-img.in-view img {
     opacity: 1; /* Ảnh hiển thị khi vào view */
   }
-  
 
+@layer utilities {
+  .rounded-custom {
+    border-radius: 46rem 0 1rem 20rem;
+  }
+}
   
  
 

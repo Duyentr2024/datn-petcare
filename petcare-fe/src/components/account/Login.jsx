@@ -56,7 +56,7 @@ const Login = () => {
   // Xử lý đăng nhập
   const handleLogin = async () => {
     try {
-
+    
       const response = await fetch("http://localhost:8080/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -365,7 +365,7 @@ const Login = () => {
 
             <div className="flex items-center justify-center space-x-4 mb-6">
               {/* Ẩn các nút mạng xã hội trên màn hình nhỏ */}
-              <button
+              <button 
                type="button"
                onClick={() =>
                    window.FB.login(handleFacebookLogin, {scope: "email"})
@@ -382,7 +382,7 @@ const Login = () => {
                 id="google-login-button"
                 type="button"
                 onClick={() => window.google.accounts.id.prompt()} // Kích hoạt modal đăng nhập Google
-
+                
               >
                 <FaGoogle className="text-white" />
               </button>
@@ -401,8 +401,6 @@ const Login = () => {
       </div>
     </div>
   );
-
-
 };
 
 export default Login;
