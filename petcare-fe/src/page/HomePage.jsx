@@ -14,6 +14,7 @@ import Login from "../components/account/Login.jsx";
 import Register from "../components/account/Register.jsx";
 import ForgotPassword from "../components/account/ForgotPassword.jsx";
 import MyAccount from "../components/account/MyAccount.jsx"
+import VerifyOTP from "../components/account/VerifyOTP.jsx";
 const HomePage = () => {
 
     return (
@@ -32,6 +33,8 @@ const HomePage = () => {
                 <Route path="/register" element={<Register/>} />
                 <Route path="/forgotPassword" element={<ForgotPassword/>} />
                 <Route path="/my-account/*" element={<MyAccount/>} />
+                <Route path="/verify-otp" element={<VerifyOTP/>} />
+
             </Routes>
 
             <RenderFooter />

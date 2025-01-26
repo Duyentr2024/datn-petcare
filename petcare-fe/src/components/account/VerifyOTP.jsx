@@ -13,76 +13,53 @@ const VerifyOTP = () => {
   const navigate = useNavigate(); // Initialize useNavigate for redirect
 
   const handleOtpChange = (index, value) => {
-    if (!/^[0-9]?$/.test(value)) return; // Chỉ chấp nhận số từ 0-9
+    if (!/^[0-9]?$/.test(value)) return;
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-  
+
     if (value !== "" && index < 5) {
       document.getElementById(`otp-${index + 1}`).focus();
     }
   };
-  
-  const handleKeyDown = (index, event) => {
-    if (event.key === "Backspace" && otp[index] === "" && index > 0) {
-      document.getElementById(`otp-${index - 1}`).focus();
-    }
-  };
-  
-  const handlePaste = (event) => {
-    event.preventDefault();
-    const pasteData = event.clipboardData.getData("text").trim();
-  
-    if (/^\d{6}$/.test(pasteData)) {
-      setOtp(pasteData.split(""));
-      document.getElementById("otp-5").focus(); // Chuyển focus đến ô cuối
-    }
-  };
-  
 
   const handleVerifyOtp = async () => {
     const otpCode = otp.join("");
-  
     if (otpCode.length !== 6) {
       Swal.fire({
-        icon: "error",
-        title: "Vui lòng nhập đầy đủ mã OTP.",
+        icon: 'error',
+        title: 'Vui lòng nhập đầy đủ mã OTP.',
         showConfirmButton: false,
-        timer: 2000,
+        timer: 2000
       });
       return;
     }
-  
+
     setLoading(true);
-  
     try {
       const response = await otpService.verifyOtp(email, otpCode);
-      
-      console.log("API Response:", response); // Kiểm tra dữ liệu trả về
-  
-      // Chấp nhận cả hai response từ API
-      if (response === "OTP xác nhận thành công!" || response === "Account created successfully!") {
+      if (response === "OTP xác nhận thành công!") {
         Swal.fire({
-          icon: "success",
-          title: "Đăng ký thành công!",
-          text: "Bạn sẽ được chuyển đến trang đăng nhập.",
+          icon: 'success',
+          title: 'Đăng ký thành công!',
+          text: 'Bạn sẽ được chuyển đến trang đăng nhập.',
           timer: 2000,
           showConfirmButton: false,
         });
-  
+        // Redirect to login page after successful registration
         setTimeout(() => {
-          navigate("/login");
+          navigate("/login"); // Redirect to login page
         }, 2000);
       } else {
         Swal.fire({
-          icon: "error",
-          title: response, // Hiển thị lỗi từ server
+          icon: 'error',
+          title: response,
           showConfirmButton: true,
         });
       }
     } catch (error) {
       Swal.fire({
-        icon: "error",
+        icon: 'error',
         title: error.message || "Đã xảy ra lỗi.",
         showConfirmButton: true,
       });
@@ -90,7 +67,6 @@ const VerifyOTP = () => {
       setLoading(false);
     }
   };
-  
 
   const handleResendOtp = async () => {
     setLoading(true);
@@ -194,18 +170,15 @@ const VerifyOTP = () => {
 
           <div className="flex justify-center space-x-2 mb-6">
             {otp.map((value, index) => (
-             <input
-             key={index}
-             id={`otp-${index}`}
-             type="text"
-             maxLength={1}
-             value={value}
-             onChange={(e) => handleOtpChange(index, e.target.value)}
-             onKeyDown={(e) => handleKeyDown(index, e)}
-             onPaste={handlePaste} // Xử lý dán mã
-             className="w-12 h-12 text-xl text-center border border-gray-300 rounded-lg shadow-md focus:ring-2 focus:ring-yellow-500 focus:outline-none"
-           />
-           
+              <input
+                key={index}
+                id={`otp-${index}`}
+                type="text"
+                maxLength={1}
+                value={value}
+                onChange={(e) => handleOtpChange(index, e.target.value)}
+                className="w-12 h-12 text-xl text-center border border-gray-300 rounded-lg shadow-md focus:ring-2 focus:ring-yellow-500 focus:outline-none"
+              />
             ))}
           </div>
 
