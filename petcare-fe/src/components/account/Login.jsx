@@ -4,12 +4,15 @@ import { FaArrowCircleRight, FaFacebookF, FaGoogle } from "react-icons/fa";
 import Cookies from "js-cookie";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom"; // Import useNavigate từ React Router
+
+import LoginService from "../../service/accountService/LoginService";
 const Login = () => {
   // khai báo các state cần thiết
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState(""); // State lưu email
   const [password, setPassword] = useState(""); // State lưu password
   const [token, setToken] = useState(null); // Thêm state để lưu token
+
   const navigate = useNavigate();
   // Ẩn hiện mật khẩu
   const togglePasswordVisibility = () => {
@@ -56,112 +59,53 @@ const Login = () => {
   // Xử lý đăng nhập
   const handleLogin = async () => {
     try {
-
-      const response = await fetch("http://localhost:8080/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      const data = await LoginService.login(email, password);
+      Swal.fire({
+        title: "Đăng nhập thành công!",
+        text: `Xin chào ${data.fullName}`,
+        icon: "success",
+        confirmButtonText: "OK",
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Login response:", data);
+      if (data.roleName === "Admin") {
+        navigate("/admin");
+      } else if (data.roleName === "Nhân viên") {
+        navigate("/staff-dashboard");
+      } else {
+        navigate("/");
+      }
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Đăng nhập thất bại!",
+        text: error.message,
+      });
+    }
+  };
 
-        // Lưu token vào cookie
-        Cookies.set("accessToken", data.accessToken, { expires: 7 });
+  
 
-        // Cập nhật token ngay lập tức trong state
-        setToken(data.accessToken);
-
-        // Đóng thông báo loading và hiển thị thông báo thành công
+  // Hàm xử lý đăng nhập bằng Google
+  const handleGoogleLogin = async (response) => {
+    if (response && response.credential) {
+      try {
+        const data = await LoginService.googleLogin(response.credential);
         Swal.fire({
           title: "Đăng nhập thành công!",
           text: `Xin chào ${data.fullName}`,
           icon: "success",
           confirmButtonText: "OK",
         });
-
-        // Điều hướng dựa trên vai trò
-        if (data.roleName === "Admin") {
-          navigate("/admin");
-        } else if (data.roleName === "Nhân viên") {
-          navigate("/staff-dashboard");
-        } else {
-          navigate("/my-account/change-password");
-        }
-      } else {
-        const errorData = await response.json();
-        // Đóng thông báo loading và hiển thị thông báo lỗi
-        Swal.fire({
-          icon: "error",
-          title: "Đăng nhập thất bại!",
-          text: errorData.message || "Vui lòng thử lại.",
-        });
-      }
-    } catch (error) {
-      console.error("Error during login:", error);
-      // Đóng thông báo loading và hiển thị thông báo lỗi nếu có lỗi trong quá trình gọi API
-      Swal.fire({
-        icon: "error",
-        title: "Lỗi!",
-        text: "Đã xảy ra lỗi trong quá trình đăng nhập.",
-      });
-    }
-  };
-
-  // Xử lý submit form
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    handleLogin();
-  };
-
-  // Hàm xử lý đăng nhập bằng Google
-  const handleGoogleLogin = async (response) => {
-    if (response && response.credential) {
-      const token = response.credential;
-      console.log("Token:", token);
-      try {
-        const res = await fetch("http://localhost:8080/api/auth/google-login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ token }), // Gửi token kèm theo trong body
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          // Lưu token vào cookie
-          Cookies.set("accessToken", data.accessToken, { expires: 7 });
-
-          // Cập nhật token ngay lập tức trong state
-          setToken(data.accessToken);
-
-          Swal.fire({
-            title: "Đăng nhập thành công!",
-            text: `Xin chào ${data.fullName}`,
-            icon: "success",
-            confirmButtonText: "OK",
-          });
-
-          navigate("/my-account");
-        } else {
-          Swal.fire({
-            icon: "error",
-            title: "Đăng nhập Google thất bại!",
-            text: "Vui lòng thử lại.",
-          });
-        }
+  
+        navigate("/");
       } catch (error) {
-        console.error("Error during Google login:", error);
         Swal.fire({
           icon: "error",
-          title: "Lỗi!",
-          text: "Đã xảy ra lỗi trong quá trình đăng nhập Google.",
+          title: "Đăng nhập Google thất bại!",
+          text: error.message,
         });
       }
     } else {
-      // Xử lý trường hợp không lấy được token từ Google hoặc lỗi phản hồi từ Google
       Swal.fire({
         icon: "error",
         title: "Lỗi đăng nhập!",
@@ -172,56 +116,40 @@ const Login = () => {
 
   const handleFacebookLogin = (response) => {
     if (response.authResponse) {
-      // Gọi Facebook API để lấy thông tin người dùng
-      window.FB.api("/me", { fields: "id,name,email" }, async function (user) {
-        try {
-          const res = await fetch(
-            "http://localhost:8080/api/auth/facebook-login",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                id: user.id, // Thêm ID
-                name: user.name,
-                email: user.email,
-                accessToken: response.authResponse.accessToken,
-              }),
-            }
-          );
-
-          if (res.ok) {
-            const data = await res.json();
-            // Lưu token vào cookie
-            Cookies.set("accessToken", data.accessToken, { expires: 7 });
-
-            // Cập nhật token ngay lập tức trong state
-            setToken(data.accessToken);
+      const accessToken = response.authResponse.accessToken;
+      window.FB.api(
+        "/me",
+        { fields: "id,name,email,picture" }, // Thêm 'picture' để lấy avatar
+        async function (user) {
+          try {
+             console.log("Facebook Token:", accessToken); // Log token để kiểm tra
+            const data = await LoginService.facebookLogin({
+              id: user.id,
+              name: user.name,
+              email: user.email || "", // Đảm bảo email không bị `undefined`
+              accessToken: response.authResponse.accessToken,
+              imageUrl: user.picture?.data?.url || "", // 📌 Gửi ảnh đại diện lên BE
+            });
+  
+            console.log("data", data);
+  
             Swal.fire({
               title: "Đăng nhập thành công!",
               text: `Xin chào ${data.fullName}`,
               icon: "success",
               confirmButtonText: "OK",
             });
+  
             navigate("/");
-          } else {
-            const errorData = await res.json();
+          } catch (error) {
             Swal.fire({
               icon: "error",
               title: "Đăng nhập Facebook thất bại!",
-              text: errorData.message || "Vui lòng thử lại.",
+              text: error.response?.data?.message || "Đã xảy ra lỗi!",
             });
           }
-        } catch (error) {
-          console.error("Error during Facebook login:", error);
-          Swal.fire({
-            icon: "error",
-            title: "Lỗi!",
-            text: "Đã xảy ra lỗi trong quá trình đăng nhập Facebook.",
-          });
         }
-      });
+      );
     } else {
       Swal.fire({
         icon: "warning",
@@ -230,8 +158,8 @@ const Login = () => {
       });
     }
   };
-
-
+  
+  
 
   useEffect(() => {
     // Khởi tạo Google Sign-In
@@ -270,11 +198,12 @@ const Login = () => {
     })(document, "script", "facebook-jssdk");
   }, []);
 
-  const handleClick = () => {
-    // Mở hộp thoại đăng nhập Google khi nút tùy chỉnh được nhấn
-    window.google.accounts.id.prompt();
-  };
 
+  // Xử lý submit form
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    handleLogin();
+  };
 
   return (
     <div className="bg-gradient-to-r flex items-center justify-center min-h-screen">

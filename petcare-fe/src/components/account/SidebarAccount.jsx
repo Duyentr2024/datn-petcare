@@ -7,11 +7,12 @@ import {
   AiOutlineHeart,
 } from "react-icons/ai";
 import { MdOutlineLocationOn } from "react-icons/md";
-
+import { useAuth } from "../../context/AuthContext"; // Import hook useAuth từ context
 const SidebarAccount = () => {
   const location = useLocation(); // Lấy thông tin đường dẫn hiện tại
   const [selectedItem, setSelectedItem] = useState(location.pathname); // Cập nhật selectedItem khi đường dẫn thay đổi
-
+  const { user, token, setUser, setToken } = useAuth(); // Lấy setUser từ context
+  console.log("user", user);
   // Cập nhật lại selectedItem khi location.pathname thay đổi
   useEffect(() => {
     setSelectedItem(location.pathname);
@@ -25,18 +26,22 @@ const SidebarAccount = () => {
     <div className="w-1/3 bg-[#FBB321] rounded-lg p-6 absolute right-full translate-x-2/3 top-5 h-[530px]">
       <div className="flex flex-col items-center">
         <img
-          src="https://placehold.co/100x100"
+          src={user?.imageUrl   || "https://placehold.co/100x100"}
           alt="User avatar"
-          className="rounded-full mb-4"
+          className="rounded-full mb-4 w-[100px] h-[100px] object-cover"
         />
-        <h2 className="text-white text-lg font-bold">lsdads</h2>
+        <h2 className="text-white text-lg font-bold">
+          {user?.fullName || "Guest"}
+        </h2>
         <a
           href="#"
+           // Thêm hàm đăng xuất
           className="text-white text-sm inline-table underline cursor-pointer"
         >
           Đăng xuất
         </a>
       </div>
+
       <div className="mt-8">
         <Link
           to="/my-account/info"
