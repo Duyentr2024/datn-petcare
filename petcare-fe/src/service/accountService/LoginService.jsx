@@ -11,7 +11,7 @@ const LoginService = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-
+                          
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Đăng nhập thất bại");
@@ -29,7 +29,7 @@ const LoginService = {
     //API đăng nhập bằng google
   googleLogin: async (token) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/google-login`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/google-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token }),
@@ -51,7 +51,7 @@ const LoginService = {
     //API đăng nhập bằng facebook
   facebookLogin: async (user) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/facebook-login`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/facebook-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(user),

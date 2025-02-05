@@ -3,7 +3,7 @@ import { EyeSlashIcon, EyeIcon } from "@heroicons/react/24/solid";
 import { FaArrowCircleRight } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
-
+import Swal from "sweetalert2";
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -37,22 +37,56 @@ const Register = () => {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+  
     if (formData.password !== formData.confirmPassword) {
-      alert("Mật khẩu xác nhận không khớp!");
+      Swal.fire({
+        icon: "error",
+        title: "Lỗi!",
+        text: "Mật khẩu xác nhận không khớp!",
+      });
       return;
     }
+  
     try {
+      // Hiển thị hiệu ứng loading
+      Swal.fire({
+        title: "Đang xử lý...",
+        text: "Vui lòng đợi trong giây lát",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+  
       const response = await axios.post("http://localhost:8080/api/auth/register", {
-        fullname: formData.fullname,
+        fullName: formData.fullname,
         email: formData.email,
         password: formData.password,
       });
-      alert(response.data);
-      navigate("/verify-otp", { state: { email: formData.email } });;
+  
+      // Khi thành công, hiển thị thông báo
+      Swal.fire({
+        icon: "success",
+        title: "Đăng ký thành công!",
+        text: "Vui lòng kiểm tra email để nhận mã OTP",
+        showConfirmButton: false,
+        timer: 2000,
+      });
+  
+      // Chuyển hướng sau khi hoàn tất thông báo
+      setTimeout(() => {
+        navigate("/verify-otp", { state: { email: formData.email } });
+      }, 2000);
+  
     } catch (error) {
-      alert(error.response?.data || "Đã xảy ra lỗi");
+      Swal.fire({
+        icon: "error",
+        title: "Đã xảy ra lỗi!",
+        text: error.response?.data || "Vui lòng thử lại sau!",
+      });
     }
   };
+  
 
   return (
     <div className="bg-gradient-to-r flex items-center justify-center min-h-screen ">

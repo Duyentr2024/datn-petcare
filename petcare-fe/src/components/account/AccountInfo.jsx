@@ -7,7 +7,7 @@ import { useCookies } from "react-cookie"; // Import useCookies
 import Swal from "sweetalert2";
 import { storage, ref, uploadBytesResumable, getDownloadURL } from "../../firebaseConfig"; 
 import { decodeToken } from "../utils/jwt"; // Hàm decodeToken đã viết
-
+import UserUpdateService from "../../service/accountService/UserUpdateService";
 const AccountInfo = () => {
   const [selectedItem, setSelectedItem] = useState("Thông tin tài khoản"); // Mục mặc định
   const [cookies, setCookie] = useCookies(["accessToken"]); // Lấy setCookie
@@ -41,6 +41,7 @@ const AccountInfo = () => {
     phone: "",
     email: "",
     registration_date: "",
+    imageUrl: "",
     role: "",
     totalSpent: "",
   });
@@ -137,96 +138,28 @@ const AccountInfo = () => {
 
   // Hàm xử lý upload avatar
  
-const handleAvatarUpload = async (event) => {
-  const file = event.target.files[0];
-  if (!file) {
-    Swal.fire({
-      icon: "error",
-      title: "Lỗi!",
-      text: "Vui lòng chọn một ảnh hợp lệ.",
-    });
-    return;
-  }
-
-  // Kiểm tra định dạng và dung lượng ảnh
-  const allowedTypes = ["image/jpeg", "image/png"];
-  if (!allowedTypes.includes(file.type)) {
-    Swal.fire({
-      icon: "error",
-      title: "Lỗi!",
-      text: "Chỉ hỗ trợ định dạng JPEG, PNG.",
-    });
-    return;
-  }
-
-  if (file.size > 1024 * 1024) { // 1MB
-    Swal.fire({
-      icon: "error",
-      title: "Lỗi!",
-      text: "Dung lượng ảnh không được vượt quá 1MB.",
-    });
-    return;
-  }
-
-  try {
-    // 🟢 1. Upload ảnh lên Firebase Storage
-    const storageRef = ref(storage, `avatars/${file.name}`); // Đường dẫn lưu ảnh trong Firebase
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on(
-      "state_changed",
-      (snapshot) => {
-        // Có thể cập nhật tiến trình upload nếu cần
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        console.log("Upload is " + progress + "% done");
-      },
-      (error) => {
-        console.error("Lỗi khi upload ảnh:", error);
-        Swal.fire({
-          icon: "error",
-          title: "Lỗi!",
-          text: "Không thể tải ảnh lên Firebase.",
-        });
-      },
-      async () => {
-        // 🟢 2. Lấy URL ảnh sau khi upload thành công
-        const imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
-        console.log("Ảnh đã upload, URL:", imageUrl);
-
-        // 🟢 3. Gửi URL ảnh về BE để cập nhật avatar
-        const response = await axios.put(
-          `http://localhost:8080/api/users/update/avatar/${user.userId}`,
-          { imageUrl }, // Gửi URL thay vì file
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
-        if (response.status === 200) {
-          setUser(response.data); // Cập nhật avatar mới
-          Swal.fire({
-            icon: "success",
-            title: "Thành công!",
-            text: "Cập nhật avatar thành công.",
-          });
-        } else {
-          Swal.fire({
-            icon: "error",
-            title: "Lỗi!",
-            text: "Có lỗi xảy ra khi cập nhật avatar.",
-          });
-        }
-      }
-    );
-  } catch (error) {
-    console.error("Lỗi khi tải ảnh lên:", error);
-    Swal.fire({
-      icon: "error",
-      title: "Lỗi!",
-      text: "Không thể tải ảnh lên.",
-    });
-  }
-};
+  const handleAvatarUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+  
+    try {
+      const updatedUser = await UserUpdateService.uploadAvatar(user.userId, file, token);
+      setUser(updatedUser);
+  
+      Swal.fire({
+        icon: "success",
+        title: "Thành công!",
+        text: "Cập nhật avatar thành công.",
+      });
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Lỗi!",
+        text: error.message,
+      });
+    }
+  };
+  
 
   return (
     <>
@@ -314,7 +247,6 @@ const handleAvatarUpload = async (event) => {
           <div className="text-center">
             <img
               src={user?.imageUrl || "https://i.pinimg.com/originals/9f/c2/12/9fc2126eec2c0a3876e3f2097af9b983.gif"}
-              alt="Profile picture"
               className="rounded-full object-cover border-4 border-[#FBB321] mb-2 cursor-pointer h-[150px] w-[150px]"
               onClick={() => document.getElementById("avatarInput").click()}
             />
