@@ -17,12 +17,10 @@ const VerifyOTP = () => {
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
-  
     if (value !== "" && index < 5) {
       document.getElementById(`otp-${index + 1}`).focus();
     }
   };
-  
   const handleKeyDown = (index, event) => {
     if (event.key === "Backspace" && otp[index] === "" && index > 0) {
       document.getElementById(`otp-${index - 1}`).focus();
@@ -90,8 +88,6 @@ const VerifyOTP = () => {
       setLoading(false);
     }
   };
-  
-
   const handleResendOtp = async () => {
     setLoading(true);
     try {
@@ -205,7 +201,6 @@ const VerifyOTP = () => {
              onPaste={handlePaste} // Xử lý dán mã
              className="w-12 h-12 text-xl text-center border border-gray-300 rounded-lg shadow-md focus:ring-2 focus:ring-yellow-500 focus:outline-none"
            />
-           
             ))}
           </div>
 

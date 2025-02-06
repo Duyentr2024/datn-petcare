@@ -2,7 +2,6 @@ import Cookies from "js-cookie";
 import API_BASE_URL from "../../config"; // Import từ file config.js
 
 const LoginService = {
-
     //API đăng nhập
   login: async (email, password) => {
     try {
@@ -11,7 +10,7 @@ const LoginService = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-                          
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Đăng nhập thất bại");

@@ -1,7 +1,6 @@
 import axios from "axios";
 import API_BASE_URL from "../../config"; // Import BASE_URL từ config.js
 import { storage, ref, uploadBytesResumable, getDownloadURL } from "../../firebaseConfig";
-
 const UserUpdateService = {
   updateUser: async (userId, formData) => {
     try {
@@ -84,6 +83,7 @@ const UserUpdateService = {
       throw new Error("Không thể tải ảnh lên.");
     }
   },
+
 };
 
 export default UserUpdateService;
