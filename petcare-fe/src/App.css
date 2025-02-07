@@ -3,6 +3,9 @@
 @tailwind utilities;
 
 
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
 /* Hiệu ứng đổ màu từ trái qua */
 .load-img {
     position: relative;

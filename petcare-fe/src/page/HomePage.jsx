@@ -15,6 +15,7 @@ import Register from "../components/account/Register.jsx";
 import ForgotPassword from "../components/account/ForgotPassword.jsx";
 import MyAccount from "../components/account/MyAccount.jsx"
 import VerifyOTP from "../components/account/VerifyOTP.jsx";
+import OrderOffline from "../components/orderOffline/OrderOffline.jsx";
 const HomePage = () => {
 
     return (
@@ -34,6 +35,7 @@ const HomePage = () => {
                 <Route path="/forgotPassword" element={<ForgotPassword/>} />
                 <Route path="/my-account/*" element={<MyAccount/>} />
                 <Route path="/verify-otp" element={<VerifyOTP/>} />
+                <Route path="/orderOffline" element={<OrderOffline/>} />
 
             </Routes>
 
