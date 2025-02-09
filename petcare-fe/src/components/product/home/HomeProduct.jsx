@@ -1,6 +1,6 @@
-import React, {useState, useEffect} from 'react';
-import {ChevronRight} from 'lucide-react';
-import {ProductCard} from '../ProductCard';
+import React, { useState, useEffect } from 'react';
+import { ChevronRight } from 'lucide-react';
+import { ProductCard } from '../ProductCard';
 import ProductSkeleton from '../home/ProductSkeleton';
 
 function HomeProduct() {
@@ -16,14 +16,14 @@ function HomeProduct() {
             const mockProducts = [
                 {
                     id: 1,
-                    image: "https://placehold.co/250x250",
+                    image: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-4.png",
                     name: "Mật Ong Nguyên Chất",
                     price: 250000,
                     oldPrice: 300000
                 },
                 {
                     id: 2,
-                    image: "https://placehold.co/250x250",
+                    image: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/mat-ong.png",
                     name: "Mật Ong Rừng Hoa",
                     price: 320000,
                     oldPrice: 400000
@@ -41,7 +41,9 @@ function HomeProduct() {
                     name: "Mật Ong Đa Hoa",
                     price: 200000,
                     oldPrice: 250000
-                }
+                },
+                
+                
             ];
 
             setProducts(mockProducts);
@@ -117,10 +119,10 @@ function HomeProduct() {
                     </button>
                 </div>
 
-                <div className="flex flex-wrap justify-center gap-8">
+                <div className="flex  justify-center gap-8">
                     {loading ? (
                         [...Array(8)].map((_, index) => (
-                            <ProductSkeleton key={index}/>
+                            <ProductSkeleton key={index} />
                         ))
                     ) : (
                         products.map(product => (
