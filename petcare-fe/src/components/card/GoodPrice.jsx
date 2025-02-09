@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FaPlus, FaPaw } from "react-icons/fa";
 import { BsArrowLeft, BsArrowRight } from "react-icons/bs";
 import { Link } from "react-router-dom";
-
+import { Heart } from 'lucide-react';
 const GoodPrice = () => {
   const [products, setProducts] = useState([
     {
@@ -26,11 +26,8 @@ const GoodPrice = () => {
       price: "80.000₫",
       imgUrl: "https://placehold.co/300x300",
     },
-    {
-      name: "Sữa tắm hoa trà CAMELLIA dạng gel cho chó mèo",
-      price: "100.000₫",
-      imgUrl: "https://placehold.co/300x300",
-    },
+  
+
   ]);
 
   const [timeLeft, setTimeLeft] = useState(7200000);
@@ -116,7 +113,7 @@ const GoodPrice = () => {
           style={{ clipPath: "inset(0 0 20% 0)" }} // Chỉ hiển thị hiệu ứng trong vùng cụ thể
         ></div>
         <div className="container mx-auto p-4 bg-[#FBB321] relative">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-4  ">
             <div className="flex items-center space-x-2">
               <h1 className="text-white text-2xl font-bold">
                 Sản phẩm khuyến mãi
@@ -171,11 +168,8 @@ const GoodPrice = () => {
                       <span className="text-yellow-500 text-xl font-bold">
                         {product.price}
                       </span>
-                      <button className="bg-white text-[#FBB321] p-2 rounded-full border-2 border-[#FBB321] relative group">
-                        <FaPlus className="transform group-hover:rotate-45 transition-all duration-300" />
-                        <div className="tooltip absolute right-full top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:-translate-x-2 bg-[#FBB321] text-white text-sm px-2 py-2 whitespace-nowrap rounded transition-all duration-300 ease-in-out">
-                          Xem sản phẩm
-                        </div>
+                      <button className="bg-white text-[#FBB321] p-2 rounded-full border-2 border-[#FBB321]">
+                        <Heart className="text-[#FBB321]" size={16} />
                       </button>
                     </div>
                   </div>
