@@ -3,6 +3,7 @@ import { ChevronRight } from "lucide-react";
 import { ProductCard } from "../ProductCard";
 import ProductSkeleton from "../home/ProductSkeleton";
 import ProductsService from "../../../service/ProductsService.js"; // Gọi API từ service
+import ProductDetailsService from "../../../service/ProductDetailsService.js";
 
 function HomeProduct() {
     const [loading, setLoading] = useState(true);
@@ -134,7 +135,9 @@ function HomeProduct() {
                                     <ProductCard
                                         key={product.productId}
                                         image={product.image}
-                                        name={product.productName}
+                                        name={product.productName.length > 24
+                                            ? product.productName.slice(0, 24) + "..."
+                                            : product.productName}
                                         price={product.price}
                                     />
                                 ))}
