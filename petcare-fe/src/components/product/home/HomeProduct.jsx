@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -6,22 +7,14 @@ import ProductSkeleton from "../home/ProductSkeleton";
 import ProductsService from "../../../service/ProductsService.js";
 import ProductDetailsService from "../../../service/ProductDetailsService.js"; // Import service mới
 
+
 function HomeProduct() {
     const [loading, setLoading] = useState(true);
     const [productsByCategory, setProductsByCategory] = useState({});
     const [selectedProductId, setSelectedProductId] = useState(null); // State lưu productId
     const [productDetails, setProductDetails] = useState(null); // Lưu chi tiết sản phẩm
 
-    useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                setLoading(true);
-                const response = await ProductsService.getAllProductsWithCategory();
-
-                if (!Array.isArray(response)) {
-                    throw new Error("API trả về dữ liệu không hợp lệ.");
-                }
-
+   
                 // Nhóm sản phẩm theo categoryName và loại bỏ trùng lặp theo productId
                 const groupedProducts = response.reduce((acc, product) => {
                     if (!acc[product.categoryName]) {
@@ -65,6 +58,7 @@ function HomeProduct() {
         fetchProductDetails();
     }, [selectedProductId]); // Chạy khi selectedProductId thay đổi
 
+
     return (
         <div className="container mx-32 w-auto px-4 py-8">
             {loading ? (
@@ -72,6 +66,24 @@ function HomeProduct() {
                     {[...Array(8)].map((_, index) => (
                         <ProductSkeleton key={index} />
                     ))}
+
+                <div className="flex  justify-center gap-8">
+                    {loading ? (
+                        [...Array(8)].map((_, index) => (
+                            <ProductSkeleton key={index} />
+                        ))
+                    ) : (
+                        products.map(product => (
+                            <ProductCard
+                                key={product.id}
+                                image={product.image}
+                                name={product.name}
+                                price={product.price}
+                                oldPrice={product.oldPrice}
+                            />
+                        ))
+                    )}
+
                 </div>
             ) : (
                 Object.keys(productsByCategory).map((category) => (

@@ -2,6 +2,7 @@ import React from 'react';
 import { Heart } from 'lucide-react';
 
 
+
 export function ProductCard({ name, price, image }) {
     return (
         <div className="w-[250px] bg-white rounded-lg overflow-hidden shadow group">
