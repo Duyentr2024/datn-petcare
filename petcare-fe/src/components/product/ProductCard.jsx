@@ -2,7 +2,8 @@ import React from 'react';
 import { Heart } from 'lucide-react';
 
 
-export function ProductCard({ name, price, oldPrice, image }) {
+
+export function ProductCard({ name, price, image }) {
     return (
         <div className="w-[250px] bg-white rounded-lg overflow-hidden shadow group">
             <div className="relative w-[250px] h-[250px] overflow-hidden">
@@ -21,8 +22,7 @@ export function ProductCard({ name, price, oldPrice, image }) {
                 </span>
                 <div className="flex justify-between items-baseline">
                     <div className="flex items-baseline gap-2">
-                        <span className="text-[#fbb321] font-bold text-lg">{price.toLocaleString()}đ</span>
-                        <span className="text-gray-400 line-through text-sm">{oldPrice.toLocaleString()}đ</span>
+                        <span className="text-[#fbb321] font-bold text-lg">{price}đ</span>
                     </div>
                     <button className="bg-white text-[#FBB321] p-2 rounded-full border-2 border-[#FBB321] flex items-center justify-center gap-2">
                         <Heart className="text-[#FBB321]" size={16} />
