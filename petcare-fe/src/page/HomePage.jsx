@@ -16,7 +16,7 @@ import ForgotPassword from "../components/account/ForgotPassword.jsx";
 import MyAccount from "../components/account/MyAccount.jsx"
 import VerifyOTP from "../components/account/VerifyOTP.jsx";
 import OrderOffline from "../components/orderOffline/OrderOffline.jsx";
-
+import Admin from "../page/Admin.jsx"
 const HomePage = () => {
 
     return (
@@ -37,12 +37,15 @@ const HomePage = () => {
                 <Route path="/my-account/*" element={<MyAccount/>} />
                 <Route path="/verify-otp" element={<VerifyOTP/>} />
                 <Route path="/orderOffline" element={<OrderOffline/>} />
+                <Route path="/admin" element={<Admin/>} />
       
 
 
             </Routes>
 
             <RenderFooter />
+
+            
 
         </>
     );
