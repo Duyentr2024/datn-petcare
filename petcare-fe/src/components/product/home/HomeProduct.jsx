@@ -14,7 +14,7 @@ function HomeProduct() {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const response = await ProductsService.getAllProducts();
+                const response = await ProductsService.getAllProductsWithCategory();
                 const groupedProducts = response.reduce((acc, product) => {
                     if (!acc[product.categoryName]) {
                         acc[product.categoryName] = new Map();
