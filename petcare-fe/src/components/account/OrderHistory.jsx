@@ -31,7 +31,7 @@ const OrderHistory = () => {
       try {
         const data = await OrderHistoryService.getOrdersByUserId(userId);
         setOrders(data);
-        console.log(data)
+       
       } catch (error) {
         console.error("Lỗi khi lấy đơn hàng:", error);
       }
