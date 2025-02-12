@@ -67,7 +67,7 @@ const Favorites = () => {
 
       {/* Thanh cuộn sản phẩm */}
       <div className="relative">
-       
+     
 
         {/* Danh sách sản phẩm (cuộn ngang) */}
         <div
@@ -86,7 +86,7 @@ const Favorites = () => {
               />
             </div>
           ))}
-        </div>   
+        </div>
       </div>
     </div>
   );
