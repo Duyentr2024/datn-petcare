@@ -1,79 +1,52 @@
 import React, { useEffect, useState } from "react";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderOutlinedIcon from "@mui/icons-material/FavoriteBorderOutlined";
-import FavoritesService from "../../service/accountService/FavoritesService"; // Import service đã tạo
-import { useAuth } from "../../context/AuthContext"; // Import hook useAuth từ context
+import { toggleFavorite, getFavoriteStatus } from "../../service/accountService/FavoritesService";
+import { useAuth } from "../../context/AuthContext";
+
 export function ProductCard({ name, price, image, productId }) {
-    const { user } = useAuth(); // Lấy thông tin người dùng từ context
+    const { user } = useAuth();
     const [isFavorite, setIsFavorite] = useState(false);
 
+    // Khi component mount, lấy trạng thái yêu thích từ API
     useEffect(() => {
         if (user?.userId && productId) {
-            FavoritesService.getFavoriteByUserAndProduct(user.userId, productId)
-                .then((favorite) => {
-                    console.log("Favorite data:", favorite);
-                    setIsFavorite(!!favorite);
-                })
-                .catch((error) => console.error("Lỗi khi kiểm tra yêu thích:", error));
+            fetchFavoriteStatus();
         }
     }, [user?.userId, productId]);
-    
+
+    // API để kiểm tra sản phẩm có được yêu thích hay không
+    const fetchFavoriteStatus = async () => {
+        try {
+            const result = await getFavoriteStatus(user.userId, productId);
+            setIsFavorite(result.isLiked);
+        } catch (error) {
+            console.error("Lỗi khi kiểm tra yêu thích:", error);
+        }
+    };
+
+    // Xử lý khi người dùng nhấn nút yêu thích
     const handleToggleFavorite = async (event) => {
         event.preventDefault();
         event.stopPropagation();
-    
+
         if (!user?.userId) {
             alert("Bạn cần đăng nhập để yêu thích sản phẩm!");
             return;
         }
-    
 
+        console.log("📌 User ID:", user.userId);
+        console.log("📌 Product ID:", productId);
+        console.log("📌 Trạng thái yêu thích trước đó:", isFavorite);
 
         try {
-
-            const favoriteData = {
-                userId: user.userId, // Chỉ gửi ID
-                productId, // Chỉ gửi ID
-                isLiked: true,
-            };
-
-            if (isFavorite) {
-                const success = await FavoritesService.removeFavoriteByUserAndProduct(user.userId, productId);
-                if (success) setIsFavorite(false);
-            } else {
-              
-                const result = await FavoritesService.addOrUpdateFavorite(favoriteData);
-                if (result) setIsFavorite(true);
-            }
+            const result = await toggleFavorite(user.userId, productId);
+            setIsFavorite(result.isLiked);
+            console.log(result.isLiked ? "✅ Đã thêm vào danh sách yêu thích!" : "✅ Đã xóa khỏi danh sách yêu thích!");
         } catch (error) {
-            console.error("Lỗi khi cập nhật yêu thích:", error);
+            console.error("❌ Lỗi khi cập nhật yêu thích:", error);
         }
     };
-
-    // const handleToggleFavorite = async (event) => {
-    //     event.preventDefault();
-    //     event.stopPropagation();
-    
-    //     if (!user?.userId) {
-    //         alert("Bạn cần đăng nhập để yêu thích sản phẩm!");
-    //         return;
-    //     }
-    
-    //     const favoriteData = {
-    //         userId: user.userId, // Chỉ gửi ID
-    //         productId, // Chỉ gửi ID
-    //         isLiked: true,
-    //     };
-    
-    //     console.log("Sending favorite data:", favoriteData);
-    
-    //     try {
-    //         const result = await FavoritesService.addOrUpdateFavorite(favoriteData);
-    //         if (result) setIsFavorite(true);
-    //     } catch (error) {
-    //         console.error("Lỗi khi cập nhật yêu thích:", error);
-    //     }
-    // };
 
     return (
         <div className="w-[250px] bg-white rounded-lg overflow-hidden shadow group">
@@ -92,9 +65,9 @@ export function ProductCard({ name, price, image, productId }) {
                     <span className="text-[#fbb321] font-bold text-lg">{price}đ</span>
                     <button onClick={handleToggleFavorite}>
                         {isFavorite ? (
-                            <FavoriteIcon className="text-red-500 hover:text-red transition-transform duration-500" />
+                            <FavoriteIcon className="text-red-500 transition-transform duration-500" />
                         ) : (
-                            <FavoriteBorderOutlinedIcon className="hover:text-red transition-transform duration-500" />
+                            <FavoriteBorderOutlinedIcon className="text-gray-500 hover:text-red transition-transform duration-500" />
                         )}
                     </button>
                 </div>
