@@ -19,7 +19,7 @@ export function ProductCard({ name, price, image, productId }) {
     const fetchFavoriteStatus = async () => {
         try {
             const result = await getFavoriteStatus(user.userId, productId);
-            setIsFavorite(result.isLiked);
+            setIsFavorite(result);  // Đã sửa lỗi result.isLiked -> result
         } catch (error) {
             console.error("Lỗi khi kiểm tra yêu thích:", error);
         }
@@ -35,16 +35,11 @@ export function ProductCard({ name, price, image, productId }) {
             return;
         }
 
-        console.log("📌 User ID:", user.userId);
-        console.log("📌 Product ID:", productId);
-        console.log("📌 Trạng thái yêu thích trước đó:", isFavorite);
-
         try {
-            const result = await toggleFavorite(user.userId, productId);
-            setIsFavorite(result.isLiked);
-            console.log(result.isLiked ? "✅ Đã thêm vào danh sách yêu thích!" : "✅ Đã xóa khỏi danh sách yêu thích!");
+            await toggleFavorite(user.userId, productId);
+            await fetchFavoriteStatus();  // Gọi lại API để lấy trạng thái mới
+            // setIsFavorite(result.liked);  // Đã sửa lỗi result.isLiked -> result.liked
         } catch (error) {
-            console.error("❌ Lỗi khi cập nhật yêu thích:", error);
         }
     };
 

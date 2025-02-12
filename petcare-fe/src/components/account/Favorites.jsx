@@ -3,7 +3,6 @@ import FavoritesService from "../../service/accountService/FavoritesService";
 import { ProductCard } from "../product/ProductCard";
 import { useAuth } from "../../context/AuthContext";
 
-
 const Favorites = () => {
   const [favoriteProducts, setFavoriteProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,7 +11,6 @@ const Favorites = () => {
   const scrollRef = useRef(null); // Tham chiếu tới thanh cuộn
 
   useEffect(() => {
-    console.log("Fetching favorites for userId:", userId);
     if (!userId) {
       console.warn("User ID is undefined. Skipping API call.");
       setLoading(false);
@@ -24,15 +22,15 @@ const Favorites = () => {
       try {
         const favorites = await FavoritesService.getFavoriteProductsByUser(userId);
 
-        // Map dữ liệu để bao gồm cả favoritesId
-        const formattedFavorites = favorites.map((fav) => ({
-          productId: fav.products.productId, // ID của sản phẩm
-          name: fav.products.productName, // Tên sản phẩm
-          price: fav.products.price || "Chưa có giá", // Giá (nếu có)
-          image: fav.products.image, // Ảnh sản phẩm
-          favoritesId: fav.favoritesId, // ID của mục yêu thích
+        // Định dạng dữ liệu để phù hợp với ProductCard
+        const formattedFavorites = favorites.map((product) => ({
+          productId: product.productId,
+          name: product.productName,
+          price: product.price || "Chưa có giá",
+          image: product.image,
           isFavorite: true,
         }));
+       console.log(formattedFavorites)
 
         setFavoriteProducts(formattedFavorites);
       } catch (error) {
@@ -45,7 +43,7 @@ const Favorites = () => {
     fetchFavorites();
   }, [userId]);
 
-  // Hàm cuộn danh sách sang trái/phải
+  // Hàm cuộn danh sách sản phẩm sang trái/phải
   const scroll = (direction) => {
     if (scrollRef.current) {
       const scrollAmount = 300; // Độ dài cuộn
@@ -67,8 +65,6 @@ const Favorites = () => {
 
       {/* Thanh cuộn sản phẩm */}
       <div className="relative">
-     
-
         {/* Danh sách sản phẩm (cuộn ngang) */}
         <div
           ref={scrollRef}
@@ -81,7 +77,6 @@ const Favorites = () => {
                 price={product.price}
                 image={product.image}
                 productId={product.productId}
-                favoritesId={product.favoritesId}
                 isFavorite={true}
               />
             </div>
@@ -93,3 +88,7 @@ const Favorites = () => {
 };
 
 export default Favorites;
+
+
+
+
