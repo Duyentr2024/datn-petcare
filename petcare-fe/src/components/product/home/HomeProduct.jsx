@@ -1,21 +1,20 @@
-
 import React, { useState, useEffect } from "react";
-import { ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ProductCard } from "../ProductCard";
 import ProductSkeleton from "../home/ProductSkeleton";
 import ProductsService from "../../../service/ProductsService.js";
-import ProductDetailsService from "../../../service/ProductDetailsService.js"; // Import service mới
-
+import ProductDetailsService from "../../../service/ProductDetailsService.js";
 
 function HomeProduct() {
     const [loading, setLoading] = useState(true);
     const [productsByCategory, setProductsByCategory] = useState({});
-    const [selectedProductId, setSelectedProductId] = useState(null); // State lưu productId
-    const [productDetails, setProductDetails] = useState(null); // Lưu chi tiết sản phẩm
+    const [selectedProductId, setSelectedProductId] = useState(null);
+    const [productDetails, setProductDetails] = useState(null);
 
-   
-                // Nhóm sản phẩm theo categoryName và loại bỏ trùng lặp theo productId
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                const response = await ProductsService.getAllProducts();
                 const groupedProducts = response.reduce((acc, product) => {
                     if (!acc[product.categoryName]) {
                         acc[product.categoryName] = new Map();
@@ -24,7 +23,6 @@ function HomeProduct() {
                     return acc;
                 }, {});
 
-                // Convert Map về Array
                 const formattedProducts = Object.keys(groupedProducts).reduce((acc, category) => {
                     acc[category] = [...groupedProducts[category].values()];
                     return acc;
@@ -41,7 +39,6 @@ function HomeProduct() {
         fetchProducts();
     }, []);
 
-    // useEffect mới: Gọi API khi có selectedProductId
     useEffect(() => {
         const fetchProductDetails = async () => {
             if (!selectedProductId) return;
@@ -49,15 +46,14 @@ function HomeProduct() {
             try {
                 const details = await ProductDetailsService.getProductDetailsDTOByProductId(selectedProductId);
                 setProductDetails(details);
-                console.log("Chi tiết sản phẩm:", details); // Debug dữ liệu
+                console.log("Chi tiết sản phẩm:", details);
             } catch (error) {
                 console.error(`Lỗi khi lấy chi tiết sản phẩm ${selectedProductId}:`, error);
             }
         };
 
         fetchProductDetails();
-    }, [selectedProductId]); // Chạy khi selectedProductId thay đổi
-
+    }, [selectedProductId]);
 
     return (
         <div className="container mx-32 w-auto px-4 py-8">
@@ -66,24 +62,6 @@ function HomeProduct() {
                     {[...Array(8)].map((_, index) => (
                         <ProductSkeleton key={index} />
                     ))}
-
-                <div className="flex  justify-center gap-8">
-                    {loading ? (
-                        [...Array(8)].map((_, index) => (
-                            <ProductSkeleton key={index} />
-                        ))
-                    ) : (
-                        products.map(product => (
-                            <ProductCard
-                                key={product.id}
-                                image={product.image}
-                                name={product.name}
-                                price={product.price}
-                                oldPrice={product.oldPrice}
-                            />
-                        ))
-                    )}
-
                 </div>
             ) : (
                 Object.keys(productsByCategory).map((category) => (
@@ -92,21 +70,21 @@ function HomeProduct() {
                             <h1 className="text-4xl mx-[70px] font-bold text-[#fbb321]">{category}</h1>
                         </div>
 
-                        <div className="flex justify-center gap-8">
+                        <div className="flex gap-8">
                             {productsByCategory[category].map((product) => (
                                 <Link
                                     key={product.productId}
-                                    to={`/productDetail/${product.productId}`} // Điều hướng đến trang chi tiết
-                                    className="hover:scale-105 transition-transform"
-                                    onClick={() => setSelectedProductId(product.productId)} // Lưu productId khi click
+                                    to={`/productDetail/${product.productId}`}
+                                    className="transition-transform"
+                                    onClick={() => setSelectedProductId(product.productId)}
                                 >
                                     <ProductCard
-                                        key={product.productId}
                                         image={product.image}
                                         name={product.productName.length > 24
                                             ? product.productName.slice(0, 24) + "..."
                                             : product.productName}
                                         price={product.price}
+                                        productId={product.productId}
                                     />
                                 </Link>
                             ))}

@@ -1,9 +1,80 @@
-import React from 'react';
-import { Heart } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import FavoriteIcon from "@mui/icons-material/Favorite";
+import FavoriteBorderOutlinedIcon from "@mui/icons-material/FavoriteBorderOutlined";
+import FavoritesService from "../../service/accountService/FavoritesService"; // Import service đã tạo
+import { useAuth } from "../../context/AuthContext"; // Import hook useAuth từ context
+export function ProductCard({ name, price, image, productId }) {
+    const { user } = useAuth(); // Lấy thông tin người dùng từ context
+    const [isFavorite, setIsFavorite] = useState(false);
+
+    useEffect(() => {
+        if (user?.userId && productId) {
+            FavoritesService.getFavoriteByUserAndProduct(user.userId, productId)
+                .then((favorite) => {
+                    console.log("Favorite data:", favorite);
+                    setIsFavorite(!!favorite);
+                })
+                .catch((error) => console.error("Lỗi khi kiểm tra yêu thích:", error));
+        }
+    }, [user?.userId, productId]);
+    
+    const handleToggleFavorite = async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+    
+        if (!user?.userId) {
+            alert("Bạn cần đăng nhập để yêu thích sản phẩm!");
+            return;
+        }
+    
 
 
+        try {
 
-export function ProductCard({ name, price, image }) {
+            const favoriteData = {
+                userId: user.userId, // Chỉ gửi ID
+                productId, // Chỉ gửi ID
+                isLiked: true,
+            };
+
+            if (isFavorite) {
+                const success = await FavoritesService.removeFavoriteByUserAndProduct(user.userId, productId);
+                if (success) setIsFavorite(false);
+            } else {
+              
+                const result = await FavoritesService.addOrUpdateFavorite(favoriteData);
+                if (result) setIsFavorite(true);
+            }
+        } catch (error) {
+            console.error("Lỗi khi cập nhật yêu thích:", error);
+        }
+    };
+
+    // const handleToggleFavorite = async (event) => {
+    //     event.preventDefault();
+    //     event.stopPropagation();
+    
+    //     if (!user?.userId) {
+    //         alert("Bạn cần đăng nhập để yêu thích sản phẩm!");
+    //         return;
+    //     }
+    
+    //     const favoriteData = {
+    //         userId: user.userId, // Chỉ gửi ID
+    //         productId, // Chỉ gửi ID
+    //         isLiked: true,
+    //     };
+    
+    //     console.log("Sending favorite data:", favoriteData);
+    
+    //     try {
+    //         const result = await FavoritesService.addOrUpdateFavorite(favoriteData);
+    //         if (result) setIsFavorite(true);
+    //     } catch (error) {
+    //         console.error("Lỗi khi cập nhật yêu thích:", error);
+    //     }
+    // };
+
     return (
         <div className="w-[250px] bg-white rounded-lg overflow-hidden shadow group">
             <div className="relative w-[250px] h-[250px] overflow-hidden">
@@ -17,15 +88,14 @@ export function ProductCard({ name, price, image }) {
             </div>
             <div className="p-3">
                 <h3 className="font-medium text-gray-800 mb-3 line-clamp-2">{name}</h3>
-                <span className="w-4/6 mb-3 bg-[#e8dfd8] text-[#8a5e3b] p-0.5 font-medium rounded-lg flex items-center justify-center">
-                    Bán chạy
-                </span>
                 <div className="flex justify-between items-baseline">
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-[#fbb321] font-bold text-lg">{price}đ</span>
-                    </div>
-                    <button className="bg-white text-[#FBB321] p-2 rounded-full border-2 border-[#FBB321] flex items-center justify-center gap-2">
-                        <Heart className="text-[#FBB321]" size={16} />
+                    <span className="text-[#fbb321] font-bold text-lg">{price}đ</span>
+                    <button onClick={handleToggleFavorite}>
+                        {isFavorite ? (
+                            <FavoriteIcon className="text-red-500 hover:text-red transition-transform duration-500" />
+                        ) : (
+                            <FavoriteBorderOutlinedIcon className="hover:text-red transition-transform duration-500" />
+                        )}
                     </button>
                 </div>
             </div>
