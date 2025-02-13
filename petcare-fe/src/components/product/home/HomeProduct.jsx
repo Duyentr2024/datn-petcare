@@ -46,7 +46,6 @@ function HomeProduct() {
             try {
                 const details = await ProductDetailsService.getProductDetailsDTOByProductId(selectedProductId);
                 setProductDetails(details);
-                console.log("Chi tiết sản phẩm:", details);
             } catch (error) {
                 console.error(`Lỗi khi lấy chi tiết sản phẩm ${selectedProductId}:`, error);
             }

@@ -1,217 +1,378 @@
-import React, { useState } from "react";
-import ReactLoading from "react-loading"; // Import the ReactLoading component
+import React, { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
+import ProductDetailService from "../../service/productDetailService/ProductDetailService.jsx";
+import CartDetailsService from "../../service/cartDetailsService/CartDetailsService.jsx";
+import ReactLoading from "react-loading";
 import ProductComments from "./ProductComments.jsx";
 import RelatedProducts from "./RelatedProducts.jsx";
-import { Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import Cookies from "js-cookie";
 
 const ProductDetail = () => {
-    const [isExpanded, setIsExpanded] = useState(false);
+    const { productId } = useParams();
+    const [product, setProduct] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [quantity, setQuantity] = useState(1);
-    const [selectedSize, setSelectedSize] = useState("M");
-    const [selectedColor, setSelectedColor] = useState("Gold");
-    const [selectedWeight, setSelectedWeight] = useState("1L");
-    const [mainImage, setMainImage] = useState(
-        "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-1.png"
-    );
-    const [loadingSize, setLoadingSize] = useState(null);  // Track loading for size
-    const [loadingWeight, setLoadingWeight] = useState(null);  // Track loading for weight
-    const [loadingColor, setLoadingColor] = useState(null);  // Track loading for color
+    const [mainImage, setMainImage] = useState("");
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [selectedSize, setSelectedSize] = useState(null);
+    const [selectedColor, setSelectedColor] = useState(null);
+    const [selectedWeight, setSelectedWeight] = useState(null);
+    const [loadingSize, setLoadingSize] = useState(null);
+    const [loadingWeight, setLoadingWeight] = useState(null);
+    const [loadingColor, setLoadingColor] = useState(null);
+    const [validCombinations, setValidCombinations] = useState([]);
+    const { userId } = useAuth();
+
+    useEffect(() => {
+        const fetchProductDetails = async () => {
+            try {
+                setLoading(true);
+                const data = await ProductDetailService.getProductDetailsDTOByProductId(productId);
+                if (!Array.isArray(data) || data.length === 0) {
+                    throw new Error("Dữ liệu trả về không hợp lệ.");
+                }
+
+                const mainVariant = data[0];
+                const sizes = [...new Set(data.map(item => item.sizeValue))];
+                const weights = [...new Set(data.map(item => item.weightValue))];
+                const colors = [...new Set(data.map(item => item.colorValue))];
+
+                setProduct({
+                    ...mainVariant,
+                    availableSizes: sizes,
+                    availableWeights: weights,
+                    availableColors: colors,
+                    variants: data,
+                });
+
+                setMainImage(mainVariant.imageUrls?.[0] || "");
+                setSelectedSize(mainVariant.sizeValue);
+                setSelectedColor(mainVariant.colorValue);
+                setSelectedWeight(mainVariant.weightValue);
+                setValidCombinations(data.map(item => ({
+                    size: item.sizeValue,
+                    color: item.colorValue,
+                    weight: item.weightValue,
+                })));
+
+            } catch (error) {
+                console.error("❌ Lỗi khi lấy chi tiết sản phẩm:", error.message);
+                setError("Không thể tải chi tiết sản phẩm. Vui lòng thử lại.");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (productId) {
+            fetchProductDetails();
+        } else {
+            setError("Không tìm thấy ID sản phẩm.");
+        }
+    }, [productId]);
+
+    const getUserIdFromToken = () => {
+        const accessToken = Cookies.get("accessToken"); // Lấy token từ cookies
+        if (!accessToken) return null;
+
+        // Nếu là JWT, giải mã payload để lấy userId
+        try {
+            const payload = JSON.parse(atob(accessToken.split(".")[1]));
+            return payload.userId; // Thay đổi key này theo cấu trúc token của bạn
+        } catch (error) {
+            console.error("Invalid token:", error);
+            return null;
+        }
+    };
+
+    const handleAddToCart = async () => {
+        // Lấy userId từ cookies (hoặc từ context nếu đã được xử lý)
+        const userId = getUserIdFromToken();
+
+        if (!userId) {
+            alert("Please log in to add items to the cart.");
+            return;
+        }
+
+        if (!selectedSize || !selectedColor || !selectedWeight) {
+            alert("Please select size, color, and weight before adding to the cart.");
+            return;
+        }
+
+        const selectedVariant = product?.variants?.find(
+            (variant) =>
+                variant.sizeValue === selectedSize &&
+                variant.colorValue === selectedColor &&
+                variant.weightValue === selectedWeight
+        );
+
+        if (!selectedVariant) {
+            alert("Selected product variant is not available.");
+            return;
+        }
+
+        // Log thông tin trước khi gọi API
+        console.log("Adding to cart:", {
+            userId,
+            productDetailId: selectedVariant.productDetailId,
+            quantityItem: quantity,
+        });
+
+        try {
+            const response = await CartDetailsService.addCartDetails(
+                userId,
+                selectedVariant.productDetailId,
+                quantity
+            );
+            alert("Added to cart successfully!");
+        } catch (error) {
+            console.error("Error adding to cart:", error);
+
+            // Kiểm tra nếu BE trả về thông báo lỗi
+            if (error.response && error.response.data && error.response.data.message) {
+                // Hiển thị thông báo lỗi từ BE
+                alert(error.response.data.message);
+            } else {
+                // Thông báo lỗi chung nếu không có thông tin cụ thể từ BE
+                alert("Failed to add to cart. Please try again.");
+            }
+        }
+    };
 
 
 
 
+
+
+    const isValidCombination = (size, color, weight) => {
+        return validCombinations.some((combination) => {
+            return (
+                (size === null || combination.size === size) &&
+                (color === null || combination.color === color) &&
+                (weight === null || combination.weight === weight)
+            );
+        });
+    };
 
     const handleQuantityChange = (action) => {
-        if (action === "increment" && quantity < 9) {
+        if (action === "increment" && quantity < product?.quantity) {
             setQuantity(quantity + 1);
         } else if (action === "decrement" && quantity > 1) {
             setQuantity(quantity - 1);
         }
     };
 
-    const handleWeightChange = (weight) => {
-        setLoadingWeight(weight);  // Set loading state for weight
-        setTimeout(() => {
-            setSelectedWeight(weight);
-            setLoadingWeight(null);  // Reset loading state
-        }, 500); // 500ms delay
-    };
+    const updateProductDetailBasedOnSelection = (size, color, weight) => {
+        const selectedDetail = product?.variants?.find(
+            (variant) =>
+                variant.sizeValue === size &&
+                variant.colorValue === color &&
+                variant.weightValue === weight
+        );
 
-    const handleSizeChange = (size) => {
-        if (size !== selectedSize) {
-            setLoadingSize(size);  // Set loading state for selected size
-            setTimeout(() => {
-                setSelectedSize(size);
-                setLoadingSize(null);  // Reset loading state
-            }, 500); // 500ms delay
+        if (selectedDetail) {
+            setProduct((prev) => ({
+                ...prev,
+                quantity: selectedDetail.quantity,
+            }));
+        } else {
+            setProduct((prev) => ({
+                ...prev,
+                quantity: 0,
+            }));
         }
     };
 
-    const handleColorChange = (color) => {
-        setLoadingColor(color);  // Set loading state for color
-        setTimeout(() => {
-            setSelectedColor(color);
-            setLoadingColor(null);  // Reset loading state
-        }, 500); // 500ms delay
-    };
 
-    const handleImageChange = (src, size, weight, color) => {
-        setLoadingSize("image");
+    const handleSizeChange = (size) => {
+        const newSize = size === selectedSize ? null : size;
+        setLoadingSize(size);
         setTimeout(() => {
-            setMainImage(src);
-            setSelectedSize(size);
-            setSelectedWeight(weight);
-            setSelectedColor(color);
+            setSelectedSize(newSize);
+            updateProductDetailBasedOnSelection(newSize, selectedColor, selectedWeight);
             setLoadingSize(null);
-        }, 100);
+        }, 500);
     };
 
-    // Loader component inside ProductDetail using react-loading
+    const handleColorChange = (color) => {
+        const newColor = color === selectedColor ? null : color;
+        setLoadingColor(color);
+        setTimeout(() => {
+            setSelectedColor(newColor);
+            updateProductDetailBasedOnSelection(selectedSize, newColor, selectedWeight);
+            setLoadingColor(null);
+        }, 500);
+    };
+
+    const handleWeightChange = (weight) => {
+        const newWeight = weight === selectedWeight ? null : weight;
+        setLoadingWeight(weight);
+        setTimeout(() => {
+            setSelectedWeight(newWeight);
+            updateProductDetailBasedOnSelection(selectedSize, selectedColor, newWeight);
+            setLoadingWeight(null);
+        }, 500);
+    };
+
+
+    const handleImageChange = (src) => {
+        setMainImage(src);
+    };
+
     const Loader = () => (
-        <ReactLoading type="spin" color="#F59E0B" height={24} width={24} />
+        <ReactLoading type="spin" color="#F59E0B" height={20} width={20} />
     );
 
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-screen">
+                <ReactLoading type="spin" color="#F59E0B" height={64} width={64} />
+            </div>
+        );
+    }
 
+    if (error) {
+        return (
+            <div className="text-center text-red-500 font-semibold">
+                {error}
+            </div>
+        );
+    }
 
-    const description = `
-        Thành phần trong mật ong hoa nhãn có rất nhiều loại Vitamin và axit amin quan trọng như A, B1, B2, tiền tố Acid Folic... 
-        Thêm vào đó, mật ong còn chứa các chất chống oxy hóa mạnh mẽ giúp tăng cường sức đề kháng và bảo vệ sức khỏe. 
-        Sử dụng mật ong nguyên chất mỗi ngày giúp cải thiện hệ tiêu hóa, làm đẹp da, và mang lại nguồn năng lượng tự nhiên dồi dào.
-    `;
-
-    const toggleDescription = () => {
-        setIsExpanded(!isExpanded);
-    };
+    if (!product) {
+        return (
+            <div className="text-center text-red-500 font-semibold">
+                Không có thông tin sản phẩm.
+            </div>
+        );
+    }
 
     return (
         <div className="container max-w-screen-xl mx-auto p-8 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border-l-[1px] border-l-amber-500">
-                {/* Left Section: Image */}
-                <div className="flex flex-col items-center space-y-2">
+                {/* Left Section: Hình ảnh sản phẩm */}
+                <div className="flex flex-col items-center space-y-4">
                     <img
                         src={mainImage}
-                        alt="Mật Ong Hảo Hạng"
-                        className="w-3/4 max-w-sm rounded-xl shadow-lg hover:shadow-xl transition-transform duration-300 ease-in-out transform hover:scale-100"
+                        alt={product?.productName}
+                        className="w-3/4 max-w-sm rounded-xl shadow-lg hover:shadow-xl transition-transform duration-300"
                     />
                     <div className="flex space-x-2">
-                        {[{ src: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-1.png", size: "M", weight: "1L", color: "Gold" },
-                        { src: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-2.png", size: "L", weight: "500gr", color: "Silver" },
-                        { src: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-3.png", size: "XL", weight: "250gr", color: "Bronze" },
-                        { src: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-1.png", size: "M", weight: "1L", color: "Gold" },
-                        ].map((item, index) => (
+                        {product?.imageUrls?.map((url, index) => (
                             <img
                                 key={index}
-                                src={item.src}
+                                src={url}
                                 alt={`Thumbnail ${index + 1}`}
-                                onClick={() => handleImageChange(item.src, item.size, item.weight, item.color)}
-                                className="w-12 h-12 rounded-xl cursor-pointer border-2 border-gray-300 hover:ring-2 ring-yellow-500 transition transform hover:scale-100"
+                                onClick={() => handleImageChange(url)}
+                                className="w-12 h-12 rounded-xl cursor-pointer border-2 border-gray-300 hover:ring-2 ring-yellow-500 transition transform hover:scale-105"
                             />
                         ))}
                     </div>
                 </div>
 
-                {/* Right Section: Details */}
+                {/* Right Section: Chi tiết sản phẩm */}
                 <div className="flex flex-col space-y-4">
-                    {/* Discount Tag */}
+                    {/* Giảm giá */}
                     <span className="text-xs bg-yellow-100 text-yellow-600 font-semibold px-2 py-1 rounded-md w-fit">
                         -6% Bán chạy
                     </span>
 
-                    {/* Product Title and Description */}
-                    <h1 className="text-xl font-semibold text-gray-800">Mật Ong Hảo Hạng 1L</h1>
-                    <p className="text-sm text-gray-600 border-b-2 font-bold p-3">
-                        Phân loại:{" "}
-                        <span className="text-green-500">Mật ong nhập khẩu</span>,{" "}
-                        <span className="text-green-500">Phấn hoa</span>,{" "}
-                        <span className="text-green-500">Sữa ong chúa</span>
-                    </p>
+                    {/* Tên sản phẩm */}
+                    <h1 className="text-xl font-semibold text-gray-800">
+                        {product?.productName}
+                    </h1>
+
+                    {/* Giá sản phẩm */}
                     <div className="flex items-baseline space-x-2">
-                        <span className="text-xl font-bold text-red-700">80.000đ</span>
-                        <span className="text-gray-400 line-through text-lg">85.000đ</span>
+                        <span className="text-xl font-bold text-red-700">
+                            {product?.price?.toLocaleString()}đ
+                        </span>
+                        <span className="text-gray-400 line-through text-lg">
+                            {(product?.price * 1.06)?.toLocaleString()}đ
+                        </span>
                     </div>
 
-                    {/* Description */}
-                    <div className="flex items-start space-x-2">
-                        <span className="font-semibold text-sm whitespace-nowrap">Mô tả:</span>
-                        <div className="flex items-start space-x-2 ">
-                            <span className="font-semibold text-sm whitespace-nowrap">Mô tả:</span>
-                            <div className="text-sm text-gray-700 leading-relaxed">
-                                <p>
-                                    {isExpanded ? description : `${description.slice(0, 200)}...`}
-                                </p>
-                                <button
-                                    onClick={toggleDescription}
-                                    className="text-yellow-600 font-semibold mt-2 underline focus:outline-none"
-                                >
-                                    {isExpanded ? "Ẩn bớt" : "Xem thêm"}
-                                </button>
-                            </div>
-                        </div>
+                    {/* Mô tả sản phẩm */}
+                    <div>
+                        <span className="font-semibold text-sm">Mô tả:</span>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                            {isExpanded ? product?.description : `${product?.description?.slice(0, 150)}...`}
+                        </p>
+                        <button
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className="text-yellow-600 font-semibold mt-2 underline"
+                        >
+                            {isExpanded ? "Ẩn bớt" : "Xem thêm"}
+                        </button>
                     </div>
 
-                    {/* Size Selection (Bottle Sizes) */}
+                    {/* Kích thước (Size) */}
                     <div className="flex items-center space-x-2">
                         <span className="font-semibold text-sm">Kích thước:</span>
                         <div className="flex space-x-2">
-                            {["M", "L", "XL"].map((size) => (
+                            {product?.availableSizes?.map((size) => (
                                 <button
                                     key={size}
                                     onClick={() => handleSizeChange(size)}
+                                    disabled={!isValidCombination(size, selectedColor, selectedWeight)}
                                     className={`px-3 py-1 border rounded-full text-sm ${selectedSize === size
                                         ? "bg-yellow-100 text-yellow-600 font-semibold"
                                         : "hover:bg-yellow-100 text-gray-800"
-                                        } focus:ring-2 focus:ring-yellow-500 transition-all ease-in-out duration-300`}
+                                    } ${!isValidCombination(size, selectedColor, selectedWeight) ? "opacity-50 cursor-not-allowed" : ""}`}
                                 >
-                                    {loadingSize === size ? <Loader /> : size}
+                                    {loadingSize === size ? <Loader/> : size}
                                 </button>
                             ))}
                         </div>
                     </div>
 
-                    {/* Weight Selection */}
+                    {/* Trọng lượng (Weight) */}
                     <div className="flex items-center space-x-2">
                         <span className="font-semibold text-sm">Trọng lượng:</span>
                         <div className="flex space-x-2">
-                            {["1L", "500gr", "250gr"].map((weight) => (
+                            {product?.availableWeights?.map((weight) => (
                                 <button
                                     key={weight}
                                     onClick={() => handleWeightChange(weight)}
+                                    disabled={!isValidCombination(selectedSize, selectedColor, weight)}
                                     className={`px-3 py-1 border rounded-full text-sm ${selectedWeight === weight
                                         ? "bg-yellow-100 text-yellow-600 font-semibold"
                                         : "hover:bg-yellow-100 text-gray-800"
-                                        } focus:ring-2 focus:ring-yellow-500 transition-all ease-in-out duration-300`}
+                                    } ${!isValidCombination(selectedSize, selectedColor, weight) ? "opacity-50 cursor-not-allowed" : ""}`}
                                 >
-                                    {loadingWeight === weight ? <Loader /> : weight}
+                                    {loadingWeight === weight ? <Loader/> : weight}
                                 </button>
                             ))}
                         </div>
                     </div>
 
-                    {/* Color Selection */}
+                    {/* Màu sắc (Color) */}
                     <div className="flex items-center space-x-2">
                         <span className="font-semibold text-sm">Màu sắc:</span>
                         <div className="flex space-x-2">
-                            {["Gold", "Silver", "Bronze"].map((color) => (
+                            {product?.availableColors?.map((color) => (
                                 <button
                                     key={color}
                                     onClick={() => handleColorChange(color)}
+                                    disabled={!isValidCombination(selectedSize, color, selectedWeight)}
                                     className={`px-3 py-1 border rounded-full text-sm ${selectedColor === color
                                         ? "bg-yellow-100 text-yellow-600 font-semibold"
                                         : "hover:bg-yellow-100 text-gray-800"
-                                        } focus:ring-2 focus:ring-yellow-500 transition-all ease-in-out duration-300`}
+                                    } ${!isValidCombination(selectedSize, color, selectedWeight) ? "opacity-50 cursor-not-allowed" : ""}`}
                                 >
-                                    {loadingColor === color ? <Loader /> : color}
+                                    {loadingColor === color ? <Loader/> : color}
                                 </button>
                             ))}
                         </div>
                     </div>
 
-                    {/* Quantity and Actions */}
                     <div className="flex items-center space-x-2">
                         <div className="flex items-center border rounded-lg">
                             <button
                                 onClick={() => handleQuantityChange("decrement")}
                                 className="px-3 py-2 text-lg hover:bg-gray-200"
+                                disabled={quantity <= 1}
                             >
                                 -
                             </button>
@@ -219,39 +380,41 @@ const ProductDetail = () => {
                             <button
                                 onClick={() => handleQuantityChange("increment")}
                                 className="px-3 py-2 text-lg hover:bg-gray-200"
+                                disabled={quantity >= product?.quantity}
                             >
                                 +
                             </button>
                         </div>
-                        <span className="text-xs text-gray-500">(Còn 9 sản phẩm có sẵn)</span>
+                        <span className="text-xs text-gray-500">
+                        (Còn {product?.quantity} sản phẩm)
+                         </span>
                     </div>
 
-                    {/* Action Buttons */}
+                    {/* Nút hành động */}
                     <div className="flex space-x-3">
                         <Link to="/checkout">
                             <button
-                                className="px-5 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white font-semibold rounded-xl hover:from-yellow-600 hover:to-yellow-700 shadow-xl transition-all ease-in-out duration-300"
-                            >
+                                className="px-5 py-2 bg-yellow-500 text-white font-semibold rounded-xl hover:bg-yellow-600">
                                 Thanh toán
                             </button>
                         </Link>
-                        <Link to="/shoppingCart">
+
                             <button
-                                className="px-5 py-2 border border-yellow-500 text-yellow-500 font-semibold rounded-xl hover:bg-yellow-100 shadow-md transition-all ease-in-out duration-300"
-                            >
+                                onClick={handleAddToCart}
+                                className="px-5 py-2 border border-yellow-500 text-yellow-500 font-semibold rounded-xl hover:bg-yellow-100">
                                 Thêm vào giỏ hàng
                             </button>
-                        </Link>
+
                     </div>
                 </div>
             </div>
 
-            {/* Comments and Related Products */}
+            {/* Bình luận và sản phẩm liên quan */}
             <div className="mt-12">
-                <ProductComments />
+                <ProductComments/>
             </div>
             <div className="mt-12">
-                <RelatedProducts />
+                <RelatedProducts/>
             </div>
         </div>
     );
