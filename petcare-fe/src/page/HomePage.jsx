@@ -40,7 +40,7 @@ const HomePage = () => {
         <Route path="/orderOffline" element={<OrderOffline />} />
        
         {/* Route 404 - Khi không tìm thấy trang */}
-        {/* <Route path="*" element={<NotFoundPage />} /> */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
       <RenderFooter />
  </>
