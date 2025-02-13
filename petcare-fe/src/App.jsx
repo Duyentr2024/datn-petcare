@@ -1,19 +1,16 @@
-import { useState } from "react";
-import "./App.css";
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import HomePage from "./page/HomePage.jsx";
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext.jsx"; // Import AuthProvider
+import { AuthProvider } from "./context/AuthContext.jsx";
 
 function App() {
-    const [count, setCount] = useState(0);
-
     return (
-      <AuthProvider> {/* Bọc toàn bộ ứng dụng trong AuthProvider */}
+      <AuthProvider>
+      <AuthProvider> 
         <Router>
           <Routes>
+            {/* Route chính cho Petcare */}
             <Route path="/*" element={<HomePage />} />
+
           </Routes>
         </Router>
       </AuthProvider>

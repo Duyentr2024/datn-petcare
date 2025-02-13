@@ -8,6 +8,7 @@ import {
 } from "react-icons/ai";
 import { MdOutlineLocationOn } from "react-icons/md";
 import { useAuth } from "../../context/AuthContext"; // Import hook useAuth từ context
+
 const SidebarAccount = () => {
   const location = useLocation(); // Lấy thông tin đường dẫn hiện tại
   const [selectedItem, setSelectedItem] = useState(location.pathname); // Cập nhật selectedItem khi đường dẫn thay đổi
@@ -22,6 +23,17 @@ const SidebarAccount = () => {
     setIsOpen(!isOpen); // Toggle trạng thái của sidebar
   };
 
+  const getRoleLabel = () =>{
+    if(user?.role === "ADMIN"){
+      return "Quản trị viên";
+    }
+    if(user?.role === "STAFF"){
+      return "Nhân viên";
+    }
+    
+    return "";
+  }
+
   return (
     <div className="w-1/3 bg-[#FBB321] rounded-lg p-6 absolute right-full translate-x-2/3 top-5 h-[530px]">
       <div className="flex flex-col items-center">
@@ -33,13 +45,14 @@ const SidebarAccount = () => {
         <h2 className="text-white text-lg font-bold">
           {user?.fullName || "Guest"}
         </h2>
-        <a
-          href="#"
-           // Thêm hàm đăng xuất
-          className="text-white text-sm inline-table underline cursor-pointer"
-        >
-          Đăng xuất
-        </a>
+        {getRoleLabel() && (
+          <Link
+            to="/admin"
+            className="text-white text-sm inline-table hover:underline cursor-pointer"
+          >
+            {getRoleLabel()}
+          </Link>
+        )}
       </div>
 
       <div className="mt-8">

@@ -208,7 +208,7 @@ export default function Header() {
                 )}
 
                 {/* Giỏ hàng */}
-                <div className="flex items-center space-x-3">
+                <Link to="/shoppingCart" className="flex items-center space-x-3 cursor-pointer">
                   <div className="bg-green-100 p-3 rounded-full flex items-center justify-center">
                     <FaShoppingCart className="text-green-700 text-xl" />
                   </div>
@@ -217,7 +217,8 @@ export default function Header() {
                     <br />
                     <span className="font-bold text-green-700">0 Sản phẩm</span>
                   </div>
-                </div>
+                </Link>
+
 
                 {/* Mobile Menu Toggle */}
                 <div className="lg:hidden flex items-center">
@@ -284,9 +285,8 @@ export default function Header() {
 
       {/* Mobile Menu */}
       <div
-        className={`fixed z-50 top-0 left-0 w-[250px] h-full bg-white transform ${
-          isMenuOpen ? "translate-x-0" : "-translate-x-full"
-        } transition-all duration-300 ease-in-out shadow-lg lg:hidden`}
+        className={`fixed z-50 top-0 left-0 w-[250px] h-full bg-white transform ${isMenuOpen ? "translate-x-0" : "-translate-x-full"
+          } transition-all duration-300 ease-in-out shadow-lg lg:hidden`}
       >
         <div className="flex justify-between items-center pl-3 mt-10">
           <span className="text-lg font-bold">Menu</span>
@@ -301,9 +301,8 @@ export default function Header() {
           <div className="border-b w-full">
             <Link
               to="/login"
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "home" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "home" ? "text-yellow-500" : ""
+                }`}
               onClick={() => {
                 setActiveMenuItem("home");
                 toggleMobileMenu();
@@ -315,9 +314,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "about" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "about" ? "text-yellow-500" : ""
+                }`}
               href="#about"
               onClick={() => {
                 setActiveMenuItem("about");
@@ -330,9 +328,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "products" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "products" ? "text-yellow-500" : ""
+                }`}
               href="#products"
               onClick={() => {
                 setActiveMenuItem("products");
@@ -345,9 +342,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "services" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "services" ? "text-yellow-500" : ""
+                }`}
               href="#services"
               onClick={() => {
                 setActiveMenuItem("services");
@@ -360,9 +356,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "news" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "news" ? "text-yellow-500" : ""
+                }`}
               href="#news"
               onClick={() => {
                 setActiveMenuItem("news");
@@ -375,9 +370,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "policy" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "policy" ? "text-yellow-500" : ""
+                }`}
               href="#policy"
               onClick={() => {
                 setActiveMenuItem("policy");
@@ -390,9 +384,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "guides" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "guides" ? "text-yellow-500" : ""
+                }`}
               href="#guides"
               onClick={() => {
                 setActiveMenuItem("guides");
@@ -405,9 +398,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "contact" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "contact" ? "text-yellow-500" : ""
+                }`}
               href="#contact"
               onClick={() => {
                 setActiveMenuItem("contact");
