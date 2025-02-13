@@ -5,12 +5,11 @@ import { AuthProvider } from "./context/AuthContext.jsx";
 function App() {
     return (
       <AuthProvider>
+      <AuthProvider> 
         <Router>
           <Routes>
             {/* Route chính cho Petcare */}
             <Route path="/*" element={<HomePage />} />
-
-
 
           </Routes>
         </Router>

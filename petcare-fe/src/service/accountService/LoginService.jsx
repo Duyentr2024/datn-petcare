@@ -2,7 +2,6 @@ import Cookies from "js-cookie";
 import API_BASE_URL from "../../config"; // Import từ file config.js
 
 const LoginService = {
-
     //API đăng nhập
   login: async (email, password) => {
     try {
@@ -29,7 +28,7 @@ const LoginService = {
     //API đăng nhập bằng google
   googleLogin: async (token) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/google-login`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/google-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token }),
@@ -51,7 +50,7 @@ const LoginService = {
     //API đăng nhập bằng facebook
   facebookLogin: async (user) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/facebook-login`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/facebook-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(user),
