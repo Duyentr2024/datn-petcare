@@ -18,6 +18,7 @@ import VerifyOTP from "../components/account/VerifyOTP.jsx";
 import OrderOffline from "../components/orderOffline/OrderOffline.jsx";
 
 import NotFoundPage from "./NotFoundPage.jsx";
+import Admin from "./Admin.jsx";
 const HomePage = () => {
   return (
     <>
@@ -37,9 +38,12 @@ const HomePage = () => {
         <Route path="/my-account/*" element={<MyAccount />} />
         <Route path="/verify-otp" element={<VerifyOTP />} />
         <Route path="/orderOffline" element={<OrderOffline />} />
+       
         {/* Route 404 - Khi không tìm thấy trang */}
-        <Route path="*" element={<NotFoundPage />} />
+        {/* <Route path="*" element={<NotFoundPage />} /> */}
       </Routes>
-
+      <RenderFooter />
+ </>
+  );
 };
 export default HomePage;

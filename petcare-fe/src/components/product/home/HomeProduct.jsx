@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ProductCard } from "../ProductCard";
 import ProductSkeleton from "../home/ProductSkeleton";
-import ProductsService from "../../../service/ProductsService.js";
-import ProductDetailsService from "../../../service/ProductDetailsService.js";
+import ProductsService from "../../../service/serviceProduct/ProductsService.js";
+import ProductDetailsService from "../../../service/serviceProduct/ProductDetailsService.js";
 
 function HomeProduct() {
     const [loading, setLoading] = useState(true);
