@@ -1,5 +1,6 @@
 import React from 'react';
-import { Plus } from 'lucide-react';
+import { Heart } from 'lucide-react';
+
 
 export function ProductCard({ name, price, oldPrice, image }) {
     return (
@@ -15,7 +16,7 @@ export function ProductCard({ name, price, oldPrice, image }) {
             </div>
             <div className="p-3">
                 <h3 className="font-medium text-gray-800 mb-3 line-clamp-2">{name}</h3>
-                <span className="w-2/6 mb-3 bg-[#e8dfd8] text-[#8a5e3b] p-0.5 font-medium rounded-lg flex items-center justify-center">
+                <span className="w-4/6 mb-3 bg-[#e8dfd8] text-[#8a5e3b] p-0.5 font-medium rounded-lg flex items-center justify-center">
                     Bán chạy
                 </span>
                 <div className="flex justify-between items-baseline">
@@ -23,8 +24,8 @@ export function ProductCard({ name, price, oldPrice, image }) {
                         <span className="text-[#fbb321] font-bold text-lg">{price.toLocaleString()}đ</span>
                         <span className="text-gray-400 line-through text-sm">{oldPrice.toLocaleString()}đ</span>
                     </div>
-                    <button className="bg-[#fbb321] text-white p-2 rounded-full hover:bg-[#e88a19] transition-colors flex items-center justify-center gap-2">
-                        <Plus size={16}/>
+                    <button className="bg-white text-[#FBB321] p-2 rounded-full border-2 border-[#FBB321] flex items-center justify-center gap-2">
+                        <Heart className="text-[#FBB321]" size={16} />
                     </button>
                 </div>
             </div>
