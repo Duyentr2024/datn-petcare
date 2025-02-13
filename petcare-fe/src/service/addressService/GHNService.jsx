@@ -1,8 +1,33 @@
 import axios from "axios";
 
 const GHN_TOKEN = "0fe4c8c9-71cd-11ef-9839-ea1b8b4124d2"; // 🔥 API Token GHN
-
+const GHN_API_URL = "https://dev-online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/fee";
 const GHNService = {
+
+    getShippingFee: async ({ fromDistrictId, toDistrictId, weight, serviceTypeId = 2 }) => {
+        try {
+            const response = await axios.post(
+                GHN_API_URL,
+                {
+                    from_district_id: fromDistrictId,
+                    to_district_id: toDistrictId,
+                    service_type_id: serviceTypeId,
+                    weight,
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Token': GHN_TOKEN,
+                    },
+                }
+            );
+            return response.data.data.total;
+        } catch (error) {
+            console.error("Error getting shipping fee:", error);
+            return 0;
+        }
+    },
+
     getProvinces: async () => {
         try {
             const res = await axios.get("https://online-gateway.ghn.vn/shiip/public-api/master-data/province", {

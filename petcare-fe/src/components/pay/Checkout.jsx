@@ -3,7 +3,9 @@ import {useAuth} from "../../context/AuthContext";
 import axios from "axios";
 import Swal from "sweetalert2";
 import GHNService from "../../service/addressService/GHNService.jsx";
-
+import Cookies from "js-cookie";
+import CartDetailsService from "../../service/CartDetailsService/CartDetailsService.jsx";
+import {toast} from "react-toastify";
 const Checkout = () => {
     const {user} = useAuth();
     const [addresses, setAddresses] = useState([]);
@@ -19,6 +21,83 @@ const Checkout = () => {
     const [provinces, setProvinces] = useState([]);
     const [districts, setDistricts] = useState([]);
     const [wards, setWards] = useState([]);
+    const [products, setProducts] = useState([]);
+    const [shippingFee, setShippingFee] = useState(0);
+
+    const fromDistrictId = 1442; // Mã quận của cửa hàng
+    const toDistrictId = 1450;   // Mã quận người nhận
+
+
+    // Tính tổng trọng lượng
+    const totalWeight = products.reduce((sum, item) => sum + item.weightValue * item.quantityItem * 1000, 0); // gram
+
+    useEffect(() => {
+        const fetchCartDetails = async () => {
+            try {
+                const data = await CartDetailsService.getCartDetailsByUserId(userId);
+                setProducts(data);
+            } catch (error) {
+                console.error("Error fetching cart details:", error);
+                toast.error("Không thể tải giỏ hàng!");
+            }
+        };
+
+        const fetchShippingFee = async () => {
+            try {
+                const fee = await GHNService.getShippingFee({
+                    fromDistrictId,
+                    toDistrictId,
+                    weight: totalWeight,
+                });
+                setShippingFee(fee);
+            } catch (error) {
+                toast.error("Không thể lấy phí vận chuyển!");
+            }
+        };
+
+        fetchCartDetails();
+        if (totalWeight > 0) {
+            fetchShippingFee();
+        }
+    }, [totalWeight]);
+
+
+
+    // Hàm lấy userId từ token
+    const getUserIdFromToken = () => {
+        const accessToken = Cookies.get("accessToken"); // Lấy token từ cookies
+        if (!accessToken) return null;
+
+        // Nếu là JWT, giải mã payload để lấy userId
+        try {
+            const payload = JSON.parse(atob(accessToken.split(".")[1]));
+            return payload.userId; // Thay đổi key này theo cấu trúc token của bạn
+        } catch (error) {
+            console.error("Invalid token:", error);
+            return null;
+        }
+    };
+
+    const userId = getUserIdFromToken(); // Gọi hàm sau khi đã khai báo
+
+    // Fetch cart details
+    useEffect(() => {
+        const fetchCartDetails = async () => {
+            try {
+                const data = await CartDetailsService.getCartDetailsByUserId(userId);
+                setProducts(data);
+            } catch (error) {
+                console.error("Error fetching cart details:", error);
+                toast.error("Failed to load cart details. Please try again.");
+            }
+        };
+
+        if (userId) {
+            fetchCartDetails();
+        } else {
+            toast.error("You must log in to view your cart.");
+        }
+    }, [userId]);
 
     // 🔹 Lấy danh sách tỉnh từ GHN khi component mount
     useEffect(() => {
@@ -311,56 +390,57 @@ const Checkout = () => {
                     </div>
 
                     {/* Giỏ hàng */}
-                    <div
-                        className="bg-[#fbb321] p-4 md:p-6 rounded-3xl text-white sticky top-4 max-h-[500px] overflow-y-auto w-full md:w-[300px] shadow-2xl">
-                        <h2 className="text-xl font-bold mb-4 border-b border-white pb-2">Sản phẩm đã mua</h2>
+                    {/* Giỏ hàng */}
+                    <div className="bg-[#fbb321] p-5 md:p-6 rounded-3xl text-white sticky top-4 max-h-[500px] overflow-y-auto w-full md:w-[320px] shadow-2xl">
+                        <h2 className="text-2xl font-bold mb-5 border-b border-white pb-3 text-center">Sản phẩm đã mua</h2>
                         <div className="space-y-4">
-                            {[
-                                {
-                                    img: "https://placehold.co/60x60",
-                                    name: "Mật Ong Rừng Đà Lạt 2L",
-                                    weight: "1kg",
-                                    quantity: "1*",
-                                    price: "234.000₫"
-                                },
-                                {
-                                    img: "https://placehold.co/60x60",
-                                    name: "Mật Ong Hảo Hạn 1L",
-                                    weight: "250gr",
-                                    quantity: "1*",
-                                    price: "80.000₫"
-                                }
-                            ].map((product, index) => (
-                                <div key={index} className="flex items-center">
-                                    <img src={product.img} alt={product.name} className="w-16 h-16 rounded-md"/>
-                                    <div className="ml-4">
-                                        <p className="font-bold">{product.name}</p>
-                                        <p>Khối lượng : {product.weight}</p>
-                                        <p>Số lượng : {product.quantity}</p>
-                                        <p>{product.price}</p>
+                            {products.map((product, index) => (
+                                <div key={index} className="flex items-center border-b border-white pb-3">
+                                    <img
+                                        src={product.image}
+                                        alt={product.productName}
+                                        className="w-16 h-16 rounded-md object-cover border border-white"
+                                    />
+                                    <div className="ml-4 flex-1">
+                                        <p className="font-bold text-lg text-sm">{product.productName}</p>
+                                        <p className="text-sm">Khối lượng: {product.weightValue}kg</p>
+                                        <p className="text-sm">Màu: {product.colorValue}</p>
+                                        <p className="text-sm">Size: {product.sizeValue}</p>
+                                        <p className="text-sm">Số lượng: {product.quantityItem}</p>
+                                        <p className="text-md font-semibold text-[#ffecd1]">{product.price.toLocaleString()}₫</p>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                        <div className="mt-4">
-                            <div className="flex justify-between">
-                                <p>Tạm tính</p>
-                                <p>314.000₫</p>
+                        {/* Tính toán tổng tiền */}
+                        <div className="mt-5 space-y-2 text-base">
+                            <div className="flex justify-between font-medium">
+                                <p>Tạm tính:</p>
+                                <p>{products.reduce((total, item) => total + item.price * item.quantityItem, 0).toLocaleString()}₫</p>
                             </div>
-                            <div className="flex justify-between">
-                                <p>Giao hàng</p>
-                                <p>Đồng giá: 30.000₫</p>
+                            <div className="flex justify-between font-medium">
+                                <p>Phí giao hàng:</p>
+                                <p>{shippingFee.toLocaleString()}₫</p>
                             </div>
-                            <div className="flex justify-between font-bold text-lg mt-2">
-                                <p>Tổng</p>
-                                <p>344.000₫</p>
+                            <div className="flex justify-between font-bold text-lg mt-2 border-t border-white pt-3">
+                                <p>Tổng cộng:</p>
+                                <p className="text-xl">{(
+                                    products.reduce((total, item) => total + item.price * item.quantityItem, 0) + 30000
+                                ).toLocaleString()}₫</p>
                             </div>
-                            <button
-                                className="mt-4 w-full bg-[#fef0d3] text-[#fbb321] font-bold py-2 rounded-3xl hover:bg-[#408630] hover:text-white">
-                                Thanh toán
-                            </button>
                         </div>
+
+                        {/* Nút Thanh toán */}
+                        <button
+                            className="mt-5 w-full bg-[#fef0d3] text-[#fbb321] font-bold py-3 rounded-3xl
+                   transition-all duration-300 ease-in-out
+                   hover:bg-[#408630] hover:text-white hover:shadow-lg"
+                        >
+                            Thanh toán
+                        </button>
                     </div>
+
+
                 </div>
             </div>
         </div>

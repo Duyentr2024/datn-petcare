@@ -24,6 +24,7 @@ export default function Header() {
   const [cookies, setCookie, removeCookie] = useCookies(["accessToken"]);
   const { user, token, setUser, setToken } = useAuth(); // Lấy setUser từ context
   const navigate = useNavigate();
+  const [cartCount, setCartCount] = useState(0);
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
@@ -46,6 +47,25 @@ export default function Header() {
       });
     }
   }, [user]);
+
+  // Lấy số lượng sản phẩm từ localStorage khi component mount
+  useEffect(() => {
+    const count = localStorage.getItem("cartCount") || 0;
+    setCartCount(parseInt(count, 10));
+
+    // Lắng nghe sự thay đổi từ localStorage (nếu có)
+    const handleStorageChange = () => {
+      const updatedCount = localStorage.getItem("cartCount") || 0;
+      setCartCount(parseInt(updatedCount, 10));
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
+
 
   useEffect(() => {
     const token = cookies.accessToken; // Lấy token từ Cookie
@@ -207,17 +227,22 @@ export default function Header() {
                   </div>
                 )}
 
-                {/* Giỏ hàng */}
-                <Link to="/shoppingCart" className="flex items-center space-x-3 cursor-pointer">
-                  <div className="bg-green-100 p-3 rounded-full flex items-center justify-center">
-                    <FaShoppingCart className="text-green-700 text-xl" />
+                <Link
+                    to="/shoppingCart"
+                    className="flex items-center space-x-3 cursor-pointer transition-transform transform hover:scale-105"
+                >
+                  <div className="bg-green-100 p-3 rounded-full flex items-center justify-center hover:bg-green-200 transition-colors duration-300">
+                    <FaShoppingCart className="text-green-700 text-xl group-hover:text-green-800 transition-colors duration-300" />
                   </div>
                   <div className="hidden sm:block">
-                    <span className="text-sm text-gray-700">Giỏ hàng</span>
+                    <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors duration-300">Giỏ hàng</span>
                     <br />
-                    <span className="font-bold text-green-700">0 Sản phẩm</span>
+                    <span className="font-bold text-green-700 group-hover:text-green-800 transition-colors duration-300">
+                         {cartCount} Sản phẩm
+                     </span>
                   </div>
                 </Link>
+
 
 
                 {/* Mobile Menu Toggle */}

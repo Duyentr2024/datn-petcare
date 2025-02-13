@@ -4,9 +4,11 @@ import CartDetailsService from "../../service/CartDetailsService/CartDetailsServ
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Cookies from "js-cookie";
+import { useNavigate } from "react-router-dom";
 
 const ShoppingCart = () => {
     const [products, setProducts] = useState([]);
+    const navigate = useNavigate();
 
     // Hàm lấy userId từ token
     const getUserIdFromToken = () => {
@@ -57,6 +59,23 @@ const ShoppingCart = () => {
             toast.error("Failed to remove product. Please try again.");
         }
     };
+
+
+    const handleCheckout = () => {
+        // Chỉ lấy những thông tin cần thiết cho trang checkout
+        const checkoutItems = products.map(({ productDetailId, productName, price, quantityItem }) => ({
+            productDetailId,
+            productName,
+            price,
+            quantityItem,
+        }));
+
+        navigate("/checkout", { state: { checkoutItems } });
+    };
+
+    useEffect(() => {
+        localStorage.setItem("cartCount", products.length.toString());
+    }, [products]);
 
     return (
         <div className="max-w-[1200px] mx-auto p-8 bg-white rounded-lg shadow-md mt-10">
@@ -146,7 +165,9 @@ const ShoppingCart = () => {
                     {/* Order Button */}
                     <div className="mt-6 text-right">
                         <button
-                            className="bg-[#fbb321] font-bold text-white rounded-full px-6 py-3 shadow-lg hover:bg-[#fef0d3] hover:text-orange-500 transition-all duration-300 transform hover:scale-105">
+                            onClick={handleCheckout}
+                            className="bg-[#fbb321] font-bold text-white rounded-full px-6 py-3 shadow-lg hover:bg-[#fef0d3] hover:text-orange-500 transition-all duration-300 transform hover:scale-105"
+                        >
                             Đặt hàng
                         </button>
                     </div>
