@@ -230,7 +230,7 @@ const SidebarMenu = () => {
             <div className="p-4 bg-gray-800">
 
                     <a
-                        href="/home"
+                        href="/"
                         className="block text-center text-gray-400 hover:underline"
                     >
                         Trang chủ
