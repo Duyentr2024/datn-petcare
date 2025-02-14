@@ -115,12 +115,12 @@ export default function Header() {
         <span className="text-xs sm:text-sm md:text-base lg:text-lg">
           Giảm <span className="font-bold">25.000đ</span> phí ship cho đơn hàng
           trên
-          <span className="font-bold">600.000đ</span>
+          <span className="font-bold"> 600.000đ</span>
         </span>
       </div>
 
-      <header className="sticky top-0 z-20 bg-white transition-all duration-300 ease-in-out shadow-md">
-        <div className="mx-auto flex items-center justify-center w-full h-[120px] gap-5 ">
+      <header className="sticky top-0 z-20 bg-white transition-all duration-300 ease-in-out shadow-md py-2">
+        <div className=" flex items-center justify-between  w-auto mx-32 h-[120px] gap-5 ">
           <div className="flex items-center space-x-4 w-[164px] pt-2">
             <img
               src="http://nongsan.monamedia.net/wp-content/uploads/2023/11/nongsan-logo.png"
@@ -132,7 +132,7 @@ export default function Header() {
             {/* Search Bar */}
             <div className="flex flex-col sm:flex-row items-start space-x-8 ">
               <div className="flex-1 w-full sm:w-auto">
-                <div className="flex items-center space-x-4 relative w-full max-w-lg hidden sm:block">
+                <div className="flex items-center space-x-4 relative w-[900px] max-w-lg hidden sm:block">
                   <input
                     type="text"
                     placeholder="Nhập từ khoá tìm kiếm..."
@@ -233,7 +233,7 @@ export default function Header() {
             <div className="hidden sm:block">
               <nav
                 ref={menuRef}
-                className="  container pt-10 h-[40px] items-center mx-auto flex justify-center gap-8 text-[#444444] text-[16px] font-['QuickSand'] sticky top-0 z-50"
+                className="  container pt-7 h-[40px] items-center mx-auto flex justify-center gap-8 text-[#444444] text-[16px] font-sans sticky top-0 z-50"
               >
                 <Link
                   to="/"
