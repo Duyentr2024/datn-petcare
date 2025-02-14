@@ -317,21 +317,12 @@ const Checkout = () => {
             if (error.response?.status === 500) {
                 console.error("Lỗi: Vấn đề khoá ngoại. Kiểm tra productDetailId.", error);
 
-
-
-
-
-
             } else {
                 console.error("Error during payment:", error);
                 Swal.fire("Lỗi!", "Không thể hoàn tất thanh toán. Vui lòng thử lại!", "error");
             }
         }
     };
-
-
-
-
 
     return (
         <div className="min-h-screen flex justify-center items-center px-4 md:px-0 relative">
