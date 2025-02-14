@@ -47,11 +47,11 @@ const ShoppingCart = () => {
     }, [userId]);
 
     // Handle product removal
-    const handleRemoveProduct = async (productDetailId) => {
+    const handleRemoveProduct = async (cartDetailId) => {
         try {
-            await CartDetailsService.deleteCartDetails(productDetailId);
+            await CartDetailsService.deleteCartDetails(cartDetailId);
             setProducts((prevProducts) =>
-                prevProducts.filter((product) => product.productDetailId !== productDetailId)
+                prevProducts.filter((product) => product.cartDetailId !== cartDetailId)
             );
             toast.success("Product removed successfully!");
         } catch (error) {
@@ -129,7 +129,7 @@ const ShoppingCart = () => {
                             </div>
                             <button
                                 className="text-red-500 text-xl md:text-2xl ml-0 md:ml-4"
-                                onClick={() => handleRemoveProduct(product.productDetailId)}
+                                onClick={() => handleRemoveProduct(product.cartDetailId)}
                             >
                                 <RiCloseCircleLine/>
                             </button>

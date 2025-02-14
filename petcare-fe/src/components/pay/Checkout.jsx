@@ -6,8 +6,10 @@ import GHNService from "../../service/addressService/GHNService.jsx";
 import Cookies from "js-cookie";
 import CartDetailsService from "../../service/CartDetailsService/CartDetailsService.jsx";
 import {toast} from "react-toastify";
+import { useNavigate } from "react-router-dom"; // Import useNavigate từ React Router
 const Checkout = () => {
     const {user} = useAuth();
+    const navigate = useNavigate();
     const [addresses, setAddresses] = useState([]);
     const [selectedAddress, setSelectedAddress] = useState({
         fullName: "",
@@ -22,10 +24,16 @@ const Checkout = () => {
     const [districts, setDistricts] = useState([]);
     const [wards, setWards] = useState([]);
     const [products, setProducts] = useState([]);
-    const [shippingFee, setShippingFee] = useState(0);
+    // const [shippingFee, setShippingFee] = useState(0);
+    //
+    // const fromDistrictId = 1442; // Mã quận của cửa hàng
+    // const toDistrictId = 1450;   // Mã quận người nhận
 
-    const fromDistrictId = 1442; // Mã quận của cửa hàng
-    const toDistrictId = 1450;   // Mã quận người nhận
+    const [paymentMethod, setPaymentMethod] = useState('COD'); // Mặc định là COD
+
+    const handlePaymentMethodChange = (method) => {
+        setPaymentMethod(method);
+    };
 
 
     // Tính tổng trọng lượng
@@ -79,6 +87,29 @@ const Checkout = () => {
     };
 
     const userId = getUserIdFromToken(); // Gọi hàm sau khi đã khai báo
+
+
+    // Hàm lấy fullname và phoneNumber từ token
+    const getPhoneAndNameFromToken = () => {
+        const accessToken = Cookies.get("accessToken"); // Lấy token từ cookies
+        if (!accessToken) return null;
+
+        try {
+            const payload = JSON.parse(atob(accessToken.split(".")[1])); // Giải mã payload
+            const { fullName, phone } = payload; // Lấy thông tin từ payload
+            return { fullName, phone };
+        } catch (error) {
+            console.error("Invalid token:", error);
+            return null;
+        }
+    };
+
+    const userInfo = getPhoneAndNameFromToken();
+    if (userInfo) {
+        const { fullName, phone  } = userInfo;
+
+    }
+
 
     // Fetch cart details
     useEffect(() => {
@@ -248,7 +279,59 @@ const Checkout = () => {
                 .then(() => Swal.fire("Thành công!", "Đã cập nhật địa chỉ", "success"))
                 .catch(() => Swal.fire("Lỗi!", "Không thể cập nhật địa chỉ", "error"));
         }
+    }
+
+    const shippingAddress = `${selectedAddress.street}, ${selectedAddress.ward || ''}, ${selectedAddress.district || ''}, ${selectedAddress.province || ''}`.replace(/, ,/g, ',').replace(/, $/, '');
+
+
+    const handlePayment = async () => {
+        const orderDetails = {
+            userId: Number(userId),
+            paymentMethod: String(paymentMethod),
+            shippingAddress: String(shippingAddress),
+            shippingCost: Number(0),
+            voucherId: selectedAddress?.voucherId ? Number(selectedAddress.voucherId) : null,
+            type: "ORDER ONLINE",
+            items: products.map(({ productDetailId, quantityItem, price }) => ({
+                productDetailId: Number(productDetailId),
+                quantity: Number(quantityItem),
+                price: Number(price),
+            })),
+        };
+
+        console.log("Sending payment request:", orderDetails);
+
+        try {
+            const response = await axios.post("http://localhost:8080/api/orders/checkout", orderDetails, {
+                headers: { "Content-Type": "application/json" },
+            });
+
+            Swal.fire({
+                title: "Thành công!",
+                text: "Đặt hàng thành công!",
+                icon: "success"
+            }).then(() => {
+                navigate("/my-account/info");
+            });
+        } catch (error) {
+            if (error.response?.status === 500) {
+                console.error("Lỗi: Vấn đề khoá ngoại. Kiểm tra productDetailId.", error);
+
+
+
+
+
+
+            } else {
+                console.error("Error during payment:", error);
+                Swal.fire("Lỗi!", "Không thể hoàn tất thanh toán. Vui lòng thử lại!", "error");
+            }
+        }
     };
+
+
+
+
 
     return (
         <div className="min-h-screen flex justify-center items-center px-4 md:px-0 relative">
@@ -278,7 +361,7 @@ const Checkout = () => {
                             {[
                                 {label: "Họ và tên", name: "fullName", type: "text"},
                                 {label: "Số điện thoại", name: "phone", type: "text"},
-                                {label: "Tên đường", name: "street", type: "text"}
+                                {label: "Địa chỉ", name: "street", type: "text"},
                             ].map((field, index) => (
                                 <div key={index} className="flex flex-col md:flex-row md:items-center md:space-x-4">
                                     <label className="block text-sm font-medium text-gray-700 md:w-1/3">
@@ -287,12 +370,17 @@ const Checkout = () => {
                                     <input
                                         type={field.type}
                                         name={field.name}
-                                        value={selectedAddress[field.name] || ""}
+                                        value={
+                                            field.name === "fullName" ? userInfo?.fullName || "" :
+                                                field.name === "phone" ? userInfo?.phone || "" :
+                                                    selectedAddress[field.name] || ""
+                                        }
                                         onChange={handleInputChange}
                                         className="mt-1 block w-full md:w-2/3 border border-gray-300 rounded-md shadow-sm p-2"
                                     />
                                 </div>
                             ))}
+
 
                             <div className="flex flex-col md:flex-row md:items-center md:space-x-4">
                                 <label className="block text-sm font-medium text-gray-700 md:w-1/3">
@@ -368,31 +456,46 @@ const Checkout = () => {
                             </div>
                         )}
 
-                        {/* Payment Methods */}
+
+
                         <div className="mt-8">
                             <h1 className="text-2xl font-bold text-yellow-500 mb-6">Phương thức thanh toán</h1>
-                            <div className="flex flex-wrap gap-4">
-                                {[
-                                    {img: "https://placehold.co/50x50?text=ATM", text: "Chuyển khoản ngân hàng"},
-                                    {img: "https://placehold.co/50x50?text=$", text: "Trả tiền mặt khi nhận hàng"}
-                                ].map((method, index) => (
-                                    <button
-                                        key={index}
-                                        className="border-2 border-yellow-500 rounded-lg p-4 flex flex-col items-center w-full sm:w-40"
-                                    >
-                                        <img src={method.img} alt={`${method.text} icon`} className="mb-1 w-10 h-10"/>
-                                        <p className="text-center text-sm">{method.text}</p>
-                                    </button>
+                            <div className="flex gap-4 items-center">
+                                {[{
+                                    img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ8VNUYiwB1DuoiPYNKl6jXWIcQEOxbNkXM6w&s",
+                                    text: "Thanh toán VNPay",
+                                    value: "VNPay",
+                                }, {
+                                    img: "https://toidentowa.com/wp-content/uploads/2017/12/thanh-toan.png.webp",
+                                    text: "Thanh toán khi nhận hàng (COD)",
+                                    value: "COD",
+                                }].map((method, index) => (
+                                    <label key={index}
+                                           className={`flex flex-col items-center justify-center border w-40 h-40 px-3 py-2 rounded-lg cursor-pointer ${paymentMethod === method.value ? 'border-yellow-500' : 'border-gray-300'}`}>
+                                        <input
+                                            type="radio"
+                                            value={method.value}
+                                            checked={paymentMethod === method.value}
+                                            onChange={() => handlePaymentMethodChange(method.value)}
+                                            className="mb-2"
+                                        />
+                                        <img src={method.img} alt={method.text}
+                                             className="w-12 h-12 object-cover mb-2 rounded-full"/>
+                                        <span className="font-medium text-xs text-center">{method.text}</span>
+                                    </label>
                                 ))}
                             </div>
                         </div>
+
 
                     </div>
 
                     {/* Giỏ hàng */}
                     {/* Giỏ hàng */}
-                    <div className="bg-[#fbb321] p-5 md:p-6 rounded-3xl text-white sticky top-4 max-h-[500px] overflow-y-auto w-full md:w-[320px] shadow-2xl">
-                        <h2 className="text-2xl font-bold mb-5 border-b border-white pb-3 text-center">Sản phẩm đã mua</h2>
+                    <div
+                        className="bg-[#fbb321] p-5 md:p-6 rounded-3xl text-white sticky top-4 max-h-[500px] overflow-y-auto w-full md:w-[320px] shadow-2xl">
+                        <h2 className="text-2xl font-bold mb-5 border-b border-white pb-3 text-center">Sản phẩm thanh
+                            toán</h2>
                         <div className="space-y-4">
                             {products.map((product, index) => (
                                 <div key={index} className="flex items-center border-b border-white pb-3">
@@ -420,21 +523,22 @@ const Checkout = () => {
                             </div>
                             <div className="flex justify-between font-medium">
                                 <p>Phí giao hàng:</p>
-                                <p>{shippingFee.toLocaleString()}₫</p>
+                                <p>0₫</p>
                             </div>
                             <div className="flex justify-between font-bold text-lg mt-2 border-t border-white pt-3">
                                 <p>Tổng cộng:</p>
                                 <p className="text-xl">{(
-                                    products.reduce((total, item) => total + item.price * item.quantityItem, 0) + 30000
+                                    products.reduce((total, item) => total + item.price * item.quantityItem, 0)
                                 ).toLocaleString()}₫</p>
                             </div>
                         </div>
 
                         {/* Nút Thanh toán */}
                         <button
+                            onClick={handlePayment}
                             className="mt-5 w-full bg-[#fef0d3] text-[#fbb321] font-bold py-3 rounded-3xl
-                   transition-all duration-300 ease-in-out
-                   hover:bg-[#408630] hover:text-white hover:shadow-lg"
+        transition-all duration-300 ease-in-out
+        hover:bg-[#408630] hover:text-white hover:shadow-lg"
                         >
                             Thanh toán
                         </button>
