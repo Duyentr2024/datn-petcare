@@ -10,7 +10,13 @@ import ManageProductCategories from "./components/Manage/ManageProductCategories
 import ManageProducts from "./components/Manage/ManageProducts";
 import ManageProductImages from "./components/Manage/ManageProductImages";
 import ManageProductDetails from "./components/Manage/ManageProductDetails";
+import { BrowserRouter as Router, Routes, Route} from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext.jsx";
 import TopButton from "./elements/TopButton";
+import IntroducePage from "./page/IntroducePage.jsx";
+import SpaPage from "./page/SpaPage.jsx";
+import AppoinmentPage from "./page/AppointmentPage.jsx";
+
 import ChatBot from './components/ChatBot';
 
 function App() {
@@ -36,6 +42,21 @@ function App() {
       </Router>
     </AuthProvider>
   );
+    const [count, setCount] = useState(0);
+
+    return (
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/*" element={<HomePage />} />
+            <Route path="/introduce" element={<IntroducePage />} />
+            <Route path="/spa" element={<SpaPage />} />
+            <Route path="/appointment" element={<AppoinmentPage />} />
+          </Routes>
+          <TopButton />
+        </Router>
+      </AuthProvider>
+    );
 }
 
 export default App;
