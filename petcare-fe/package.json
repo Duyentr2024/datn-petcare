@@ -10,7 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
     "@heroicons/react": "^2.2.0",
+    "@mui/icons-material": "^6.4.4",
+    "@mui/styled-engine": "^6.4.3",
+    "@mui/styled-engine-sc": "^6.4.3",
     "axios": "^1.7.9",
     "firebase": "^11.2.0",
     "font-awesome": "^4.7.0",
@@ -30,6 +35,7 @@
     "react-toastify": "^11.0.3",
     "react-transition-group": "^4.4.5",
     "slick-carousel": "^1.8.1",
+    "styled-components": "^6.1.15",
     "sweetalert2": "^11.15.10"
   },
   "devDependencies": {

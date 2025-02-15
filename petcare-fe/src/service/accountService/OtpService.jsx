@@ -15,8 +15,9 @@ const otpService = {
   },
 
   resendOtp: async (email) => {
+    console.log(email);
     try {
-      const response = await axios.post(`${API_BASE_URL}/resend-otp`, { 
+      const response = await axios.post(`${API_BASE_URL}/api/auth/resend-otp`, { 
         email: email // Đảm bảo email được gửi khi yêu cầu gửi lại OTP
       });
       return response.data;
