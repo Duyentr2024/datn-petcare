@@ -1,7 +1,8 @@
 import React from "react";
 import Header from "../components/header/Header.jsx";
+import Banner from "../components/banner/banner.jsx";
 import RenderFooter from "../components/footer/Footer.jsx";
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import {BrowserRouter as Router, Routes, Route, Link} from "react-router-dom";
 import ItemPageHome from "./ItemPageHome.jsx";
 import ProductDetail from "../components/productDetail/ProductDetail.jsx";
 import ProductPage from "../components/product/ProductPage.jsx";
@@ -16,41 +17,36 @@ import MyAccount from "../components/account/MyAccount.jsx";
 import VerifyOTP from "../components/account/VerifyOTP.jsx";
 import OrderOffline from "../components/orderOffline/OrderOffline.jsx";
 
-
 import NotFoundPage from "./NotFoundPage.jsx";
 import Admin from "./Admin.jsx";
-import PrivateRoute from "../context/PrivateRoute.jsx";
+import ResetPassword from "../components/account/ResetPassword.jsx";
+
 const HomePage = () => {
-  return (
-    <>
-      <Header />
+    return (
+        <>
+            <Header/>
 
-      <Routes>
-          <Route path="/productDetail/:productId" element={<ProductDetail />} />
-        <Route path="/productPage" element={<ProductPage />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/newsPage" element={<NewsPage />} />
-        {/* <Route path="/checkout" element={<Checkout />} /> */}
-        <Route path="/shoppingCart" element={<ShoppingCart />} />
-        <Route path="/" element={<ItemPageHome />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgotPassword" element={<ForgotPassword />} />
-        {/* <Route path="/my-account/*" element={<MyAccount />} /> */}
-        <Route path="/verify-otp" element={<VerifyOTP />} />
-        <Route path="/orderOffline" element={<OrderOffline />} />
+            <Routes>
+                <Route path="/productDetail" element={<ProductDetail/>}/>
+                <Route path="/productPage" element={<ProductPage/>}/>
+                <Route path="/contact" element={<Contact/>}/>
+                <Route path="/newsPage" element={<NewsPage/>}/>
+                <Route path="/checkout" element={<Checkout/>}/>
+                <Route path="/shoppingCart" element={<ShoppingCart/>}/>
+                <Route path="/" element={<ItemPageHome/>}/>
+                <Route path="/login" element={<Login/>}/>
+                <Route path="/register" element={<Register/>}/>
+                <Route path="/forgotPassword" element={<ForgotPassword/>}/>
+                <Route path="/my-account/*" element={<MyAccount/>}/>
+                <Route path="/verify-otp" element={<VerifyOTP/>}/>
+                <Route path="/resetPassword" element={<ResetPassword/>}/>
+                <Route path="/orderOffline" element={<OrderOffline/>}/>
 
-        {/* ✅ Route yêu cầu đăng nhập */}
-        <Route element={<PrivateRoute />}>
-          <Route path="/my-account/*" element={<MyAccount />} />
-          <Route path="/checkout" element={<Checkout />} />
-        </Route>
-
-        {/* Route 404 - Khi không tìm thấy trang */}
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-      <RenderFooter />
-    </>
-  );
+                {/* Route 404 - Khi không tìm thấy trang */}
+                <Route path="*" element={<NotFoundPage/>}/>
+            </Routes>
+            <RenderFooter/>
+        </>
+    );
 };
 export default HomePage;
