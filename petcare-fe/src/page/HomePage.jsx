@@ -16,6 +16,7 @@ import MyAccount from "../components/account/MyAccount.jsx";
 import VerifyOTP from "../components/account/VerifyOTP.jsx";
 import OrderOffline from "../components/orderOffline/OrderOffline.jsx";
 
+
 import NotFoundPage from "./NotFoundPage.jsx";
 import Admin from "./Admin.jsx";
 import PrivateRoute from "../context/PrivateRoute.jsx";
@@ -25,7 +26,7 @@ const HomePage = () => {
       <Header />
 
       <Routes>
-        <Route path="/productDetail" element={<ProductDetail />} />
+          <Route path="/productDetail/:productId" element={<ProductDetail />} />
         <Route path="/productPage" element={<ProductPage />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/newsPage" element={<NewsPage />} />

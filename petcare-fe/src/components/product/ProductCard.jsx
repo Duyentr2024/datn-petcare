@@ -29,7 +29,7 @@ export function ProductCard({ name, price, image, productId }) {
     const handleToggleFavorite = async (event) => {
         event.preventDefault();
         event.stopPropagation();
-    
+
         if (!user?.userId) {
             alert("Bạn cần đăng nhập để yêu thích sản phẩm!");
             return;

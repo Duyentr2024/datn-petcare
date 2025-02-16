@@ -6,7 +6,7 @@ const Banner = () => {
     const [isDragging, setIsDragging] = useState(false);
     const [startX, setStartX] = useState(0);
     const [scrollLeft, setScrollLeft] = useState(0);
-   
+
 
     // Get the image URL based on the current index for the dots
     const getSlideImage = (index) => {
