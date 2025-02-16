@@ -11,9 +11,9 @@ const Banner = () => {
     // Get the image URL based on the current index for the dots
     const getSlideImage = (index) => {
         if (index === 0) {
-            return "http://nongsan.monamedia.net/wp-content/uploads/2023/11/home-banner-1-1-1920x730.png"; // Image 1
+            return "https://theme.hstatic.net/200000521195/1000872898/14/slider_1.jpg?v=259"; // Image 1
         } else if (index === 1) {
-            return "http://nongsan.monamedia.net/wp-content/uploads/2023/11/home-banner-1920x730.png"; // Image 2
+            return "https://theme.hstatic.net/200000521195/1000872898/14/slider_2.jpg?v=259"; // Image 2
         }
         return ""; // Default return if no valid index is provided
     };
@@ -73,14 +73,14 @@ const Banner = () => {
                     <div className="h-[500px] w-full transition-transform duration-500 ease-in-out">
                         {currentIndex === 0 && (
                             <img
-                                src="http://nongsan.monamedia.net/wp-content/uploads/2023/11/home-banner-1-1-1920x730.png"
+                                src="https://theme.hstatic.net/200000521195/1000872898/14/slider_1.jpg?v=259"
                                 alt="Slide 1"
                                 className="w-full h-full object-cover"
                             />
                         )}
                         {currentIndex === 1 && (
                             <img
-                                src="http://nongsan.monamedia.net/wp-content/uploads/2023/11/home-banner-1920x730.png"
+                                src="https://theme.hstatic.net/200000521195/1000872898/14/slider_2.jpg?v=259"
                                 alt="Slide 2"
                                 className="w-full h-full object-cover"
                             />

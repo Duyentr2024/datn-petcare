@@ -24,7 +24,6 @@ export default function Header() {
   const [cookies, setCookie, removeCookie] = useCookies(["accessToken"]);
   const { user, token, setUser, setToken } = useAuth(); // Lấy setUser từ context
   const navigate = useNavigate();
-  const [cartCount, setCartCount] = useState(0);
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
@@ -47,25 +46,6 @@ export default function Header() {
       });
     }
   }, [user]);
-
-  // Lấy số lượng sản phẩm từ localStorage khi component mount
-  useEffect(() => {
-    const count = localStorage.getItem("cartCount") || 0;
-    setCartCount(parseInt(count, 10));
-
-    // Lắng nghe sự thay đổi từ localStorage (nếu có)
-    const handleStorageChange = () => {
-      const updatedCount = localStorage.getItem("cartCount") || 0;
-      setCartCount(parseInt(updatedCount, 10));
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-    };
-  }, []);
-
 
   useEffect(() => {
     const token = cookies.accessToken; // Lấy token từ Cookie
@@ -135,12 +115,12 @@ export default function Header() {
         <span className="text-xs sm:text-sm md:text-base lg:text-lg">
           Giảm <span className="font-bold">25.000đ</span> phí ship cho đơn hàng
           trên
-          <span className="font-bold">600.000đ</span>
+          <span className="font-bold"> 600.000đ</span>
         </span>
       </div>
 
-      <header className="sticky top-0 z-20 bg-white transition-all duration-300 ease-in-out shadow-md">
-        <div className="mx-auto flex items-center justify-center w-full h-[120px] gap-5 ">
+      <header className="sticky top-0 z-20 bg-white transition-all duration-300 ease-in-out shadow-md py-2">
+        <div className=" flex items-center justify-between  w-auto mx-32 h-[120px] gap-5 ">
           <div className="flex items-center space-x-4 w-[164px] pt-2">
             <img
               src="http://nongsan.monamedia.net/wp-content/uploads/2023/11/nongsan-logo.png"
@@ -152,7 +132,7 @@ export default function Header() {
             {/* Search Bar */}
             <div className="flex flex-col sm:flex-row items-start space-x-8 ">
               <div className="flex-1 w-full sm:w-auto">
-                <div className="flex items-center space-x-4 relative w-full max-w-lg hidden sm:block">
+                <div className="flex items-center space-x-4 relative w-[800px] max-w-lg hidden sm:block">
                   <input
                     type="text"
                     placeholder="Nhập từ khoá tìm kiếm..."
@@ -198,7 +178,7 @@ export default function Header() {
                       />
                     </Link>
                     <div className="hidden sm:block">
-                      <span className="text-sm text-gray-700">{fullName}</span>
+                      <span className="text-sm text-gray-700  truncate  max-w-[100px]">{fullName}</span>
                       <br />
                       {/* Nút Đăng xuất */}
                       <button
@@ -227,22 +207,17 @@ export default function Header() {
                   </div>
                 )}
 
-                <Link
-                    to="/shoppingCart"
-                    className="flex items-center space-x-3 cursor-pointer transition-transform transform hover:scale-105"
-                >
-                  <div className="bg-green-100 p-3 rounded-full flex items-center justify-center hover:bg-green-200 transition-colors duration-300">
-                    <FaShoppingCart className="text-green-700 text-xl group-hover:text-green-800 transition-colors duration-300" />
+                {/* Giỏ hàng */}
+                <Link to="/shoppingCart" className="flex items-center space-x-3 cursor-pointer">
+                  <div className="bg-green-100 p-3 rounded-full flex items-center justify-center">
+                    <FaShoppingCart className="text-green-700 text-xl" />
                   </div>
                   <div className="hidden sm:block">
-                    <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors duration-300">Giỏ hàng</span>
+                    <span className="text-sm text-gray-700">Giỏ hàng</span>
                     <br />
-                    <span className="font-bold text-green-700 group-hover:text-green-800 transition-colors duration-300">
-                         {cartCount} Sản phẩm
-                     </span>
+                    <span className="font-bold text-green-700">0 Sản phẩm</span>
                   </div>
                 </Link>
-
 
 
                 {/* Mobile Menu Toggle */}
@@ -258,7 +233,7 @@ export default function Header() {
             <div className="hidden sm:block">
               <nav
                 ref={menuRef}
-                className="  container pt-10 h-[40px] items-center mx-auto flex justify-center gap-8 text-[#444444] text-[16px] font-['QuickSand'] sticky top-0 z-50"
+                className="  container pt-7 h-[40px] items-center mx-auto flex justify-center gap-8 text-[#444444] text-[16px] font-sans sticky top-0 z-50"
               >
                 <Link
                   to="/"

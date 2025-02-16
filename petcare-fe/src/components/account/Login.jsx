@@ -67,10 +67,11 @@ const Login = () => {
         confirmButtonText: "OK",
       });
 
-      if (data.roleName === "Admin") {
+        
+      if (data.roleName === "ADMIN") {
         navigate("/admin");
       } else if (data.roleName === "Nhân viên") {
-        navigate("/staff-dashboard");
+        navigate("/admin");
       } else {
         navigate("/");
       }
