@@ -10,6 +10,7 @@ const ItemPageHome = () => {
          <Banner/>
          <ServiceProduct></ServiceProduct>
         <HomeProduct></HomeProduct>
+
         <GoodPrice></GoodPrice>
         <HomeProduct></HomeProduct>
         </>
