@@ -4,7 +4,7 @@ const ServiceProduct = () => {
     return (
         <div className="container mx-auto px-4 md:px-8 my-8">
             <div className="flex justify-center">
-                <div className="w-full max-w-[1200px] h-[200px] relative overflow-hidden px-4 md:px-8"> {/* Added padding here */}
+                <div className="w-full max-w-[1280px] h-[200px] relative overflow-hidden px-4 md:px-8"> {/* Added padding here */}
                     <div className="w-[25%] h-[200px] left-0 top-0 absolute overflow-hidden"> {/* Changed from fixed width to max-w-[1200px] */}
                         <div className="w-[95%] h-[200px] left-[6px] top-0 absolute opacity-20 bg-[#fbb321] rounded-2xl" /> {/* Adjusted width */}
                         <div className="w-[288px] h-[30px] left-[36px] top-[20px] absolute text-[#fbb321] text-[1.5rem] font-bold font-['Quicksand'] leading-normal whitespace-nowrap">Đăng nhập</div>

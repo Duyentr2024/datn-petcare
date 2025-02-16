@@ -106,16 +106,16 @@ const GoodPrice = () => {
           d="M1727.8 16.435v-92.103H-.203v92.103c15.8.2 24 6.173 31.9 11.849 8.3 5.974 16.8 12.048 33.6 12.048h.5c16.5-.1 24.9-6.173 33-12.048 8.1-5.875 16.5-11.849 32.9-11.849h.5c16.1.1 24.4 6.074 32.4 11.849 8.3 5.974 16.8 12.048 33.6 12.048h.5c16.4-.1 24.9-6.173 33-12.048 8.1-5.875 16.5-11.849 33-11.849h.5c16.1.1 24.4 6.074 32.4 11.849 8.2 5.974 16.7 12.048 33.5 12.048h.5c16.5-.1 24.9-6.173 33-12.048 8.2-5.875 16.5-11.849 33-11.849h.5c16.1.1 24.4 6.074 32.4 11.849 8.3 5.974 16.8 12.048 33.6 12.048h.5c16.5-.1 24.9-6.173 33-12.048 8.1-5.875 16.5-11.849 32.9-11.849h.5c16.1.1 24.4 6.074 32.4 11.849 8.3 5.974 16.8 12.048 33.6 12.048h.5c16.5-.1 24.9-6.173 33-12.048 8.1-5.875 16.5-11.849 33-11.849h.5c16.1.1 24.4 6.074 32.4 11.849 8.2 5.974 16.7 12.048 33.5 12.048h.5c16.4-.1 24.9-6.173 33-12.048 8.1-5.875 16.5-11.849 33-11.849h.5c16.1.1 24.4 6.074 32.4 11.849 8.2 5.974 16.7 12.048 33.5 12.048h.5c16.4-.1 24.9-6.173 33-12.048 8.2-5.875 16.5-11.849 33-11.849h.5c16.1.1 24.4 6.074 32.4 11.849 8.3 5.974 16.8 12.048 33.5 12.048h.5c16.503-.1 24.903-6.173 33.003-12.048 8.1-5.875 16.5-11.849 32.9-11.849h.5c16.1.1 24.4 6.074 32.4 11.849 8.2 5.875 16.7 12.048 33.5 12.048h.5c16.5-.1 24.9-6.173 33-12.048 8.1-5.875 16.5-11.849 32.9-11.849h.5c16.1.1 24.4 6.074 32.4 11.849 8.5 5.974 17 12.048 33.8 12.048h.5c16.4-.1 24.9-6.173 33-12.048 8.1-5.875 16.5-11.849 32.9-11.849h.5c16.1.1 24.4 6.074 32.4 11.849 8.2 5.875 16.8 12.048 33.5 12.048h.5c16.5-.1 24.9-6.173 33-12.048 8.1-5.875 16.5-11.849 32.9-11.849h.5c16.1.1 24.4 6.074 32.4 11.849 8.2 5.875 16.8 12.048 33.5 12.048h.5c16.5-.1 24.9-6.173 33-12.048 8.1-5.875 16.5-11.849 32.9-11.849h.5c16.1.1 24.4 6.074 32.4 11.849 8.2 5.875 16.8 12.048 33.5 12.048h1c16.8 0 25.3-6.074 33.5-12.048 8.5-5.875 16.9-11.849 33.3-11.849z"
         />
       </svg>
-      <div className="relative">
+      <div className="relative  "> 
         <div
           id="particles-js"
           className="absolute inset-0 z-10 pointer-events-none overflow-hidden"
           style={{ clipPath: "inset(0 0 20% 0)" }} // Chỉ hiển thị hiệu ứng trong vùng cụ thể
         ></div>
-        <div className="container mx-auto p-4 bg-[#FBB321] relative">
-          <div className="flex justify-between items-center mb-4  ">
+        <div className="container  p-4 bg-[#FBB321] relative">
+          <div className="flex justify-between w-auto mx-32 items-center mb-4  ">
             <div className="flex items-center space-x-2">
-              <h1 className="text-white text-2xl font-bold">
+              <h1 className="text-white  text-4xl font-bold">
                 Sản phẩm khuyến mãi
               </h1>
               <FaPaw className="w-6 h-6 mr-2 text-white" />
@@ -133,11 +133,11 @@ const GoodPrice = () => {
             </div>
           </div>
 
-          <h2 className="text-white text-4xl font-bold mb-6">
+          <h2 className="text-white w-auto mx-32 text-2xl font-bold mb-6">
             Giá tốt mỗi ngày
           </h2>
 
-          <div className="flex justify-center relative">
+          <div className="flex justify-between w-auto mx-32 relative">
             <button
               onClick={nextProduct}
               className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-[#FBB321] font-bold text-white border-2 rounded-full p-2"

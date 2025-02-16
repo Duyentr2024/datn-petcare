@@ -132,7 +132,7 @@ export default function Header() {
             {/* Search Bar */}
             <div className="flex flex-col sm:flex-row items-start space-x-8 ">
               <div className="flex-1 w-full sm:w-auto">
-                <div className="flex items-center space-x-4 relative w-[900px] max-w-lg hidden sm:block">
+                <div className="flex items-center space-x-4 relative w-[800px] max-w-lg hidden sm:block">
                   <input
                     type="text"
                     placeholder="Nhập từ khoá tìm kiếm..."
@@ -178,7 +178,7 @@ export default function Header() {
                       />
                     </Link>
                     <div className="hidden sm:block">
-                      <span className="text-sm text-gray-700">{fullName}</span>
+                      <span className="text-sm text-gray-700  truncate  max-w-[100px]">{fullName}</span>
                       <br />
                       {/* Nút Đăng xuất */}
                       <button
