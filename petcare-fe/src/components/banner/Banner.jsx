@@ -6,7 +6,7 @@ const Banner = () => {
     const [isDragging, setIsDragging] = useState(false);
     const [startX, setStartX] = useState(0);
     const [scrollLeft, setScrollLeft] = useState(0);
-   
+
 
     // Get the image URL based on the current index for the dots
     const getSlideImage = (index) => {
@@ -52,15 +52,9 @@ const Banner = () => {
     };
 
     return (
-        <div className="flex flex-col justify-end md:flex-row pt-5 pb-5">
-            {/* Left part (20%) */}
+        <div className="flex flex-col justify-end w-auto mx-32 pt-5 pb-5">
 
-            <div className=" text-white flex  items-center justify-start p-4 w-[200px] relative">
-                <Menu/>
-            </div>
-
-            {/* Right part (80%) */}
-            <div className="  items-center bg-gray-100 w-auto">
+            <div className=" items-center bg-gray-100 w-auto">
                 <div
                     className="relative max-w-full h-[500px] overflow-hidden rounded-lg"
                     onMouseDown={handleMouseDown}
