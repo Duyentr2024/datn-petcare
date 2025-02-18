@@ -6,7 +6,7 @@ const ProductsService = {
     // Get list of all products
     getAllProducts: async () => {
         try {
-            const response = await axios.get(`${API_URL}/getAllProducts`);
+            const response = await axios.get(`${API_URL}/getAllProductsList`);
             return response.data;
         } catch (error) {
             console.error("Error fetching products:", error);

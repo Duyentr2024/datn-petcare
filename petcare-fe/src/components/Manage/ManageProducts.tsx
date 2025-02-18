@@ -198,7 +198,6 @@ const ManageProducts = () => {
                 </button>
             </div>
 
-
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse border bg-white shadow-md">
                     <thead>
@@ -218,8 +217,8 @@ const ManageProducts = () => {
                                     <td className="border p-2 font-medium">{product.productId}</td>
                                     <td className="border p-2 font-medium">{product.productName}</td>
                                     <td className="border p-2 font-medium">{product.description}</td>
-                                    <td className="border p-2 font-medium">{product.brand?.brandName || "Không có thương hiệu"}</td>
-                                    <td className="border p-2 font-medium">{product.categories?.categoryName || "Không có danh mục"}</td>
+                                    <td className="border p-2 font-medium">{product.brandName || "Không có thương hiệu"}</td>
+                                    <td className="border p-2 font-medium">{product.categoryName || "Không có danh mục"}</td>
                                     <td className="border p-2 flex justify-center">
                                         <img
                                             src={product.image}
@@ -265,154 +264,134 @@ const ManageProducts = () => {
                         {/* Dấu "X" để đóng modal */}
                         <button
                             onClick={() => setIsModalOpen(false)}
-                            className="absolute top-4 right-4 text-xl font-bold text-gray-700 hover:text-gray-900">
-                            X
+                            className="absolute top-4 right-4 text-xl font-bold text-gray-500"
+                        >
+                            &times;
                         </button>
 
-                        <h3 className="text-xl font-semibold mb-6 text-center">Thêm sản phẩm</h3>
+                        <h3 className="text-2xl font-semibold mb-4">Thêm sản phẩm mới</h3>
 
-                        {/* Tên sản phẩm */}
-                        <div className="mb-4">
-                            <input
-                                type="text"
-                                placeholder="Tên sản phẩm"
-                                className={`border p-3 w-full rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.productName ? 'border-red-500' : ''}`}
-                                onChange={(e) => setNewProduct({ ...newProduct, productName: e.target.value })}
-                                value={newProduct.productName}
-                            />
-                            {errors.productName && (
-                                <p className="text-red-500 text-sm flex items-center mt-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 3h.01M12 3C6.48 3 2 6.48 2 12s4.48 9 10 9 10-4.48 10-9S17.52 3 12 3z" />
-                                    </svg>
-                                    {errors.productName}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Mô tả */}
-                        <div className="mb-4">
-                            <textarea
-                                placeholder="Mô tả"
-                                className={`border p-3 w-full rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.description ? 'border-red-500' : ''}`}
-                                onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
-                                value={newProduct.description}
-                            />
-                            {errors.description && (
-                                <p className="text-red-500 text-sm flex items-center mt-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 3h.01M12 3C6.48 3 2 6.48 2 12s4.48 9 10 9 10-4.48 10-9S17.52 3 12 3z" />
-                                    </svg>
-                                    {errors.description}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Danh mục */}
-                        <div className="mb-4">
-                            <select
-                                className={`border p-3 w-full rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.categoryId ? 'border-red-500' : ''}`}
-                                onChange={(e) => setNewProduct({ ...newProduct, categoryId: e.target.value })}
-                                value={newProduct.categoryId}
-                            >
-                                <option value="">Chọn danh mục</option>
-                                {categories.map((cat) => (
-                                    <option key={cat.categoryId} value={cat.categoryId}>{cat.categoryName}</option>
-                                ))}
-                            </select>
-                            {errors.categoryId && (
-                                <p className="text-red-500 text-sm flex items-center mt-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 3h.01M12 3C6.48 3 2 6.48 2 12s4.48 9 10 9 10-4.48 10-9S17.52 3 12 3z" />
-                                    </svg>
-                                    {errors.categoryId}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Thương hiệu */}
-                        <div className="mb-4">
-                            <select
-                                className={`border p-3 w-full rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.brandId ? 'border-red-500' : ''}`}
-                                onChange={(e) => setNewProduct({ ...newProduct, brandId: e.target.value })}
-                                value={newProduct.brandId}
-                            >
-                                <option value="">Chọn thương hiệu</option>
-                                {brands.map((brand) => (
-                                    <option key={brand.brandId} value={brand.brandId}>{brand.brandName}</option>
-                                ))}
-                            </select>
-                            {errors.brandId && (
-                                <p className="text-red-500 text-sm flex items-center mt-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 3h.01M12 3C6.48 3 2 6.48 2 12s4.48 9 10 9 10-4.48 10-9S17.52 3 12 3z" />
-                                    </svg>
-                                    {errors.brandId}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Hình ảnh */}
-                        {newProduct.image && (
-                            <div className="relative mb-6 flex justify-center items-center">
-                                <div className="w-full h-48 bg-gray-100 rounded-md overflow-hidden flex justify-center items-center">
-                                    <img
-                                        src={URL.createObjectURL(newProduct.image)}
-                                        alt="Product preview"
-                                        className="object-cover w-full h-full"
-                                    />
-                                </div>
-                                <button
-                                    onClick={() => setNewProduct({ ...newProduct, image: null })}
-                                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 text-xs">
-                                    X
-                                </button>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Tên sản phẩm</label>
+                                <input
+                                    type="text"
+                                    value={newProduct.productName}
+                                    onChange={(e) =>
+                                        setNewProduct({ ...newProduct, productName: e.target.value })
+                                    }
+                                    className="border p-2 rounded w-full"
+                                />
+                                {errors.productName && <span className="text-red-500 text-sm">{errors.productName}</span>}
                             </div>
-                        )}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Mô tả</label>
+                                <textarea
+                                    value={newProduct.description}
+                                    onChange={(e) =>
+                                        setNewProduct({ ...newProduct, description: e.target.value })
+                                    }
+                                    className="border p-2 rounded w-full"
+                                    rows="4"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Danh mục</label>
+                                <select
+                                    value={newProduct.categoryId}
+                                    onChange={(e) =>
+                                        setNewProduct({ ...newProduct, categoryId: e.target.value })
+                                    }
+                                    className="border p-2 rounded w-full"
+                                >
+                                    <option value="">Chọn danh mục</option>
+                                    {categories.map((category) => (
+                                        <option key={category.categoryId} value={category.categoryId}>
+                                            {category.categoryName}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors.categoryId && <span className="text-red-500 text-sm">{errors.categoryId}</span>}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Thương hiệu</label>
+                                <select
+                                    value={newProduct.brandId}
+                                    onChange={(e) =>
+                                        setNewProduct({ ...newProduct, brandId: e.target.value })
+                                    }
+                                    className="border p-2 rounded w-full"
+                                >
+                                    <option value="">Chọn thương hiệu</option>
+                                    {brands.map((brand) => (
+                                        <option key={brand.brandId} value={brand.brandId}>
+                                            {brand.brandName}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors.brandId && <span className="text-red-500 text-sm">{errors.brandId}</span>}
+                            </div>
+                            <div className="border p-6 rounded-md bg-gray-50 border-dashed text-center mb-6">
+                                <label
+                                    htmlFor="fileInput"
+                                    className="cursor-pointer bg-green-500 text-white px-8 py-3 rounded-md text-lg font-semibold hover:bg-green-600"
+                                >
+                                    Chọn ảnh
+                                </label>
+                                <input
+                                    type="file"
+                                    id="fileInput"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        const file = e.target.files[0];
+                                        setNewProduct({ ...newProduct, image: file });
+                                    }}
+                                />
+                                <p className="text-gray-500 text-sm mt-2">Chỉ chấp nhận hình ảnh JPG, PNG, JPEG</p>
+                                {errors.image && <span className="text-red-500 text-sm mt-2">{errors.image}</span>}
+                                {/* Khu vực chứa ảnh với kích thước lớn hơn */}
+                                <div
+                                    className="mt-4 flex justify-center items-center"
+                                    style={{ minHeight: '200px', maxHeight: '200px' }}  // Đặt khu vực chứa ảnh cố định
+                                >
+                                    {newProduct.image && (
+                                        <img
+                                            src={URL.createObjectURL(newProduct.image)}
+                                            alt="Ảnh sản phẩm"
+                                            className="rounded-md shadow-lg"
+                                            style={{ maxWidth: '200px', maxHeight: '200px', objectFit: 'contain' }}  // Duy trì tỷ lệ ảnh và không bị cắt xén
+                                        />
+                                    )}
+                                </div>
+                            </div>
 
-                        {errors.image && (
-                            <p className="text-red-500 text-sm flex items-center mt-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 3h.01M12 3C6.48 3 2 6.48 2 12s4.48 9 10 9 10-4.48 10-9S17.52 3 12 3z" />
-                                </svg>
-                                {errors.image}
-                            </p>
-                        )}
 
-                        {/* Input chọn ảnh */}
-                        <div className="border p-6 rounded-md bg-gray-50 border-dashed text-center mb-6">
-                            <label
-                                htmlFor="fileInput"
-                                className="cursor-pointer bg-blue-500 text-white px-8 py-3 rounded-md text-lg font-semibold hover:bg-blue-600">
-                                Chọn ảnh
-                            </label>
-                            <input
-                                type="file"
-                                id="fileInput"
-                                className="hidden"
-                                onChange={(e) => setNewProduct({ ...newProduct, image: e.target.files[0] })}
-                            />
-                            <p className="text-gray-500 text-sm mt-2">Chỉ chấp nhận hình ảnh JPG, PNG, JPEG</p>
                         </div>
 
-                        <div className="flex justify-end gap-4 mt-6">
-                            <button className="bg-green-500 text-white px-6 py-3 rounded-md text-lg" onClick={handleAddProduct}>Lưu</button>
+                        <div className="mt-6 flex justify-between">
                             <button
                                 onClick={resetForm}
-                                className="bg-gray-500 text-white px-6 py-3 rounded-md text-lg"
+                                className="bg-gray-300 text-black px-4 py-2 rounded"
                             >
-                                Reset
+                                Hủy bỏ
+                            </button>
+                            <button
+                                onClick={handleAddProduct}
+                                className="bg-green-500 text-white px-4 py-2 rounded"
+                            >
+                                Lưu
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-
-
-
         </div>
     );
 };
 
 export default ManageProducts;
+
+
+
+
