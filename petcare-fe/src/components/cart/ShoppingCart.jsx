@@ -166,10 +166,16 @@ const ShoppingCart = () => {
                     <div className="mt-6 text-right">
                         <button
                             onClick={handleCheckout}
-                            className="bg-[#fbb321] font-bold text-white rounded-full px-6 py-3 shadow-lg hover:bg-[#fef0d3] hover:text-orange-500 transition-all duration-300 transform hover:scale-105"
+                            disabled={products.length === 0}
+                            className={`font-bold rounded-full px-6 py-3 shadow-lg transition-all duration-300 transform ${
+                                products.length === 0
+                                    ? "bg-gray-400 text-white cursor-not-allowed"
+                                    : "bg-[#fbb321] text-white hover:bg-[#fef0d3] hover:text-orange-500 hover:scale-105"
+                            }`}
                         >
                             Đặt hàng
                         </button>
+
                     </div>
                 </div>
             </div>
