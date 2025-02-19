@@ -6,7 +6,7 @@ import GHNService from "../../service/addressService/GHNService.jsx";
 import Cookies from "js-cookie";
 import CartDetailsService from "../../service/CartDetailsService/CartDetailsService.jsx";
 import {toast} from "react-toastify";
-import { useNavigate } from "react-router-dom"; // Import useNavigate từ React Router
+import {useNavigate} from "react-router-dom"; // Import useNavigate từ React Router
 const Checkout = () => {
     const {user} = useAuth();
     const navigate = useNavigate();
@@ -34,7 +34,6 @@ const Checkout = () => {
     const handlePaymentMethodChange = (method) => {
         setPaymentMethod(method);
     };
-
 
     // Tính tổng trọng lượng
     const totalWeight = products.reduce((sum, item) => sum + item.weightValue * item.quantityItem * 1000, 0); // gram
@@ -69,8 +68,6 @@ const Checkout = () => {
         }
     }, [totalWeight]);
 
-
-
     // Hàm lấy userId từ token
     const getUserIdFromToken = () => {
         const accessToken = Cookies.get("accessToken"); // Lấy token từ cookies
@@ -88,7 +85,6 @@ const Checkout = () => {
 
     const userId = getUserIdFromToken(); // Gọi hàm sau khi đã khai báo
 
-
     // Hàm lấy fullname và phoneNumber từ token
     const getPhoneAndNameFromToken = () => {
         const accessToken = Cookies.get("accessToken"); // Lấy token từ cookies
@@ -96,8 +92,8 @@ const Checkout = () => {
 
         try {
             const payload = JSON.parse(atob(accessToken.split(".")[1])); // Giải mã payload
-            const { fullName, phone } = payload; // Lấy thông tin từ payload
-            return { fullName, phone };
+            const {fullName, phone} = payload; // Lấy thông tin từ payload
+            return {fullName, phone};
         } catch (error) {
             console.error("Invalid token:", error);
             return null;
@@ -106,10 +102,8 @@ const Checkout = () => {
 
     const userInfo = getPhoneAndNameFromToken();
     if (userInfo) {
-        const { fullName, phone  } = userInfo;
-
+        const {fullName, phone} = userInfo;
     }
-
 
     // Fetch cart details
     useEffect(() => {
@@ -153,16 +147,40 @@ const Checkout = () => {
     useEffect(() => {
         if (user?.userId) {
             axios.get(`http://localhost:8080/api/addresses/user/${user.userId}`)
-                .then((res) => {
+                .then(async (res) => {
                     setAddresses(res.data);
+
                     if (res.data.length > 0) {
                         const defaultAddress = res.data.find(addr => addr.isDefault) || res.data[0];
-                        setSelectedAddress(defaultAddress);
+
+                        // Tìm ID tương ứng từ danh sách tỉnh
+                        const provinceData = provinces.find(p => p.ProvinceName === defaultAddress.province);
+                        if (!provinceData) return;
+
+                        // Lấy danh sách quận/huyện theo ID tỉnh
+                        const districtData = await GHNService.getDistricts(provinceData.ProvinceID);
+                        const district = districtData.find(d => d.DistrictName === defaultAddress.district);
+                        if (!district) return;
+
+                        // Lấy danh sách xã/phường theo ID quận/huyện
+                        const wardData = await GHNService.getWards(district.DistrictID);
+                        const ward = wardData.find(w => w.WardName === defaultAddress.ward);
+
+                        setSelectedAddress({
+                            ...defaultAddress,
+                            province: provinceData.ProvinceID,
+                            district: district.DistrictID,
+                            ward: ward ? ward.WardCode : "",
+                            isNew: false,
+                        });
+
+                        setDistricts(districtData);
+                        setWards(wardData);
                     }
                 })
                 .catch((err) => console.error("Lỗi lấy danh sách địa chỉ:", err));
         }
-    }, [user]);
+    }, [user, provinces]);
 
     // 🔹 Cập nhật state khi người dùng chọn địa chỉ khác
     const handleSelectAddress = async (e) => {
@@ -184,15 +202,25 @@ const Checkout = () => {
             const address = addresses.find(addr => addr.addressId.toString() === addressId);
             if (address) {
                 const provinceData = provinces.find(p => p.ProvinceName === address.province);
-                const districtData = await GHNService.getDistricts(provinceData?.ProvinceID);
+                if (!provinceData) {
+                    console.error("Không tìm thấy tỉnh:", address.province);
+                    return;
+                }
+
+                const districtData = await GHNService.getDistricts(provinceData.ProvinceID);
                 const district = districtData.find(d => d.DistrictName === address.district);
-                const wardData = await GHNService.getWards(district?.DistrictID);
+                if (!district) {
+                    console.error("Không tìm thấy quận:", address.district);
+                    return;
+                }
+
+                const wardData = await GHNService.getWards(district.DistrictID);
                 const ward = wardData.find(w => w.WardName === address.ward);
 
                 setSelectedAddress({
                     ...address,
-                    province: provinceData ? provinceData.ProvinceID : "",
-                    district: district ? district.DistrictID : "",
+                    province: provinceData.ProvinceID,
+                    district: district.DistrictID,
                     ward: ward ? ward.WardCode : "",
                     isNew: false,
                 });
@@ -205,22 +233,22 @@ const Checkout = () => {
 
     // 🔹 Xử lý thay đổi input khi chỉnh sửa
     const handleInputChange = async (e) => {
-        const { name, value } = e.target;
+        const {name, value} = e.target;
 
         setSelectedAddress((prev) => {
             let updatedValue = value;
 
             if (name === "province") {
                 GHNService.getDistricts(value).then(setDistricts);
-                return { ...prev, province: value, district: "", ward: "" };
+                return {...prev, province: value, district: "", ward: ""};
             } else if (name === "district") {
                 GHNService.getWards(value).then(setWards);
-                return { ...prev, district: value, ward: "" };
+                return {...prev, district: value, ward: ""};
             } else if (name === "ward") {
-                return { ...prev, ward: value };
+                return {...prev, ward: value};
             }
 
-            return { ...prev, [name]: updatedValue };
+            return {...prev, [name]: updatedValue};
         });
 
         // 🔹 Nếu không phải địa chỉ mới, tự động lưu khi thay đổi tỉnh, huyện, xã hoặc đường
@@ -255,35 +283,78 @@ const Checkout = () => {
         }
     };
 
-    const handleSaveAddress = async () => {
-        const provinceName = provinces.find(p => p.ProvinceID === selectedAddress.province)?.ProvinceName;
-        const districtName = districts.find(d => d.DistrictID === selectedAddress.district)?.DistrictName;
-        const wardName = wards.find(w => w.WardCode === selectedAddress.ward)?.WardName;
+// 🔹 Khi `ward` hoặc `street` thay đổi, tự động cập nhật API
+    useEffect(() => {
+        if (!selectedAddress.isNew && (selectedAddress.ward || selectedAddress.street)) {
+            const updatedAddress = {
+                ...selectedAddress,
+                province: provinces.find(p => String(p.ProvinceID) === String(selectedAddress.province))?.ProvinceName || "",
+                district: districts.find(d => String(d.DistrictID) === String(selectedAddress.district))?.DistrictName || "",
+                ward: wards.find(w => String(w.WardCode) === String(selectedAddress.ward))?.WardName || "",
+            };
 
+            (async () => {
+                try {
+                    await axios.put(`http://localhost:8080/api/addresses/${updatedAddress.addressId}`, updatedAddress);
+                    setAddresses(prev => prev.map(addr => addr.addressId === updatedAddress.addressId ? updatedAddress : addr));
+                } catch (error) {
+                    Swal.fire("Lỗi!", "Không thể cập nhật địa chỉ", "error");
+                }
+            })();
+        }
+    }, [selectedAddress.ward, selectedAddress.street]); // Chỉ chạy khi `ward` hoặc `street` thay đổi
+
+    const handleSaveAddress = async () => {
+        // 🔹 Lấy tên từ ID trước khi gửi lên API
+        const provinceName = provinces.find(p => String(p.ProvinceID) === String(selectedAddress.province))?.ProvinceName || "";
+        const districtName = districts.find(d => String(d.DistrictID) === String(selectedAddress.district))?.DistrictName || "";
+        const wardName = wards.find(w => String(w.WardCode) === String(selectedAddress.ward))?.WardName || "";
+
+        if (!provinceName || !districtName || !wardName) {
+            Swal.fire("Lỗi!", "Vui lòng chọn đầy đủ tỉnh, quận và xã!", "error");
+            return;
+        }
+
+        // 🔹 Chuẩn bị dữ liệu để gửi lên API
         const addressData = {
             ...selectedAddress,
-            province: provinceName, // Lưu tên thay vì ID
-            district: districtName,
-            ward: wardName,
-            userId: user.userId,
+            province: provinceName,  // Đảm bảo lưu tên tỉnh
+            district: districtName,  // Đảm bảo lưu tên huyện
+            ward: wardName,          // Đảm bảo lưu tên xã
+            userId: user?.userId,
         };
 
-        console.log("📤 Dữ liệu gửi đi:", addressData);
+        console.log("📤 Dữ liệu gửi lên API:", addressData); // Kiểm tra dữ liệu
 
-        if (selectedAddress.isNew) {
-            axios.post("http://localhost:8080/api/addresses", addressData)
-                .then(() => Swal.fire("Thành công!", "Đã thêm địa chỉ mới", "success"))
-                .catch(() => Swal.fire("Lỗi!", "Không thể thêm địa chỉ", "error"));
-        } else {
-            axios.put(`http://localhost:8080/api/addresses/${selectedAddress.addressId}`, addressData)
-                .then(() => Swal.fire("Thành công!", "Đã cập nhật địa chỉ", "success"))
-                .catch(() => Swal.fire("Lỗi!", "Không thể cập nhật địa chỉ", "error"));
+        try {
+            let response;
+            if (selectedAddress.isNew) {
+                response = await axios.post("http://localhost:8080/api/addresses", addressData);
+            } else {
+                response = await axios.put(`http://localhost:8080/api/addresses/${selectedAddress.addressId}`, addressData);
+            }
+
+            Swal.fire("Thành công!", selectedAddress.isNew ? "Đã thêm địa chỉ mới" : "Đã cập nhật địa chỉ", "success");
+
+            // 🔹 Gọi API để cập nhật danh sách địa chỉ
+            const updatedAddresses = await axios.get(`http://localhost:8080/api/addresses/user/${user.userId}`);
+            setAddresses(updatedAddresses.data);
+
+            // 🔹 Cập nhật địa chỉ được chọn thành địa chỉ mới nhất
+            setSelectedAddress({...response.data, isNew: false});
+
+        } catch (error) {
+            Swal.fire("Lỗi!", "Không thể lưu địa chỉ. Vui lòng thử lại!", "error");
         }
-    }
+    };
 
-    const shippingAddress = `${selectedAddress.street}, ${selectedAddress.ward || ''}, ${selectedAddress.district || ''}, ${selectedAddress.province || ''}`.replace(/, ,/g, ',').replace(/, $/, '');
+    const provinceName = provinces.find(p => String(p.ProvinceID) === String(selectedAddress.province))?.ProvinceName || "";
+    const districtName = districts.find(d => String(d.DistrictID) === String(selectedAddress.district))?.DistrictName || "";
+    const wardName = wards.find(w => String(w.WardCode) === String(selectedAddress.ward))?.WardName || "";
 
-
+    const shippingAddress = `${selectedAddress.street}, ${wardName}, ${districtName}, ${provinceName}`
+        .replace(/, ,/g, ',')
+        .replace(/, $/, '');
     const handlePayment = async () => {
         const orderDetails = {
             userId: Number(userId),
@@ -292,7 +363,7 @@ const Checkout = () => {
             shippingCost: Number(0),
             voucherId: selectedAddress?.voucherId ? Number(selectedAddress.voucherId) : null,
             type: "ORDER ONLINE",
-            items: products.map(({ productDetailId, quantityItem, price }) => ({
+            items: products.map(({productDetailId, quantityItem, price}) => ({
                 productDetailId: Number(productDetailId),
                 quantity: Number(quantityItem),
                 price: Number(price),
@@ -303,7 +374,7 @@ const Checkout = () => {
 
         try {
             const response = await axios.post("http://localhost:8080/api/orders/checkout", orderDetails, {
-                headers: { "Content-Type": "application/json" },
+                headers: {"Content-Type": "application/json"},
             });
 
             Swal.fire({
@@ -323,7 +394,6 @@ const Checkout = () => {
             }
         }
     };
-
 
     return (
         <div className="min-h-screen flex justify-center items-center px-4 md:px-0 relative">
@@ -447,7 +517,6 @@ const Checkout = () => {
                                 </button>
                             </div>
                         )}
-
 
 
                         <div className="mt-8">

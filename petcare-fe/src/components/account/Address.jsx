@@ -26,18 +26,21 @@ const Address = () => {
 
     useEffect(() => {
         const fetchAddresses = async () => {
+            if (!user?.userId) return; // Kiểm tra nếu userId không tồn tại
+
             try {
-                const res = await axios.get('http://localhost:8080/api/addresses');
+                const res = await axios.get(`http://localhost:8080/api/addresses/user/${user.userId}`);
                 setAddresses(Array.isArray(res.data) ? res.data : []);
-            } catch {
+            } catch (error) {
                 setError('Không thể tải danh sách địa chỉ');
                 toast.error('Lỗi khi tải địa chỉ');
             } finally {
                 setIsLoading(false);
             }
         };
+
         fetchAddresses();
-    }, []);
+    }, [user?.userId]);
 
     useEffect(() => {
         const fetchProvinces = async () => {
