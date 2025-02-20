@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate  } from "react-router-dom";
 import ProductDetailService from "../../service/productDetailService/ProductDetailService.jsx";
 import CartDetailsService from "../../service/cartDetailsService/CartDetailsService.jsx";
 import ReactLoading from "react-loading";
@@ -7,7 +7,7 @@ import ProductComments from "./ProductComments.jsx";
 import RelatedProducts from "./RelatedProducts.jsx";
 import { useAuth } from "../../context/AuthContext";
 import Cookies from "js-cookie";
-
+import Swal from "sweetalert2";
 const ProductDetail = () => {
     const { productId } = useParams();
     const [product, setProduct] = useState(null);
@@ -24,7 +24,7 @@ const ProductDetail = () => {
     const [loadingColor, setLoadingColor] = useState(null);
     const [validCombinations, setValidCombinations] = useState([]);
     const { userId } = useAuth();
-
+    const navigate = useNavigate();
     useEffect(() => {
         setMainImage(product?.productImage); // Cập nhật ảnh mặc định khi product thay đổi
     }, [product]);
@@ -105,59 +105,86 @@ const ProductDetail = () => {
         }
     };
 
-    const handleAddToCart = async () => {
-        // Lấy userId từ cookies (hoặc từ context nếu đã được xử lý)
-        const userId = getUserIdFromToken();
+   const handleAddToCart = async () => {
+    // Lấy userId từ cookies (hoặc từ context nếu đã được xử lý)
+    const userId = getUserIdFromToken();
 
-        if (!userId) {
-            alert("Please log in to add items to the cart.");
-            return;
-        }
+    if (!userId) {
+        Swal.fire({
+            title: "Bạn chưa đăng nhập!",
+            text: "Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Đăng nhập",
+            cancelButtonText: "Hủy",
+        }).then((result) => {
+            if (result.isConfirmed) {
+                navigate("/login"); // Điều hướng đến trang đăng nhập
+            }
+        });
+        return;
+    }
 
-        if (!selectedSize || !selectedColor || !selectedWeight) {
-            alert("Please select size, color, and weight before adding to the cart.");
-            return;
-        }
+    if (!selectedSize || !selectedColor || !selectedWeight) {
+        Swal.fire({
+            title: "Thiếu thông tin!",
+            text: "Vui lòng chọn kích thước, màu sắc và trọng lượng trước khi thêm vào giỏ hàng.",
+            icon: "warning",
+        });
+        return;
+    }
 
-        const selectedVariant = product?.variants?.find(
-            (variant) =>
-                variant.sizeValue === selectedSize &&
-                variant.colorValue === selectedColor &&
-                variant.weightValue === selectedWeight
+    const selectedVariant = product?.variants?.find(
+        (variant) =>
+            variant.sizeValue === selectedSize &&
+            variant.colorValue === selectedColor &&
+            variant.weightValue === selectedWeight
+    );
+
+    if (!selectedVariant) {
+        Swal.fire({
+            title: "Lỗi!",
+            text: "Phiên bản sản phẩm này không có sẵn.",
+            icon: "error",
+        });
+        return;
+    }
+
+    // Log thông tin trước khi gọi API
+    console.log("Adding to cart:", {
+        userId,
+        productDetailId: selectedVariant.productDetailId,
+        quantityItem: quantity,
+    });
+
+    try {
+        await CartDetailsService.addCartDetails(
+            userId,
+            selectedVariant.productDetailId,
+            quantity
         );
 
-        if (!selectedVariant) {
-            alert("Selected product variant is not available.");
-            return;
-        }
-
-        // Log thông tin trước khi gọi API
-        console.log("Adding to cart:", {
-            userId,
-            productDetailId: selectedVariant.productDetailId,
-            quantityItem: quantity,
+        Swal.fire({
+            title: "Thành công!",
+            text: "Sản phẩm đã được thêm vào giỏ hàng.",
+            icon: "success",
         });
+    } catch (error) {
+        console.error("Error adding to cart:", error);
 
-        try {
-            const response = await CartDetailsService.addCartDetails(
-                userId,
-                selectedVariant.productDetailId,
-                quantity
-            );
-            alert("Added to cart successfully!");
-        } catch (error) {
-            console.error("Error adding to cart:", error);
-
-            // Kiểm tra nếu BE trả về thông báo lỗi
-            if (error.response && error.response.data && error.response.data.message) {
-                // Hiển thị thông báo lỗi từ BE
-                alert(error.response.data.message);
-            } else {
-                // Thông báo lỗi chung nếu không có thông tin cụ thể từ BE
-                alert("Failed to add to cart. Please try again.");
-            }
+        // Kiểm tra nếu BE trả về thông báo lỗi
+        let errorMessage = "Thêm vào giỏ hàng thất bại. Vui lòng thử lại.";
+        if (error.response && error.response.data && error.response.data.message) {
+            errorMessage = error.response.data.message;
         }
-    };
+
+        Swal.fire({
+            title: "Lỗi!",
+            text: errorMessage,
+            icon: "error",
+        });
+    }
+};
 
 
     const isValidCombination = (size, color, weight) => {

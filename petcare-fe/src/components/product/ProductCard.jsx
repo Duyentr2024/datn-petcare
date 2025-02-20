@@ -44,7 +44,7 @@ export function ProductCard({ name, price, image, productId }) {
     };
 
     return (
-        <div className="w-[250px] bg-white rounded-lg overflow-hidden shadow group">
+        <div className="w-[250px] bg-white rounded-lg overflow-hidden shadow group ">
             <div className="relative w-[250px] h-[250px] overflow-hidden">
                 <img
                     src={image}
