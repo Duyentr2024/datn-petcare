@@ -12,6 +12,7 @@ import { decodeToken } from "../utils/jwt"; // Hàm decodeToken đã viết
 import Cookies from "js-cookie";
 import { useCookies } from "react-cookie";
 import { useAuth } from "../../context/AuthContext"; // Import hook useAuth từ context
+import logo from "../../assets/images/banner1.png";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -121,18 +122,18 @@ export default function Header() {
 
       <header className="sticky top-0 z-20 bg-white transition-all duration-300 ease-in-out shadow-md py-2">
         <div className=" flex items-center justify-between  w-auto mx-32 h-[120px] gap-5 ">
-          <div className="flex items-center space-x-4 w-[164px] pt-2">
+          <div className="flex items-center space-x-4 w-[230px] ">
             <img
-              src="http://nongsan.monamedia.net/wp-content/uploads/2023/11/nongsan-logo.png"
+              src={logo}
               alt="Honey The Mona logo"
-              className="h-auto w-full"
+              className="h-[250-px] w-[300px]"
             />
           </div>
-          <div className="items-center">
+          <div className="items-center w-[1000px]">
             {/* Search Bar */}
-            <div className="flex flex-col sm:flex-row items-start space-x-8 ">
-              <div className="flex-1 w-full sm:w-auto">
-                <div className="flex items-center space-x-4 relative w-[800px] max-w-lg hidden sm:block">
+            <div className="flex flex-col sm:flex-row items-start justify-center space-x-8 ">
+              <div className="flex sm:w-auto">
+                <div className="flex items-center space-x-4 relative w-[900px] max-w-lg hidden sm:block">
                   <input
                     type="text"
                     placeholder="Nhập từ khoá tìm kiếm..."
@@ -145,21 +146,6 @@ export default function Header() {
               </div>
 
               <div className="flex items-center space-x-8">
-                {/* Hotline */}
-
-                <div className="flex items-center space-x-3">
-                  <div className="bg-yellow-100 p-3 rounded-full flex items-center justify-center">
-                    <FaPhoneAlt className="text-yellow-500 text-xl" />
-                  </div>
-                  <div className="hidden sm:block">
-                    <span className="text-sm text-gray-700">Hotline</span>
-                    <br />
-                    <span className="font-bold text-yellow-500">
-                      0313728397
-                    </span>
-                  </div>
-                </div>
-
                 {isAuthenticated ? (
                   // Khi đã đăng nhập
                   <div className="flex items-center space-x-3">
@@ -178,7 +164,9 @@ export default function Header() {
                       />
                     </Link>
                     <div className="hidden sm:block">
-                      <span className="text-sm text-gray-700  truncate  max-w-[100px]">{fullName}</span>
+                      <span className="text-sm text-gray-700  truncate  max-w-[100px]">
+                        {fullName}
+                      </span>
                       <br />
                       {/* Nút Đăng xuất */}
                       <button
@@ -208,7 +196,10 @@ export default function Header() {
                 )}
 
                 {/* Giỏ hàng */}
-                <Link to="/shoppingCart" className="flex items-center space-x-3 cursor-pointer">
+                <Link
+                  to="/shoppingCart"
+                  className="flex items-center space-x-3 cursor-pointer"
+                >
                   <div className="bg-green-100 p-3 rounded-full flex items-center justify-center">
                     <FaShoppingCart className="text-green-700 text-xl" />
                   </div>
@@ -219,6 +210,18 @@ export default function Header() {
                   </div>
                 </Link>
 
+                {/* Hotline */}
+
+                <div className="flex items-center space-x-3">
+                  <div className="bg-yellow-100 p-3 rounded-full flex items-center justify-center">
+                    <FaPhoneAlt className="text-yellow-500 text-xl" />
+                  </div>
+                  <div className="hidden sm:block">
+                    <br />
+                    <span className="font-bold text-yellow-500">
+                    </span>
+                  </div>
+                </div>
 
                 {/* Mobile Menu Toggle */}
                 <div className="lg:hidden flex items-center">
@@ -233,7 +236,7 @@ export default function Header() {
             <div className="hidden sm:block">
               <nav
                 ref={menuRef}
-                className="  container pt-7 h-[40px] items-center mx-auto flex justify-center gap-8 text-[#444444] text-[16px] font-sans sticky top-0 z-50"
+                className="  container pt-4 h-[40px] items-center mx-auto flex justify-center gap-8 text-[#444444] text-[16px] font-sans sticky top-0 z-50"
               >
                 <Link
                   to="/"
@@ -285,8 +288,9 @@ export default function Header() {
 
       {/* Mobile Menu */}
       <div
-        className={`fixed z-50 top-0 left-0 w-[250px] h-full bg-white transform ${isMenuOpen ? "translate-x-0" : "-translate-x-full"
-          } transition-all duration-300 ease-in-out shadow-lg lg:hidden`}
+        className={`fixed z-50 top-0 left-0 w-[250px] h-full bg-white transform ${
+          isMenuOpen ? "translate-x-0" : "-translate-x-full"
+        } transition-all duration-300 ease-in-out shadow-lg lg:hidden`}
       >
         <div className="flex justify-between items-center pl-3 mt-10">
           <span className="text-lg font-bold">Menu</span>
@@ -301,8 +305,9 @@ export default function Header() {
           <div className="border-b w-full">
             <Link
               to="/login"
-              className={`menu-item text-sm relative ${activeMenuItem === "home" ? "text-yellow-500" : ""
-                }`}
+              className={`menu-item text-sm relative ${
+                activeMenuItem === "home" ? "text-yellow-500" : ""
+              }`}
               onClick={() => {
                 setActiveMenuItem("home");
                 toggleMobileMenu();
@@ -314,8 +319,9 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${activeMenuItem === "about" ? "text-yellow-500" : ""
-                }`}
+              className={`menu-item text-sm relative ${
+                activeMenuItem === "about" ? "text-yellow-500" : ""
+              }`}
               href="#about"
               onClick={() => {
                 setActiveMenuItem("about");
@@ -328,8 +334,9 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${activeMenuItem === "products" ? "text-yellow-500" : ""
-                }`}
+              className={`menu-item text-sm relative ${
+                activeMenuItem === "products" ? "text-yellow-500" : ""
+              }`}
               href="#products"
               onClick={() => {
                 setActiveMenuItem("products");
@@ -342,8 +349,9 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${activeMenuItem === "services" ? "text-yellow-500" : ""
-                }`}
+              className={`menu-item text-sm relative ${
+                activeMenuItem === "services" ? "text-yellow-500" : ""
+              }`}
               href="#services"
               onClick={() => {
                 setActiveMenuItem("services");
@@ -356,8 +364,9 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${activeMenuItem === "news" ? "text-yellow-500" : ""
-                }`}
+              className={`menu-item text-sm relative ${
+                activeMenuItem === "news" ? "text-yellow-500" : ""
+              }`}
               href="#news"
               onClick={() => {
                 setActiveMenuItem("news");
@@ -370,8 +379,9 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${activeMenuItem === "policy" ? "text-yellow-500" : ""
-                }`}
+              className={`menu-item text-sm relative ${
+                activeMenuItem === "policy" ? "text-yellow-500" : ""
+              }`}
               href="#policy"
               onClick={() => {
                 setActiveMenuItem("policy");
@@ -384,8 +394,9 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${activeMenuItem === "guides" ? "text-yellow-500" : ""
-                }`}
+              className={`menu-item text-sm relative ${
+                activeMenuItem === "guides" ? "text-yellow-500" : ""
+              }`}
               href="#guides"
               onClick={() => {
                 setActiveMenuItem("guides");
@@ -398,8 +409,9 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${activeMenuItem === "contact" ? "text-yellow-500" : ""
-                }`}
+              className={`menu-item text-sm relative ${
+                activeMenuItem === "contact" ? "text-yellow-500" : ""
+              }`}
               href="#contact"
               onClick={() => {
                 setActiveMenuItem("contact");

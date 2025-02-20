@@ -31,7 +31,7 @@ const HomePage = () => {
         <Route path="/contact" element={<Contact />} />
         <Route path="/newsPage" element={<NewsPage />} />
         {/* <Route path="/checkout" element={<Checkout />} /> */}
-        <Route path="/shoppingCart" element={<ShoppingCart />} />
+        {/* <Route path="/shoppingCart" element={<ShoppingCart />} /> */}
         <Route path="/" element={<ItemPageHome />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -44,12 +44,14 @@ const HomePage = () => {
         <Route element={<PrivateRoute />}>
           <Route path="/my-account/*" element={<MyAccount />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/shoppingCart" element={<ShoppingCart />} />
+
         </Route>
 
         {/* Route 404 - Khi không tìm thấy trang */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
-      <RenderFooter />
+      <RenderFooter />  
     </>
   );
 };

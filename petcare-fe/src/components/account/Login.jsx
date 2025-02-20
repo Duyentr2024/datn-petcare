@@ -4,7 +4,7 @@ import { FaArrowCircleRight, FaFacebookF, FaGoogle } from "react-icons/fa";
 import Cookies from "js-cookie";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom"; // Import useNavigate từ React Router
-
+import logo from "../../assets/images/logo.png";
 import LoginService from "../../service/accountService/LoginService";
 const Login = () => {
   // khai báo các state cần thiết
@@ -212,9 +212,9 @@ const Login = () => {
         <div className="p-10 flex items-center justify-center w-full lg:w-1/2 rounded-lg load-img">
           {/* Ẩn logo trên các màn hình có chiều rộng nhỏ hơn 1024px */}
           <img
-            src="https://placehold.co/600x600"
+            src={logo}
             alt="Logo with petcare"
-            className="w-full h-auto z-10 hidden md:inline rounded-full shadow-lg"
+            className="w-full h-auto z-10 hidden md:inline rounded-full shadow-lg object-cover"
           />
         </div>
 

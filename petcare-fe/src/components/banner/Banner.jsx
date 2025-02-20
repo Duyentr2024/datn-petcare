@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Menu from "../menu/menu";
 import '../../components/banner/textbanner.css'
+import banner from "../../assets/images/banner1.png";
 const Banner = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
@@ -67,7 +68,7 @@ const Banner = () => {
                     <div className="h-[500px] w-full transition-transform duration-500 ease-in-out">
                         {currentIndex === 0 && (
                             <img
-                                src="https://theme.hstatic.net/200000521195/1000872898/14/slider_1.jpg?v=259"
+                                src={banner}
                                 alt="Slide 1"
                                 className="w-full h-full object-cover"
                             />
@@ -105,5 +106,3 @@ const Banner = () => {
 };
 
 export default Banner;
-
-
