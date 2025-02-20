@@ -5,17 +5,37 @@ const OrderHistoryService = {
     try {
       const response = await fetch(`${API_BASE_URL}/api/orders/user/${userId}`);
       if (!response.ok) {
-        throw new Error("Failed to fetch order history");
-
+        throw new Error("Không thể lấy danh sách đơn hàng");
       }
-      
       return await response.json();
     } catch (error) {
-      console.error("Error fetching order history:", error);
-
-      return [];
+      console.error("Lỗi khi gọi API lấy đơn hàng:", error);
+      throw error;
     }
   },
+
+  cancelOrder: async (orderId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/orders/cancel/${orderId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Không thể hủy đơn hàng");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Lỗi khi hủy đơn hàng:", error);
+      throw error;
+    }
+  },
+
+
+  
 };
 
 export default OrderHistoryService;
