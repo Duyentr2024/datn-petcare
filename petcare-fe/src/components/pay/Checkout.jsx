@@ -336,6 +336,7 @@ const Checkout = () => {
 
             Swal.fire("Thành công!", selectedAddress.isNew ? "Đã thêm địa chỉ mới" : "Đã cập nhật địa chỉ", "success");
 
+
             // 🔹 Gọi API để cập nhật danh sách địa chỉ
             const updatedAddresses = await axios.get(`http://localhost:8080/api/addresses/user/${user.userId}`);
             setAddresses(updatedAddresses.data);
@@ -355,12 +356,15 @@ const Checkout = () => {
     const shippingAddress = `${selectedAddress.street}, ${wardName}, ${districtName}, ${provinceName}`
         .replace(/, ,/g, ',')
         .replace(/, $/, '');
+
+    const shippingCosts = 30000 ;
+
     const handlePayment = async () => {
         const orderDetails = {
             userId: Number(userId),
             paymentMethod: String(paymentMethod),
             shippingAddress: String(shippingAddress),
-            shippingCost: Number(0),
+            shippingCost: Number(shippingCosts),
             voucherId: selectedAddress?.voucherId ? Number(selectedAddress.voucherId) : null,
             type: "ORDER ONLINE",
             items: products.map(({productDetailId, quantityItem, price}) => ({
@@ -487,6 +491,7 @@ const Checkout = () => {
                                 </select>
                             </div>
 
+
                             <div className="flex flex-col md:flex-row md:items-center md:space-x-4">
                                 <label className="block text-sm font-medium text-gray-700 md:w-1/3">
                                     Phường / Xã
@@ -505,6 +510,19 @@ const Checkout = () => {
                                         </option>
                                     ))}
                                 </select>
+                            </div>
+
+                            <div className="flex flex-col md:flex-row md:items-center md:space-x-4">
+                                <label className="block text-sm font-medium text-gray-700 md:w-1/3">
+                                    Giảm giá
+                                </label>
+                                <select
+                                    className="mt-1 block w-full md:w-2/3 border border-gray-300 rounded-md shadow-sm p-2 bg-white disabled:bg-gray-200">
+                                    <option value="">Chọn mã giảm giá</option>
+                                    <option value="10off">Giảm 10%</option>
+                                    <option value="20off">Giảm 20%</option>
+                                </select>
+
                             </div>
                         </form>
 
@@ -584,12 +602,12 @@ const Checkout = () => {
                             </div>
                             <div className="flex justify-between font-medium">
                                 <p>Phí giao hàng:</p>
-                                <p>0₫</p>
+                                <p>{shippingCosts}₫</p>
                             </div>
                             <div className="flex justify-between font-bold text-lg mt-2 border-t border-white pt-3">
                                 <p>Tổng cộng:</p>
                                 <p className="text-xl">{(
-                                    products.reduce((total, item) => total + item.price * item.quantityItem, 0)
+                                    products.reduce((total, item) => total + (item.price + shippingCosts)* item.quantityItem, 0)
                                 ).toLocaleString()}₫</p>
                             </div>
                         </div>
