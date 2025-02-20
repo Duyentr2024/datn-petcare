@@ -68,6 +68,17 @@ const ProductsService = {
             throw error;
         }
     },
+
+    // Lấy top 5 sản phẩm bán chạy
+    getBestSellingProducts: async () => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/best-selling-products`);
+            return response.data;
+          } catch (error) {
+            console.error("Lỗi khi tải dữ liệu:", error);
+            return [];
+          }
+    }
 };
 
 export default ProductsService;

@@ -27,6 +27,7 @@ export default function Header() {
   const [cookies, setCookie, removeCookie] = useCookies(["accessToken"]);
   const { user, token, setUser, setToken } = useAuth(); // Lấy setUser từ context
   const navigate = useNavigate();
+  const dropdownRef = useRef(null); // Thêm useRef
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
@@ -45,6 +46,19 @@ export default function Header() {
   const [isShaking, setIsShaking] = useState(true);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+ // Xử lý đóng menu khi click ra ngoài
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -239,7 +253,7 @@ export default function Header() {
                 {/* Thông báo */}
 
                 <div
-                  className="flex items-center space-x-3 cursor-pointer"
+                  className="flex items-center space-x-3 cursor-pointer"  ref={dropdownRef}
                   onClick={() => setIsOpen(!isOpen)}
                 >
                   <div className="bg-yellow-100 p-3 rounded-full flex items-center justify-center relative">
