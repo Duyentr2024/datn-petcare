@@ -6,6 +6,7 @@ import {
   FaShoppingCart,
   FaUser,
   FaBars,
+  FaBell,
 } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import { decodeToken } from "../utils/jwt"; // Hàm decodeToken đã viết
@@ -13,6 +14,7 @@ import Cookies from "js-cookie";
 import { useCookies } from "react-cookie";
 import { useAuth } from "../../context/AuthContext"; // Import hook useAuth từ context
 import logo from "../../assets/images/banner1.png";
+import { motion } from "framer-motion";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -33,6 +35,30 @@ export default function Header() {
     role: "",
     totalSpent: "",
   });
+
+  const [notifications, setNotifications] = useState([
+    { id: 1, message: "Bạn có đơn hàng mới!", isRead: false },
+    { id: 2, message: "Sản phẩm của bạn đã được duyệt.", isRead: false },
+    { id: 3, message: "Khách hàng đã gửi tin nhắn.", isRead: false },
+  ]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isShaking, setIsShaking] = useState(true);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsShaking(false);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleViewNotification = (index) => {
+    setSelectedNotification(notifications[index]);
+    setNotifications((prev) =>
+      prev.map((n, i) => (i === index ? { ...n, isRead: true } : n))
+    );
+  };
 
   useEffect(() => {
     if (user) {
@@ -210,18 +236,101 @@ export default function Header() {
                   </div>
                 </Link>
 
-                {/* Hotline */}
+                {/* Thông báo */}
 
-                <div className="flex items-center space-x-3">
-                  <div className="bg-yellow-100 p-3 rounded-full flex items-center justify-center">
-                    <FaPhoneAlt className="text-yellow-500 text-xl" />
-                  </div>
-                  <div className="hidden sm:block">
-                    <br />
-                    <span className="font-bold text-yellow-500">
-                    </span>
+                <div
+                  className="flex items-center space-x-3 cursor-pointer"
+                  onClick={() => setIsOpen(!isOpen)}
+                >
+                  <div className="bg-yellow-100 p-3 rounded-full flex items-center justify-center relative">
+                    <motion.div
+                      animate={
+                        isShaking ? { rotate: [-10, 10, -10, 10, 0] } : {}
+                      }
+                      transition={{ duration: 0.5, repeat: 3 }}
+                    >
+                      <FaBell className="text-yellow-500 text-xl" />
+                    </motion.div>
+                    {unreadCount > 0 && (
+                      <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                        {unreadCount}
+                      </span>
+                    )}
                   </div>
                 </div>
+
+                {/* Dropdown thông báo */}
+                {isOpen && (
+                  <div className="absolute top-20 right-[132px] w-72 bg-white shadow-xl rounded-lg p-3 border border-gray-200 z-99">
+                    <div className="absolute -top-2 right-10 w-4 h-4 bg-white border-l border-t border-gray-200 rotate-45"></div>
+                    <h3 className="font-semibold text-gray-700 mb-2 text-center">
+                      🔔 Thông báo
+                    </h3>
+                    <div className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                      <ul className="space-y-2">
+                        {notifications.length > 0 ? (
+                          notifications.map((notif, index) => (
+                            <li
+                              key={notif.id}
+                              onClick={() => handleViewNotification(index)}
+                              className={`flex items-start space-x-2 p-3 rounded-lg transition-all duration-200 ease-in-out cursor-pointer ${
+                                notif.isRead
+                                  ? "bg-gray-100"
+                                  : "bg-yellow-50 hover:bg-yellow-100"
+                              }`}
+                            >
+                              <div className="w-8 h-8 flex items-center justify-center text-white rounded-full">
+                                🔔
+                              </div>
+                              <div className="text-gray-800 text-sm leading-relaxed">
+                                {notif.message}
+                              </div>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="text-gray-500 p-3 text-center">
+                            Không có thông báo nào
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                {/* Modal xem chi tiết thông báo */}
+                {selectedNotification && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity duration-300 ease-in-out">
+                    <div className="bg-white p-6 rounded-lg shadow-2xl w-96 transform scale-95 animate-fadeIn">
+                      {/* Header */}
+                      <div className="flex justify-between items-center border-b pb-2">
+                        <h2 className="text-lg font-bold text-gray-800">
+                          Chi tiết thông báo
+                        </h2>
+                        <button
+                          onClick={() => setSelectedNotification(null)}
+                          className="text-gray-500 hover:text-red-500 transition duration-200"
+                        >
+                          ✖
+                        </button>
+                      </div>
+
+                      {/* Nội dung thông báo */}
+                      <p className="text-gray-700 mt-3 leading-relaxed">
+                        {selectedNotification.message}
+                      </p>
+
+                      {/* Footer */}
+                      <div className="mt-4 flex justify-end">
+                        <button
+                          onClick={() => setSelectedNotification(null)}
+                          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-all duration-200"
+                        >
+                          Đóng
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Mobile Menu Toggle */}
                 <div className="lg:hidden flex items-center">
