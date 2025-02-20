@@ -15,12 +15,20 @@ const VerifyOTP = () => {
     const [canResend, setCanResend] = useState(false);
 
     useEffect(() => {
-        const savedEmail = sessionStorage.getItem("email");
-        const savedOtpType = sessionStorage.getItem("otpType");
+        const queryParams = new URLSearchParams(location.search);
+        const emailFromUrl = queryParams.get("email");
+        const otpTypeFromUrl = queryParams.get("type"); // Lấy type từ URL
 
-        if (savedEmail) setEmail(savedEmail);
-        if (savedOtpType) setOtpType(savedOtpType);
-    }, []);
+        if (emailFromUrl) setEmail(emailFromUrl);
+        if (otpTypeFromUrl) {
+            setOtpType(otpTypeFromUrl);
+            sessionStorage.setItem("otpType", otpTypeFromUrl); // Cập nhật lại sessionStorage
+        } else {
+            const savedOtpType = sessionStorage.getItem("otpType");
+            if (savedOtpType) setOtpType(savedOtpType);
+        }
+    }, [location.search]);
+
     const handleOtpChange = (index, value) => {
         if (!/^[0-9]?$/.test(value)) return; // Chỉ chấp nhận số từ 0-9
         const newOtp = [...otp];

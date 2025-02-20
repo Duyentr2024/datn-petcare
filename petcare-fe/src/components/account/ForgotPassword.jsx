@@ -37,6 +37,14 @@ const ForgotPassword = () => {
             return;
         }
         try {
+            Swal.fire({
+                title: "Đang xử lý...",
+                text: "Vui lòng đợi trong giây lát",
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+            });
             await axios.post("http://localhost:8080/api/otp/send-reset-password-otp", {email});
             Swal.fire({
                 icon: "success",
