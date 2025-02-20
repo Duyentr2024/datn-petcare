@@ -282,7 +282,7 @@ const Login = () => {
               </button>
               {/* Ẩn link quên mật khẩu trên màn hình nhỏ */}
               <a
-                href="#"
+                href="/forgotPassword"
                 className="text-yellow-500 hover:underline hidden md:inline"
               >
                 Quên mật khẩu?

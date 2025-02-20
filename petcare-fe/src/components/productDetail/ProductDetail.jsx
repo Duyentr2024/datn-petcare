@@ -14,7 +14,7 @@ const ProductDetail = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [quantity, setQuantity] = useState(1);
-    const [mainImage, setMainImage] = useState("");
+    const [mainImage, setMainImage] = useState('default-image-url');
     const [isExpanded, setIsExpanded] = useState(false);
     const [selectedSize, setSelectedSize] = useState(null);
     const [selectedColor, setSelectedColor] = useState(null);
@@ -24,6 +24,10 @@ const ProductDetail = () => {
     const [loadingColor, setLoadingColor] = useState(null);
     const [validCombinations, setValidCombinations] = useState([]);
     const { userId } = useAuth();
+
+    useEffect(() => {
+        setMainImage(product?.productImage); // Cập nhật ảnh mặc định khi product thay đổi
+    }, [product]);
 
     useEffect(() => {
         const fetchProductDetails = async () => {
@@ -265,7 +269,7 @@ const ProductDetail = () => {
                                 src={url}
                                 alt={`Thumbnail ${index + 1}`}
                                 onClick={() => handleImageChange(url)}
-                                className="w-12 h-12 rounded-xl cursor-pointer border-2 border-gray-300 hover:ring-2 ring-yellow-500 transition transform hover:scale-105"
+                                className={`w-12 h-12 rounded-xl cursor-pointer border-2 border-gray-300 hover:ring-2 ring-yellow-500 transition transform hover:scale-105 ${mainImage === url ? 'ring-2 ring-yellow-500' : ''}`}
                             />
                         ))}
                     </div>
@@ -399,11 +403,11 @@ const ProductDetail = () => {
                             </button>
                         </Link>
 
-                            <button
-                                onClick={handleAddToCart}
-                                className="px-5 py-2 border border-yellow-500 text-yellow-500 font-semibold rounded-xl hover:bg-yellow-100">
-                                Thêm vào giỏ hàng
-                            </button>
+                        <button
+                            onClick={handleAddToCart}
+                            className="px-5 py-2 border border-yellow-500 text-yellow-500 font-semibold rounded-xl hover:bg-yellow-100">
+                            Thêm vào giỏ hàng
+                        </button>
 
                     </div>
                 </div>

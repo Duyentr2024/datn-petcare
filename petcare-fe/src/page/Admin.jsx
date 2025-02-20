@@ -1,6 +1,11 @@
 import { Routes, Route } from "react-router-dom";
 import SidebarMenu from "../components/PagesAdmin/SidebarMenu";
-
+import ManageProductColor from "../components/Manage/ManageProductColor";
+import ManageProductSize from "../components/Manage/ManageProductSize";
+import ManageProductWeights from "../components/Manage/ManageProductWeights";
+import ManageProductBrand from "../components/Manage/ManageProductBrand";
+import ManageProductCategories from "../components/Manage/ManageProductCategories";
+import ManageProducts from "../components/Manage/ManageProducts";
 function Admin() {
   return (
     <div className="flex flex-col h-screen bg-gray-100 font-sans">
@@ -9,10 +14,16 @@ function Admin() {
           <SidebarMenu />
         </aside>
 
-        {/* Main Content adjusts based on the route */}
+
         <main className="flex-1 p-6 bg-gray-50 overflow-auto">
           <Routes>
             <Route path="/" element={<h1>Admin Dashboard</h1>} />
+            <Route path="/product-color" element={<ManageProductColor />} />
+            <Route path="/product-size" element={<ManageProductSize />} />
+            <Route path="/product-weights" element={<ManageProductWeights />} />
+            <Route path="/product-brands" element={<ManageProductBrand />} />
+            <Route path="/product-categories" element={<ManageProductCategories />} />
+            <Route path="/products-list" element={<ManageProducts />} />
           </Routes>
         </main>
       </div>

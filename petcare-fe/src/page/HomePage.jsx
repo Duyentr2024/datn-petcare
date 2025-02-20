@@ -15,7 +15,7 @@ import ForgotPassword from "../components/account/ForgotPassword.jsx";
 import MyAccount from "../components/account/MyAccount.jsx";
 import VerifyOTP from "../components/account/VerifyOTP.jsx";
 import OrderOffline from "../components/orderOffline/OrderOffline.jsx";
-
+import Introduce from "../components/introduce/Introduce.jsx";
 
 import NotFoundPage from "./NotFoundPage.jsx";
 import Admin from "./Admin.jsx";
@@ -39,6 +39,7 @@ const HomePage = () => {
         {/* <Route path="/my-account/*" element={<MyAccount />} /> */}
         <Route path="/verify-otp" element={<VerifyOTP />} />
         <Route path="/orderOffline" element={<OrderOffline />} />
+          <Route path="/introduce" element={<Introduce />} />
 
         {/* ✅ Route yêu cầu đăng nhập */}
         <Route element={<PrivateRoute />}>
