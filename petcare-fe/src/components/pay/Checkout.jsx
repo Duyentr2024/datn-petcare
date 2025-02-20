@@ -1,14 +1,15 @@
-import React, {useEffect, useState} from "react";
-import {useAuth} from "../../context/AuthContext";
+import React, { useEffect, useState } from "react";
+import { useAuth } from "../../context/AuthContext";
 import axios from "axios";
 import Swal from "sweetalert2";
 import GHNService from "../../service/addressService/GHNService.jsx";
 import Cookies from "js-cookie";
 import CartDetailsService from "../../service/CartDetailsService/CartDetailsService.jsx";
-import {toast} from "react-toastify";
+import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom"; // Import useNavigate từ React Router
+import VoucherService from "../../service/voucherService/VoucherService.jsx";
 const Checkout = () => {
-    const {user} = useAuth();
+    const { user } = useAuth();
     const navigate = useNavigate();
     const [addresses, setAddresses] = useState([]);
     const [selectedAddress, setSelectedAddress] = useState({
@@ -24,6 +25,11 @@ const Checkout = () => {
     const [districts, setDistricts] = useState([]);
     const [wards, setWards] = useState([]);
     const [products, setProducts] = useState([]);
+    const [vouchers, setVouchers] = useState([]);
+    const [selectedVoucher, setSelectedVoucher] = useState("");
+    const [discount, setDiscount] = useState(0);
+    const [condition, setCondition] = useState(0);
+    const [expiryDate, setExpiryDate] = useState("");
     // const [shippingFee, setShippingFee] = useState(0);
     //
     // const fromDistrictId = 1442; // Mã quận của cửa hàng
@@ -34,7 +40,6 @@ const Checkout = () => {
     const handlePaymentMethodChange = (method) => {
         setPaymentMethod(method);
     };
-
 
     // Tính tổng trọng lượng
     const totalWeight = products.reduce((sum, item) => sum + item.weightValue * item.quantityItem * 1000, 0); // gram
@@ -69,8 +74,6 @@ const Checkout = () => {
         }
     }, [totalWeight]);
 
-
-
     // Hàm lấy userId từ token
     const getUserIdFromToken = () => {
         const accessToken = Cookies.get("accessToken"); // Lấy token từ cookies
@@ -88,7 +91,6 @@ const Checkout = () => {
 
     const userId = getUserIdFromToken(); // Gọi hàm sau khi đã khai báo
 
-
     // Hàm lấy fullname và phoneNumber từ token
     const getPhoneAndNameFromToken = () => {
         const accessToken = Cookies.get("accessToken"); // Lấy token từ cookies
@@ -96,8 +98,8 @@ const Checkout = () => {
 
         try {
             const payload = JSON.parse(atob(accessToken.split(".")[1])); // Giải mã payload
-            const { fullName, phone } = payload; // Lấy thông tin từ payload
-            return { fullName, phone };
+            const {fullName, phone} = payload; // Lấy thông tin từ payload
+            return {fullName, phone};
         } catch (error) {
             console.error("Invalid token:", error);
             return null;
@@ -106,10 +108,8 @@ const Checkout = () => {
 
     const userInfo = getPhoneAndNameFromToken();
     if (userInfo) {
-        const { fullName, phone  } = userInfo;
-
+        const { fullName, phone } = userInfo;
     }
-
 
     // Fetch cart details
     useEffect(() => {
@@ -153,16 +153,40 @@ const Checkout = () => {
     useEffect(() => {
         if (user?.userId) {
             axios.get(`http://localhost:8080/api/addresses/user/${user.userId}`)
-                .then((res) => {
+                .then(async (res) => {
                     setAddresses(res.data);
+
                     if (res.data.length > 0) {
                         const defaultAddress = res.data.find(addr => addr.isDefault) || res.data[0];
-                        setSelectedAddress(defaultAddress);
+
+                        // Tìm ID tương ứng từ danh sách tỉnh
+                        const provinceData = provinces.find(p => p.ProvinceName === defaultAddress.province);
+                        if (!provinceData) return;
+
+                        // Lấy danh sách quận/huyện theo ID tỉnh
+                        const districtData = await GHNService.getDistricts(provinceData.ProvinceID);
+                        const district = districtData.find(d => d.DistrictName === defaultAddress.district);
+                        if (!district) return;
+
+                        // Lấy danh sách xã/phường theo ID quận/huyện
+                        const wardData = await GHNService.getWards(district.DistrictID);
+                        const ward = wardData.find(w => w.WardName === defaultAddress.ward);
+
+                        setSelectedAddress({
+                            ...defaultAddress,
+                            province: provinceData.ProvinceID,
+                            district: district.DistrictID,
+                            ward: ward ? ward.WardCode : "",
+                            isNew: false,
+                        });
+
+                        setDistricts(districtData);
+                        setWards(wardData);
                     }
                 })
                 .catch((err) => console.error("Lỗi lấy danh sách địa chỉ:", err));
         }
-    }, [user]);
+    }, [user, provinces]);
 
     // 🔹 Cập nhật state khi người dùng chọn địa chỉ khác
     const handleSelectAddress = async (e) => {
@@ -184,15 +208,25 @@ const Checkout = () => {
             const address = addresses.find(addr => addr.addressId.toString() === addressId);
             if (address) {
                 const provinceData = provinces.find(p => p.ProvinceName === address.province);
-                const districtData = await GHNService.getDistricts(provinceData?.ProvinceID);
+                if (!provinceData) {
+                    console.error("Không tìm thấy tỉnh:", address.province);
+                    return;
+                }
+
+                const districtData = await GHNService.getDistricts(provinceData.ProvinceID);
                 const district = districtData.find(d => d.DistrictName === address.district);
-                const wardData = await GHNService.getWards(district?.DistrictID);
+                if (!district) {
+                    console.error("Không tìm thấy quận:", address.district);
+                    return;
+                }
+
+                const wardData = await GHNService.getWards(district.DistrictID);
                 const ward = wardData.find(w => w.WardName === address.ward);
 
                 setSelectedAddress({
                     ...address,
-                    province: provinceData ? provinceData.ProvinceID : "",
-                    district: district ? district.DistrictID : "",
+                    province: provinceData.ProvinceID,
+                    district: district.DistrictID,
                     ward: ward ? ward.WardCode : "",
                     isNew: false,
                 });
@@ -205,22 +239,22 @@ const Checkout = () => {
 
     // 🔹 Xử lý thay đổi input khi chỉnh sửa
     const handleInputChange = async (e) => {
-        const { name, value } = e.target;
+        const {name, value} = e.target;
 
         setSelectedAddress((prev) => {
             let updatedValue = value;
 
             if (name === "province") {
                 GHNService.getDistricts(value).then(setDistricts);
-                return { ...prev, province: value, district: "", ward: "" };
+                return {...prev, province: value, district: "", ward: ""};
             } else if (name === "district") {
                 GHNService.getWards(value).then(setWards);
                 return { ...prev, district: value, ward: "" };
             } else if (name === "ward") {
-                return { ...prev, ward: value };
+                return {...prev, ward: value};
             }
 
-            return { ...prev, [name]: updatedValue };
+            return {...prev, [name]: updatedValue};
         });
 
         // 🔹 Nếu không phải địa chỉ mới, tự động lưu khi thay đổi tỉnh, huyện, xã hoặc đường
@@ -255,35 +289,82 @@ const Checkout = () => {
         }
     };
 
-    const handleSaveAddress = async () => {
-        const provinceName = provinces.find(p => p.ProvinceID === selectedAddress.province)?.ProvinceName;
-        const districtName = districts.find(d => d.DistrictID === selectedAddress.district)?.DistrictName;
-        const wardName = wards.find(w => w.WardCode === selectedAddress.ward)?.WardName;
+    // 🔹 Khi `ward` hoặc `street` thay đổi, tự động cập nhật API
+    useEffect(() => {
+        if (!selectedAddress.isNew && (selectedAddress.ward || selectedAddress.street)) {
+            const updatedAddress = {
+                ...selectedAddress,
+                province: provinces.find(p => String(p.ProvinceID) === String(selectedAddress.province))?.ProvinceName || "",
+                district: districts.find(d => String(d.DistrictID) === String(selectedAddress.district))?.DistrictName || "",
+                ward: wards.find(w => String(w.WardCode) === String(selectedAddress.ward))?.WardName || "",
+            };
 
+            (async () => {
+                try {
+                    await axios.put(`http://localhost:8080/api/addresses/${updatedAddress.addressId}`, updatedAddress);
+                    setAddresses(prev => prev.map(addr => addr.addressId === updatedAddress.addressId ? updatedAddress : addr));
+                } catch (error) {
+                    Swal.fire("Lỗi!", "Không thể cập nhật địa chỉ", "error");
+                }
+            })();
+        }
+    }, [selectedAddress.ward, selectedAddress.street]); // Chỉ chạy khi `ward` hoặc `street` thay đổi
+
+    const handleSaveAddress = async () => {
+        // 🔹 Lấy tên từ ID trước khi gửi lên API
+        const provinceName = provinces.find(p => String(p.ProvinceID) === String(selectedAddress.province))?.ProvinceName || "";
+        const districtName = districts.find(d => String(d.DistrictID) === String(selectedAddress.district))?.DistrictName || "";
+        const wardName = wards.find(w => String(w.WardCode) === String(selectedAddress.ward))?.WardName || "";
+
+        if (!provinceName || !districtName || !wardName) {
+            Swal.fire("Lỗi!", "Vui lòng chọn đầy đủ tỉnh, quận và xã!", "error");
+            return;
+        }
+
+        // 🔹 Chuẩn bị dữ liệu để gửi lên API
         const addressData = {
             ...selectedAddress,
-            province: provinceName, // Lưu tên thay vì ID
-            district: districtName,
-            ward: wardName,
-            userId: user.userId,
+            province: provinceName,  // Đảm bảo lưu tên tỉnh
+            district: districtName,  // Đảm bảo lưu tên huyện
+            ward: wardName,          // Đảm bảo lưu tên xã
+            userId: user?.userId,
         };
 
-        console.log("📤 Dữ liệu gửi đi:", addressData);
+        console.log("📤 Dữ liệu gửi lên API:", addressData); // Kiểm tra dữ liệu
 
-        if (selectedAddress.isNew) {
-            axios.post("http://localhost:8080/api/addresses", addressData)
-                .then(() => Swal.fire("Thành công!", "Đã thêm địa chỉ mới", "success"))
-                .catch(() => Swal.fire("Lỗi!", "Không thể thêm địa chỉ", "error"));
-        } else {
-            axios.put(`http://localhost:8080/api/addresses/${selectedAddress.addressId}`, addressData)
-                .then(() => Swal.fire("Thành công!", "Đã cập nhật địa chỉ", "success"))
-                .catch(() => Swal.fire("Lỗi!", "Không thể cập nhật địa chỉ", "error"));
+        try {
+            let response;
+            if (selectedAddress.isNew) {
+                response = await axios.post("http://localhost:8080/api/addresses", addressData);
+            } else {
+                response = await axios.put(`http://localhost:8080/api/addresses/${selectedAddress.addressId}`, addressData);
+            }
+
+            Swal.fire("Thành công!", selectedAddress.isNew ? "Đã thêm địa chỉ mới" : "Đã cập nhật địa chỉ", "success");
+
+
+            // 🔹 Gọi API để cập nhật danh sách địa chỉ
+            const updatedAddresses = await axios.get(`http://localhost:8080/api/addresses/user/${user.userId}`);
+            setAddresses(updatedAddresses.data);
+
+            // 🔹 Cập nhật địa chỉ được chọn thành địa chỉ mới nhất
+            setSelectedAddress({ ...response.data, isNew: false });
+
+        } catch (error) {
+            Swal.fire("Lỗi!", "Không thể lưu địa chỉ. Vui lòng thử lại!", "error");
         }
-    }
+    };
 
-    const shippingAddress = `${selectedAddress.street}, ${selectedAddress.ward || ''}, ${selectedAddress.district || ''}, ${selectedAddress.province || ''}`.replace(/, ,/g, ',').replace(/, $/, '');
+    const provinceName = provinces.find(p => String(p.ProvinceID) === String(selectedAddress.province))?.ProvinceName || "";
+    const districtName = districts.find(d => String(d.DistrictID) === String(selectedAddress.district))?.DistrictName || "";
+    const wardName = wards.find(w => String(w.WardCode) === String(selectedAddress.ward))?.WardName || "";
 
-    const shippingCosts = 30000 ;
+    const shippingAddress = `${selectedAddress.street}, ${wardName}, ${districtName}, ${provinceName}`
+        .replace(/, ,/g, ',')
+        .replace(/, $/, '');
+
+    const shippingCosts = 30000;
+
     const handlePayment = async () => {
         const orderDetails = {
             userId: Number(userId),
@@ -292,7 +373,7 @@ const Checkout = () => {
             shippingCost: Number(shippingCosts),
             voucherId: selectedAddress?.voucherId ? Number(selectedAddress.voucherId) : null,
             type: "ORDER ONLINE",
-            items: products.map(({ productDetailId, quantityItem, price }) => ({
+            items: products.map(({productDetailId, quantityItem, price}) => ({
                 productDetailId: Number(productDetailId),
                 quantity: Number(quantityItem),
                 price: Number(price),
@@ -324,6 +405,77 @@ const Checkout = () => {
         }
     };
 
+    // voucher
+    useEffect(() => {
+        const fetchVouchers = async () => {
+            try {
+                const data = await VoucherService.getAllVouchers();
+                setVouchers(data);
+            } catch (error) {
+                console.error("Lỗi khi lấy danh sách voucher:", error);
+            }
+        };
+
+        fetchVouchers();
+    }, []);
+
+    useEffect(() => {
+        const selected = vouchers.find(v => v.voucherId.toString() === selectedVoucher);
+        if (selected) {
+            setDiscount(selected.percents);
+            setCondition(selected.condition);
+        } else {
+            setDiscount(0);
+            setCondition(0);
+        }
+    }, [selectedVoucher, vouchers]);
+
+    const handleCheckout = async () => {
+        try {
+            console.log("Xử lý thanh toán...");
+
+            // Gọi API thanh toán thành công (giả lập)
+            setTimeout(async () => {
+                console.log("Thanh toán thành công!");
+
+                // Nếu có voucher, giảm số lượng voucher
+                if (selectedVoucher) {
+                    console.log(`Giảm số lượng voucher ID: ${selectedVoucher}`);
+                    await VoucherService.decrementVoucherQuantity(selectedVoucher);
+                    console.log("Số lượng voucher đã cập nhật!");
+                }
+            }, 1000);
+        } catch (error) {
+            console.error("Lỗi khi thanh toán:", error);
+        }
+    };
+    const handleOrderProcess = async () => {
+        try {
+            console.log("Bắt đầu xử lý đơn hàng...");
+
+            // Gọi handleCheckout trước để giảm số lượng voucher (nếu có)
+            await handleCheckout();
+
+            // Sau đó gọi handlePayment để thực hiện thanh toán
+            await handlePayment();
+
+        } catch (error) {
+            console.error("Lỗi trong quá trình xử lý đơn hàng:", error);
+        }
+    };
+
+    const getDaysUntilExpiry = (endDate) => {
+        const today = new Date();
+        const expiryDate = new Date(endDate);
+        const diffTime = expiryDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays > 0 ? <span className="text-red-500">{diffDays} ngày</span> : <span className="text-red-500">Hết hạn</span>;
+    };
+
+    const subtotal = products.reduce((total, item) => total + item.price * item.quantityItem, 0);
+    const totalBeforeDiscount = subtotal + shippingCosts;
+    const discountAmount = subtotal >= condition ? (totalBeforeDiscount * discount) / 100 : 0;
+    const totalAmount = (totalBeforeDiscount - discountAmount).toLocaleString();
 
     return (
         <div className="min-h-screen flex justify-center items-center px-4 md:px-0 relative">
@@ -351,9 +503,9 @@ const Checkout = () => {
                         <h2 className="text-2xl font-bold text-[#fbb321] mb-4 mt-4">Thông tin thanh toán</h2>
                         <form className="space-y-4">
                             {[
-                                {label: "Họ và tên", name: "fullName", type: "text"},
-                                {label: "Số điện thoại", name: "phone", type: "text"},
-                                {label: "Địa chỉ", name: "street", type: "text"},
+                                { label: "Họ và tên", name: "fullName", type: "text" },
+                                { label: "Số điện thoại", name: "phone", type: "text" },
+                                { label: "Địa chỉ", name: "street", type: "text" },
                             ].map((field, index) => (
                                 <div key={index} className="flex flex-col md:flex-row md:items-center md:space-x-4">
                                     <label className="block text-sm font-medium text-gray-700 md:w-1/3">
@@ -438,17 +590,32 @@ const Checkout = () => {
                                 </select>
                             </div>
 
-                            <div className="flex flex-col md:flex-row md:items-center md:space-x-4">
+                            <div className="flex flex-col md:flex-row md:items-center md:space-x-4 bg-gray-100 p-4 rounded-lg shadow-md">
                                 <label className="block text-sm font-medium text-gray-700 md:w-1/3">
-                                    Giảm giá
+                                    Mã giảm giá
                                 </label>
                                 <select
-                                    className="mt-1 block w-full md:w-2/3 border border-gray-300 rounded-md shadow-sm p-2 bg-white disabled:bg-gray-200">
-                                    <option value="">Chọn mã giảm giá</option>
-                                    <option value="10off">Giảm 10%</option>
-                                    <option value="20off">Giảm 20%</option>
+                                    className="mt-1 block w-full md:w-2/3 border border-gray-400 rounded-lg shadow-sm p-3 bg-white text-gray-700 hover:border-blue-500 focus:ring focus:ring-blue-300 overflow-y-auto max-h-40 text-base"
+                                    value={selectedVoucher}
+                                    onChange={(e) => setSelectedVoucher(e.target.value)}
+                                >
+                                    <option value="" className="text-gray-500 italic">
+                                        🎟 Chọn mã giảm giá
+                                    </option>
+                                    {vouchers
+                                        .filter((voucher) => subtotal >= voucher.condition) // Chỉ hiển thị voucher nếu subtotal >= condition
+                                        .map((voucher) => (
+                                            <option
+                                                key={voucher.voucherId}
+                                                value={voucher.voucherId}
+                                                className="text-gray-800 font-medium bg-gray-100 hover:bg-gray-200 p-2"
+                                            >
+                                                {voucher.percents}% |
+                                                🎟 <span className="text-green-500">Số lượng: {voucher.quantity}</span> |
+                                                ⏳ <span className="text-red-500">{getDaysUntilExpiry(voucher.endDate)}</span>
+                                            </option>
+                                        ))}
                                 </select>
-
                             </div>
                         </form>
 
@@ -456,7 +623,7 @@ const Checkout = () => {
                         {selectedAddress.isNew && (
                             <div className="mt-4">
                                 <button className="bg-green-500 text-white px-4 py-2 rounded-md w-full"
-                                        onClick={handleSaveAddress}>
+                                    onClick={handleSaveAddress}>
                                     Lưu địa chỉ
                                 </button>
                             </div>
@@ -476,7 +643,7 @@ const Checkout = () => {
                                     value: "COD",
                                 }].map((method, index) => (
                                     <label key={index}
-                                           className={`flex flex-col items-center justify-center border w-40 h-40 px-3 py-2 rounded-lg cursor-pointer ${paymentMethod === method.value ? 'border-yellow-500' : 'border-gray-300'}`}>
+                                        className={`flex flex-col items-center justify-center border w-40 h-40 px-3 py-2 rounded-lg cursor-pointer ${paymentMethod === method.value ? 'border-yellow-500' : 'border-gray-300'}`}>
                                         <input
                                             type="radio"
                                             value={method.value}
@@ -485,7 +652,7 @@ const Checkout = () => {
                                             className="mb-2"
                                         />
                                         <img src={method.img} alt={method.text}
-                                             className="w-12 h-12 object-cover mb-2 rounded-full"/>
+                                            className="w-12 h-12 object-cover mb-2 rounded-full" />
                                         <span className="font-medium text-xs text-center">{method.text}</span>
                                     </label>
                                 ))}
@@ -495,7 +662,7 @@ const Checkout = () => {
 
                     </div>
 
-                    {/* Giỏ hàng */}
+
                     {/* Giỏ hàng */}
                     <div
                         className="bg-[#fbb321] p-5 md:p-6 rounded-3xl text-white sticky top-4 max-h-[500px] overflow-y-auto w-full md:w-[320px] shadow-2xl">
@@ -524,23 +691,25 @@ const Checkout = () => {
                         <div className="mt-5 space-y-2 text-base">
                             <div className="flex justify-between font-medium">
                                 <p>Tạm tính:</p>
-                                <p>{products.reduce((total, item) => total + item.price * item.quantityItem, 0).toLocaleString()}₫</p>
+                                <p>{subtotal.toLocaleString()}₫</p>
                             </div>
                             <div className="flex justify-between font-medium">
                                 <p>Phí giao hàng:</p>
-                                <p>{shippingCosts}₫</p>
+                                <p>{shippingCosts.toLocaleString()}₫</p>
+                            </div>
+                            <div className="flex justify-between font-medium">
+                                <p>Giảm giá:</p>
+                                <p>-{discountAmount.toLocaleString()}₫</p>
                             </div>
                             <div className="flex justify-between font-bold text-lg mt-2 border-t border-white pt-3">
                                 <p>Tổng cộng:</p>
-                                <p className="text-xl">{(
-                                    products.reduce((total, item) => total + (item.price + shippingCosts)* item.quantityItem, 0)
-                                ).toLocaleString()}₫</p>
+                                <p className="text-xl">{totalAmount}₫</p>
                             </div>
                         </div>
 
                         {/* Nút Thanh toán */}
                         <button
-                            onClick={handlePayment}
+                            onClick={handleOrderProcess}
                             className="mt-5 w-full bg-[#fef0d3] text-[#fbb321] font-bold py-3 rounded-3xl
         transition-all duration-300 ease-in-out
         hover:bg-[#408630] hover:text-white hover:shadow-lg"
