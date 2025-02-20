@@ -51,20 +51,24 @@ const ManageProducts = () => {
     const fetchCategories = async () => {
         try {
             const response = await CategoriesService.getAllCategories();
-            setCategories(response);
+            const activeCategories = response.filter(category => category.status);
+            setCategories(activeCategories);
         } catch (error) {
             console.error("Lỗi khi lấy danh mục:", error);
         }
     };
+    
 
     const fetchBrands = async () => {
         try {
             const response = await BrandService.getAllBrands();
-            setBrands(response);
+            const activeBrands = response.filter(brand => brand.status);
+            setBrands(activeBrands);
         } catch (error) {
             console.error("Lỗi khi lấy thương hiệu:", error);
         }
     };
+    
 
     // Handle pagination
     const paginateProducts = () => {

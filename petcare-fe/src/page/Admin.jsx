@@ -6,6 +6,8 @@ import ManageProductWeights from "../components/Manage/ManageProductWeights";
 import ManageProductBrand from "../components/Manage/ManageProductBrand";
 import ManageProductCategories from "../components/Manage/ManageProductCategories";
 import ManageProducts from "../components/Manage/ManageProducts";
+import ManageProductImages from "../components/Manage/ManageProductImages";
+import ManageProductDetails from "../components/Manage/ManageProductDetails";
 function Admin() {
   return (
     <div className="flex flex-col h-screen bg-gray-100 font-sans">
@@ -24,6 +26,8 @@ function Admin() {
             <Route path="/product-brands" element={<ManageProductBrand />} />
             <Route path="/product-categories" element={<ManageProductCategories />} />
             <Route path="/products-list" element={<ManageProducts />} />
+            <Route path="/product-image" element={<ManageProductImages />} />
+            <Route path="/product-details" element={<ManageProductDetails />} />
           </Routes>
         </main>
       </div>
