@@ -9,25 +9,46 @@ const ResetPassword = () => {
     const navigate = useNavigate();
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
-    const queryParams = new URLSearchParams(location.search);
-// Lấy email từ URL, state hoặc localStorage
-
     const [email, setEmail] = useState("");
+    const [passwordStrength, setPasswordStrength] = useState(0);
+    const [errorMessage, setErrorMessage] = useState("");
 
     useEffect(() => {
         const emailFromState = location.state?.email;
         const emailFromLocalStorage = localStorage.getItem("resetEmail");
-
         if (emailFromState) {
             setEmail(emailFromState);
         } else if (emailFromLocalStorage) {
             setEmail(emailFromLocalStorage);
         }
     }, [location]);
-
-    console.log("Email để đặt lại mật khẩu:", email);
-
-
+    const handlePasswordChange = (e) => {
+        const newPass = e.target.value;
+        setPassword(newPass);
+        calculateStrength(newPass);
+        if (newPass === email) {
+            setErrorMessage("Mật khẩu không được trùng với email!");
+        } else {
+            setErrorMessage("");
+        }
+    };
+    const handleConfirmPasswordChange = (e) => {
+        setConfirmPassword(e.target.value);
+        if (e.target.value !== password) {
+            setErrorMessage("Mật khẩu xác nhận không khớp!");
+        } else {
+            setErrorMessage("");
+        }
+    };
+    const calculateStrength = (pass) => {
+        let strength = 0;
+        if (pass.length >= 8) strength += 1;
+        if (/[A-Z]/.test(pass)) strength += 1;
+        if (/[a-z]/.test(pass)) strength += 1;
+        if (/[0-9]/.test(pass)) strength += 1;
+        if (/[^A-Za-z0-9]/.test(pass)) strength += 1;
+        setPasswordStrength(strength);
+    };
     const handleResetPassword = async (e) => {
         e.preventDefault();
 
@@ -40,10 +61,6 @@ const ResetPassword = () => {
             });
             return;
         }
-
-        // Kiểm tra dữ liệu trước khi gửi
-        console.log("Email để đặt lại mật khẩu:", email);
-        console.log("Mật khẩu mới:", password);
 
         if (!email || !password) {
             Swal.fire({
@@ -75,8 +92,8 @@ const ResetPassword = () => {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen px-4">
-            <div className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-lg">
+        <div className="flex items-center justify-center min-h-132.5 px-4">
+            <div className="bg-white rounded-3xl shadow-6 p-6 w-full max-w-lg">
                 <h2 className="text-3xl font-bold text-yellow-500 mb-6 text-center">Đặt lại mật khẩu</h2>
                 <form onSubmit={handleResetPassword}>
                     <div className="mb-4">
@@ -85,9 +102,20 @@ const ResetPassword = () => {
                             placeholder="Nhập mật khẩu mới"
                             className="border p-2 w-full rounded-lg"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            onChange={handlePasswordChange}
                             required
                         />
+                        <div className="h-2 mt-2 w-full bg-gray-200 rounded-full">
+                            <div
+                                className={`h-full rounded-full ${
+                                    passwordStrength === 1 ? "bg-red-500 w-1/5" :
+                                        passwordStrength === 2 ? "bg-orange-500 w-2/5" :
+                                            passwordStrength === 3 ? "bg-yellow-500 w-3/5" :
+                                                passwordStrength === 4 ? "bg-green-400 w-4/5" :
+                                                    passwordStrength === 5 ? "bg-green-600 w-full" : "w-0"
+                                }`}
+                            ></div>
+                        </div>
                     </div>
                     <div className="mb-4">
                         <input
@@ -95,13 +123,15 @@ const ResetPassword = () => {
                             placeholder="Xác nhận mật khẩu"
                             className="border p-2 w-full rounded-lg"
                             value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            onChange={handleConfirmPasswordChange}
                             required
                         />
                     </div>
+                    {errorMessage && <p className="text-red-500 text-sm mb-4">{errorMessage}</p>}
                     <button
                         type="submit"
                         className="bg-yellow-500 text-white px-6 py-3 rounded-lg w-full hover:bg-yellow-600"
+                        disabled={errorMessage !== ""}
                     >
                         Đặt lại mật khẩu
                     </button>

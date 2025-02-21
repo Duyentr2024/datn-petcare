@@ -30,6 +30,21 @@ const ProductDetail = () => {
     }, [product]);
 
     useEffect(() => {
+        if (selectedSize && selectedColor && selectedWeight) {
+            const selectedVariant = product?.variants?.find(
+                (variant) =>
+                    variant.sizeValue === selectedSize &&
+                    variant.colorValue === selectedColor &&
+                    variant.weightValue === selectedWeight
+            );
+    
+            if (selectedVariant) {
+                localStorage.setItem("ProductDetailId", selectedVariant.productDetailId);
+            }
+        }
+    }, [selectedSize, selectedColor, selectedWeight, product]);
+
+    useEffect(() => {
         const fetchProductDetails = async () => {
             try {
                 setLoading(true);
@@ -170,10 +185,6 @@ const ProductDetail = () => {
         });
     }
 };
-
-
-
-
 
 
     const isValidCombination = (size, color, weight) => {
