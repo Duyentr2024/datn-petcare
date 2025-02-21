@@ -20,6 +20,7 @@ import Introduce from "../components/introduce/Introduce.jsx";
 import NotFoundPage from "./NotFoundPage.jsx";
 import Admin from "./Admin.jsx";
 import PrivateRoute from "../context/PrivateRoute.jsx";
+import SearchProduct from "../components/product/search/SearchProduct.jsx";
 const HomePage = () => {
   return (
     <>
@@ -40,13 +41,13 @@ const HomePage = () => {
         <Route path="/verify-otp" element={<VerifyOTP />} />
         <Route path="/orderOffline" element={<OrderOffline />} />
           <Route path="/introduce" element={<Introduce />} />
-
+          <Route path="/search" element={<SearchProduct />} />
         {/* ✅ Route yêu cầu đăng nhập */}
         <Route element={<PrivateRoute />}>
           <Route path="/my-account/*" element={<MyAccount />} />
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/shoppingCart" element={<ShoppingCart />} />
-
+ 
         </Route>
 
         {/* Route 404 - Khi không tìm thấy trang */}

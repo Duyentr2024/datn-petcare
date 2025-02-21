@@ -108,17 +108,7 @@ const GoodPrice = () => {
               </h1>
               <FaPaw className="w-6 h-6 mr-2 text-white" />
             </div>
-            <div className="flex space-x-2">
-              <div className="bg-green-500 text-white w-12 h-12 flex items-center justify-center rounded-lg border-4 border-[#FBB321] text-2xl font-bold shadow-2xl shadow-white">
-                {hours}
-              </div>
-              <div className="bg-green-500 text-white w-12 h-12 flex items-center justify-center rounded-lg border-4 border-[#FBB321] text-2xl font-bold shadow-2xl shadow-white">
-                {minutes}
-              </div>
-              <div className="bg-green-500 text-white w-12 h-12 flex items-center justify-center rounded-lg border-4 border-[#FBB321] text-2xl font-bold shadow-2xl shadow-white">
-                {seconds}
-              </div>
-            </div>
+         
           </div>
 
           <div className="relative w-full flex justify-center items-center px-15    ">

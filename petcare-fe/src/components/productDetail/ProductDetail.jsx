@@ -212,15 +212,17 @@ const ProductDetail = () => {
                 variant.colorValue === color &&
                 variant.weightValue === weight
         );
-
+    
         if (selectedDetail) {
             setProduct((prev) => ({
                 ...prev,
-                quantity: selectedDetail.quantity,
+                price: selectedDetail.price, // Cập nhật giá sản phẩm
+                quantity: selectedDetail.quantity, // Cập nhật số lượng tồn kho
             }));
         } else {
             setProduct((prev) => ({
                 ...prev,
+                price: 0,
                 quantity: 0,
             }));
         }
@@ -236,7 +238,7 @@ const ProductDetail = () => {
             setLoadingSize(null);
         }, 500);
     };
-
+    
     const handleColorChange = (color) => {
         const newColor = color === selectedColor ? null : color;
         setLoadingColor(color);
@@ -246,7 +248,7 @@ const ProductDetail = () => {
             setLoadingColor(null);
         }, 500);
     };
-
+    
     const handleWeightChange = (weight) => {
         const newWeight = weight === selectedWeight ? null : weight;
         setLoadingWeight(weight);

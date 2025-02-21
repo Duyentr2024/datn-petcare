@@ -17,6 +17,7 @@ import logo from "../../assets/images/banner1.png";
 import { motion } from "framer-motion";
 
 export default function Header() {
+  const [searchTerm, setSearchTerm] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeMenuItem, setActiveMenuItem] = useState("");
   const menuRef = useRef(null);
@@ -46,6 +47,14 @@ export default function Header() {
   const [isShaking, setIsShaking] = useState(true);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  // Xử lý tìm kiếm
+  const handleSearch = () => {
+    if (searchTerm.trim() !== "") {
+      navigate(`/search?query=${encodeURIComponent(searchTerm)}`);
+    }
+  };
+
 
  // Xử lý đóng menu khi click ra ngoài
   useEffect(() => {
@@ -175,12 +184,17 @@ export default function Header() {
               <div className="flex sm:w-auto">
                 <div className="flex items-center space-x-4 relative w-[900px] max-w-lg hidden sm:block">
                   <input
+                   value={searchTerm}
+                   onChange={(e) => setSearchTerm(e.target.value)}
+                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                     type="text"
-                    placeholder="Nhập từ khoá tìm kiếm..."
+                    placeholder="Tiềm kiếm sản phẩm..."
                     className="border border-yellow-500 rounded-2xl px-4 py-2 pl-4 pr-12 w-full focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-50 transition-all duration-300 ease-in-out"
                   />
-                  <button className="absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500">
+                  <button className="absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500"
+                  onClick={handleSearch}>
                     <FaSearch size={18} />
+                    
                   </button>
                 </div>
               </div>
