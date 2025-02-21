@@ -26,11 +26,18 @@ const ProductComments = (productDetailId) => {
             }
 
             const reviews = await ReviewService.getReviewsByProductDetail(productDetailId);
-            setComments(reviews);
+
+            // Sắp xếp bình luận theo thời gian (mới nhất lên đầu)
+            const sortedReviews = reviews.sort(
+                (a, b) => new Date(b.reviewDate) - new Date(a.reviewDate)
+            );
+
+            setComments(sortedReviews);
         } catch (error) {
             console.error("Lỗi khi tải đánh giá:", error);
         }
     };
+
 
 
     const handleViewChange = (newView) => {
@@ -41,21 +48,7 @@ const ProductComments = (productDetailId) => {
         }, 300);
     };
 
-    // const handleInputChange = (e) => {
-    //     const { name, value } = e.target;
-    //     setComments({ ...newComment, [name]: value });
-    // };
 
-    // const handleImageChange = (e) => {
-    //     setComments({ ...newComment, image: URL.createObjectURL(e.target.files[0]) });
-    // };
-
-    // const handleSubmit = () => {
-    //     if (newComment.name && newComment.content) {
-    //         setComments([...comments, { ...newComment, id: comments.length + 1, date: new Date().toLocaleDateString() }]);
-    //         setComments({ name: "", email: "", content: "", image: null });
-    //     }
-    // };
 
     return (
         <div className="p-6 bg-gray-50 rounded-lg shadow-lg">
@@ -95,7 +88,7 @@ const ProductComments = (productDetailId) => {
                         {comments.length > 0 ? (
                             comments.map((comment) => (
                                 <div key={comment.productDetailId} className="flex items-start space-x-4 mb-4 border-b-2 py-2">
-                                    
+
                                     <img
                                         src={comment.imageUrl || "/default-user.png"}
                                         alt=""
