@@ -98,6 +98,17 @@ const ProductDetailsService = {
             throw error;
         }
     },
+
+    searchProducts: async (query) => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/search?productName=${query}`);
+            return response.data;
+        } catch (error) {
+            console.error("Lỗi khi tìm kiếm sản phẩm:", error);
+            return [];
+        }
+    }
+    
 };
 
 export default ProductDetailsService;
