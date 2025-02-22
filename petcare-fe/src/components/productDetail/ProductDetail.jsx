@@ -189,15 +189,18 @@ const ProductDetail = () => {
         if (selectedDetail) {
             setProduct((prev) => ({
                 ...prev,
-                quantity: selectedDetail.quantity,
+                price: selectedDetail.price, // Cập nhật giá sản phẩm
+                quantity: selectedDetail.quantity, // Cập nhật số lượng tồn kho
             }));
         } else {
             setProduct((prev) => ({
                 ...prev,
+                price: 0,
                 quantity: 0,
             }));
         }
     };
+
 
 
     const handleSizeChange = (size) => {
@@ -400,9 +403,12 @@ const ProductDetail = () => {
                                 +
                             </button>
                         </div>
-                        <span className="text-xs text-gray-500">
-                        (Còn {product?.quantity} sản phẩm)
-                         </span>
+                        <span
+                            className={`text-xs font-semibold ${product?.quantity === 0 ? 'text-red-500' : 'text-gray-500'}`}>
+                            {product?.quantity === 0 ? "(Sản phẩm - Hết hàng)" : `( sản phẩm còn - ${product?.quantity})`}
+                        </span>
+
+
                     </div>
 
                     {/* Nút hành động */}
