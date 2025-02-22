@@ -28,7 +28,7 @@ const HomePage = () => {
 
       <Routes>
           <Route path="/productDetail/:productId" element={<ProductDetail />} />
-        <Route path="/productPage" element={<ProductPage />} />
+        <Route path="/productPage/*" element={<ProductPage />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/newsPage" element={<NewsPage />} />
         {/* <Route path="/checkout" element={<Checkout />} /> */}

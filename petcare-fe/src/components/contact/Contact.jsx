@@ -41,8 +41,12 @@ const Contact = () => {
             <Input placeholder="Họ và tên" />
             <Input placeholder="Email" />
             <Input placeholder="Số điện thoại" />
-            <Input placeholder="Tên công ty" />
-            <Input placeholder="Mã số thuế" />
+            <div className="w-[570px] h-32 bg-white rounded-lg border border-black/10 overflow-hidden">
+              <textarea
+                  placeholder="Nhập thắc mắc của bạn..."
+                  className="w-full h-full p-4 text-sm font-semibold placeholder-[#888888] resize-none"
+              />
+            </div>
 
             <div className="mt-12 flex items-center justify-between">
               <p className="text-[#8a5e3b] text-base font-medium">
@@ -85,5 +89,7 @@ const Input = ({ placeholder }) => {
     </div>
   );
 };
+
+
 
 export default Contact;

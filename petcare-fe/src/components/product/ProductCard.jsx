@@ -57,7 +57,7 @@ export function ProductCard({ name, price, image, productId }) {
             <div className="p-3">
                 <h3 className="font-medium text-gray-800 mb-3 line-clamp-2">{name}</h3>
                 <div className="flex justify-between items-baseline">
-                    <span className="text-[#fbb321] font-bold text-lg">{price}đ</span>
+                    <span className="text-[#fbb321] font-bold text-lg">{price}</span>
                     <button onClick={handleToggleFavorite}>
                         {isFavorite ? (
                             <FavoriteIcon className="text-red-500 transition-transform duration-500" />

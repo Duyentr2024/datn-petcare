@@ -229,6 +229,7 @@ const ProductDetail = () => {
     };
 
 
+
     const handleSizeChange = (size) => {
         const newSize = size === selectedSize ? null : size;
         setLoadingSize(size);
@@ -429,9 +430,12 @@ const ProductDetail = () => {
                                 +
                             </button>
                         </div>
-                        <span className="text-xs text-gray-500">
-                        (Còn {product?.quantity} sản phẩm)
-                         </span>
+                        <span
+                            className={`text-xs font-semibold ${product?.quantity === 0 ? 'text-red-500' : 'text-gray-500'}`}>
+                            {product?.quantity === 0 ? "(Sản phẩm - Hết hàng)" : `( sản phẩm còn - ${product?.quantity})`}
+                        </span>
+
+
                     </div>
 
                     {/* Nút hành động */}
