@@ -2,14 +2,140 @@ import React, { useEffect, useState } from "react";
 import ProductsService from "../../service/manageService/ProductsService";
 import CategoriesService from "../../service/manageService/ProductCategoriesService";
 import BrandService from "../../service/manageService/ProductBrandService";
+// import ProductDetailsServices from "../../service/manageService/ProductDetailsService";
+import ProductColorService from "../../service/manageService/ProductColorService";
+import ProductSizeService from "../../service/manageService/ProductSizeService";
+import ProductWeightsService from "../../service/manageService/ProductWeightsService";
+import ProductDetailsService from "../../service/serviceProduct/ProductDetailsService"
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { storage } from "../../firebaseConfig";
+import { Link } from "react-router-dom";
 
 const ManageProducts = () => {
     const [products, setProducts] = useState([]);
+    const [selectedProductId, setSelectedProductId] = useState(null);
     const [categories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editProduct, setEditProduct] = useState({
+        productId: null,
+        productName: "",
+        description: "",
+        categoryId: "",
+        brandId: "",
+        image: null,
+    });
+
+    const openEditModal = (product) => {
+        if (!product) {
+            console.error("❌ Không có dữ liệu sản phẩm để chỉnh sửa!");
+            return;
+        }
+
+        console.log("🔍 Dữ liệu gốc của sản phẩm khi sửa:", JSON.stringify(product, null, 2));
+
+        const categoryId = categories.find(c => c.categoryName === product.categoryName)?.categoryId || 0;
+        const brandId = brands.find(b => b.brandName === product.brandName)?.brandId || 0;
+        const productData = {
+            productId: product.productId,
+            productName: product.productName,
+            description: product.description,
+            categoryId,
+            brandId,
+            image: product.image || null,
+        };
+
+        console.log("📝 Dữ liệu sản phẩm khi mở modal sửa:", JSON.stringify(productData, null, 2));
+
+        setEditProduct(productData);
+        setIsEditModalOpen(true);
+    };
+
+
+
+
+    const handleUpdateProduct = async () => {
+        // Reset errors
+        setErrors({
+            productName: "",
+            categoryId: "",
+            brandId: "",
+            image: "",
+        });
+
+        let isValid = true;
+        const newErrors = {};
+
+        // Kiểm tra tên sản phẩm
+        if (!editProduct.productName.trim()) {
+            newErrors.productName = "Vui lòng nhập tên sản phẩm.";
+            isValid = false;
+        }
+
+        // Kiểm tra ảnh (chỉ khi ảnh bị xóa hoặc chưa có)
+        if (!editProduct.image) {
+            newErrors.image = "Vui lòng chọn hình ảnh.";
+            isValid = false;
+        }
+
+        // Kiểm tra danh mục (categoryId phải tồn tại và hợp lệ)
+        if (!editProduct.categoryId || isNaN(editProduct.categoryId) || editProduct.categoryId === "") {
+            newErrors.categoryId = "Vui lòng chọn danh mục hợp lệ.";
+            isValid = false;
+        }
+
+        // Kiểm tra thương hiệu (brandId phải tồn tại và hợp lệ)
+        if (!editProduct.brandId || isNaN(editProduct.brandId) || editProduct.brandId === "") {
+            newErrors.brandId = "Vui lòng chọn thương hiệu hợp lệ.";
+            isValid = false;
+        }
+
+        setErrors(newErrors);
+
+        if (!isValid) {
+            return;
+        }
+
+        try {
+            console.log("📝 Dữ liệu sản phẩm trước khi cập nhật:", editProduct);
+
+            let imageUrl = editProduct.image;
+            if (typeof editProduct.image === "object") {
+                console.log("📤 Upload ảnh mới lên Firebase...");
+                imageUrl = await uploadImageToFirebase(editProduct.image);
+                console.log("✅ Ảnh tải lên thành công:", imageUrl);
+            }
+
+            const updatedData = {
+                productId: editProduct.productId,
+                productName: editProduct.productName,
+                description: editProduct.description,
+                image: imageUrl,
+                categories: { categoryId: parseInt(editProduct.categoryId, 10) },
+                brand: { brandId: parseInt(editProduct.brandId, 10) },
+            };
+
+            console.log("📤 Dữ liệu gửi lên API:", JSON.stringify(updatedData, null, 2));
+
+            await ProductsService.updateProduct(editProduct.productId, updatedData);
+
+            console.log("✅ Cập nhật sản phẩm thành công!");
+            setIsEditModalOpen(false);
+            fetchProducts();
+        } catch (error) {
+            console.error("❌ Lỗi khi cập nhật sản phẩm:", error);
+            if (error.response) {
+                console.error("🔴 Phản hồi lỗi từ server:", error.response.data);
+            }
+        }
+    };
+
+
+
+
+
     const [isModalOpen, setIsModalOpen] = useState(false);
+
     const [newProduct, setNewProduct] = useState({
         productName: "",
         description: "",
@@ -33,6 +159,7 @@ const ManageProducts = () => {
         fetchProducts();
         fetchCategories();
         fetchBrands();
+
     }, [currentPage, searchQuery]); // Fetch products when searchQuery or currentPage changes
 
     const fetchProducts = async () => {
@@ -57,7 +184,7 @@ const ManageProducts = () => {
             console.error("Lỗi khi lấy danh mục:", error);
         }
     };
-    
+
 
     const fetchBrands = async () => {
         try {
@@ -68,7 +195,7 @@ const ManageProducts = () => {
             console.error("Lỗi khi lấy thương hiệu:", error);
         }
     };
-    
+
 
     // Handle pagination
     const paginateProducts = () => {
@@ -147,6 +274,8 @@ const ManageProducts = () => {
         }
     };
 
+
+
     const uploadImageToFirebase = async (file) => {
         return new Promise((resolve, reject) => {
             const storageRef = ref(storage, `product-images/${file.name}`);
@@ -212,6 +341,7 @@ const ManageProducts = () => {
                             <th className="border p-4 text-left">Thương hiệu</th>
                             <th className="border p-4 text-left">Danh mục</th>
                             <th className="border p-4 text-left">Hình ảnh</th>
+                            <th className="border p-4 text-left">Thêm biến thể</th>
                         </tr>
                     </thead>
                     <tbody className="text-gray-600 text-sm font-light">
@@ -230,6 +360,27 @@ const ManageProducts = () => {
                                             className="w-24 h-24 object-cover rounded-lg shadow-md"
                                         />
                                     </td>
+                                    <td className="border px-2 py-1">
+                                        <div className="flex flex-col items-center gap-1">
+
+                                            <Link
+                                                to={`/admin/products-list/manage-product-details/${product.productId}`}
+                                                className="px-3 py-1 bg-blue-500 text-white rounded-md text-sm w-full text-center hover:bg-blue-600 transition"
+                                                onClick={() => setSelectedProductId(product.productId)}
+                                            >
+                                                👁️ Xem chi tiết
+                                            </Link>
+
+                                            <button
+                                                onClick={() => openEditModal(product)}
+                                                className="px-3 py-1 bg-yellow-500 text-white rounded-md text-sm w-full text-center hover:bg-yellow-600 transition"
+                                            >
+                                                ✏️ Sửa
+                                            </button>
+
+                                        </div>
+                                    </td>
+
                                 </tr>
                             ))
                         ) : (
@@ -261,10 +412,124 @@ const ManageProducts = () => {
                     Sau
                 </button>
             </div>
+            {isEditModalOpen && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center">
+                    <div className="bg-white p-8 rounded-md shadow-xl w-1/4 max-w-lg relative">
+                        {/* Dấu "X" để đóng modal */}
+                        <button
+                            onClick={() => setIsEditModalOpen(false)}
+                            className="absolute top-4 right-4 text-xl font-bold text-gray-500"
+                        >
+                            &times;
+                        </button>
+
+                        <h3 className="text-2xl font-semibold mb-4">Sửa sản phẩm</h3>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Tên sản phẩm</label>
+                                <input
+                                    type="text"
+                                    value={editProduct.productName}
+                                    onChange={(e) =>
+                                        setEditProduct({ ...editProduct, productName: e.target.value })
+                                    }
+                                    className="border p-2 rounded w-full"
+                                />
+                                 {errors.productName && <span className="text-red-500 text-sm">{errors.productName}</span>}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Mô tả</label>
+                                <textarea
+                                    value={editProduct.description}
+                                    onChange={(e) =>
+                                        setEditProduct({ ...editProduct, description: e.target.value })
+                                    }
+                                    className="border p-2 rounded w-full"
+                                    rows="4"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Danh mục</label>
+                                <select value={editProduct.categoryId} onChange={(e) => setEditProduct({ ...editProduct, categoryId: e.target.value })} className="border p-2 rounded w-full">
+                                    {categories.map((category) => (
+                                        <option key={category.categoryId} value={category.categoryId}>{category.categoryName}</option>
+                                    ))}
+                                </select>
+                                {errors.categoryId && <span className="text-red-500 text-sm">{errors.categoryId}</span>}
+
+                            </div>
+
+                            <div>
+
+                                <label className="block text-sm font-medium text-gray-700">Thương hiệu</label>
+                                <select value={editProduct.brandId} onChange={(e) => setEditProduct({ ...editProduct, brandId: e.target.value })} className="border p-2 rounded w-full">
+                                    {brands.map((brand) => (
+                                        <option key={brand.brandId} value={brand.brandId}>{brand.brandName}</option>
+                                    ))}
+                                </select>
+                                {errors.brandId && <span className="text-red-500 text-sm">{errors.brandId}</span>}
+                            </div>
+
+                            {/* Chọn ảnh */}
+                            <div className="border p-6 rounded-md bg-gray-50 border-dashed text-center mb-6">
+                                <label
+                                    htmlFor="editFileInput"
+                                    className="cursor-pointer bg-green-500 text-white px-8 py-3 rounded-md text-lg font-semibold hover:bg-green-600"
+                                >
+                                    Chọn ảnh
+                                </label>
+                                <input
+                                    type="file"
+                                    id="editFileInput"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        const file = e.target.files[0];
+                                        setEditProduct({ ...editProduct, image: file });
+                                    }}
+                                />
+                                <p className="text-gray-500 text-sm mt-2">Chỉ chấp nhận hình ảnh JPG, PNG, JPEG</p>
+                                {errors.image && <span className="text-red-500 text-sm mt-2">{errors.image}</span>}
+                                {/* Hiển thị ảnh preview */}
+                                <div className="mt-4 flex justify-center items-center" style={{ minHeight: '100px', maxHeight: '100px' }}>
+                                    {editProduct.image && (
+                                        <img
+                                            src={typeof editProduct.image === "string" ? editProduct.image : URL.createObjectURL(editProduct.image)}
+                                            alt="Ảnh sản phẩm"
+                                            className="rounded-md shadow-lg"
+                                            style={{ maxWidth: '120px', maxHeight: '120px', objectFit: 'contain' }}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Nút lưu & hủy */}
+                        <div className="mt-6 flex justify-between">
+                            <button
+                                onClick={() => setIsEditModalOpen(false)}
+                                className="bg-gray-300 text-black px-4 py-2 rounded"
+                            >
+                                Hủy bỏ
+                            </button>
+                            <button
+                                onClick={handleUpdateProduct}
+                                className="bg-green-500 text-white px-4 py-2 rounded"
+                            >
+                                Cập nhật
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
 
             {isModalOpen && (
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center">
-                    <div className="bg-white p-8 rounded-md shadow-xl w-1/2 max-w-lg relative">
+                    <div className="bg-white p-8 rounded-md shadow-xl w-1/4 max-w-lg  relative">
                         {/* Dấu "X" để đóng modal */}
                         <button
                             onClick={() => setIsModalOpen(false)}
@@ -356,22 +621,19 @@ const ManageProducts = () => {
                                 {/* Khu vực chứa ảnh với kích thước lớn hơn */}
                                 <div
                                     className="mt-4 flex justify-center items-center"
-                                    style={{ minHeight: '200px', maxHeight: '200px' }}  // Đặt khu vực chứa ảnh cố định
+                                    style={{ minHeight: '100px', maxHeight: '100px' }}  // Đặt khu vực chứa ảnh cố định
                                 >
                                     {newProduct.image && (
                                         <img
                                             src={URL.createObjectURL(newProduct.image)}
                                             alt="Ảnh sản phẩm"
                                             className="rounded-md shadow-lg"
-                                            style={{ maxWidth: '200px', maxHeight: '200px', objectFit: 'contain' }}  // Duy trì tỷ lệ ảnh và không bị cắt xén
+                                            style={{ maxWidth: '120px', maxHeight: '120px', objectFit: 'contain' }}  // Duy trì tỷ lệ ảnh và không bị cắt xén
                                         />
                                     )}
                                 </div>
                             </div>
-
-
                         </div>
-
                         <div className="mt-6 flex justify-between">
                             <button
                                 onClick={resetForm}
@@ -389,7 +651,6 @@ const ManageProducts = () => {
                     </div>
                 </div>
             )}
-
         </div>
     );
 };

@@ -143,14 +143,6 @@ const SidebarMenu = () => {
                                     </li>
                                     <li>
                                         <Link
-                                            to="/admin/product-details"
-                                            className="block p-2 rounded-lg hover:bg-gray-500 transition duration-300"
-                                        >
-                                            Quản lý biến thể
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link
                                             to="/admin/product-brands"
                                             className="block p-2 rounded-lg hover:bg-gray-500 transition duration-300"
                                         >
@@ -166,14 +158,6 @@ const SidebarMenu = () => {
                                                 Màu sắc
                                             </Link>
                                         </li>
-                                    </li>
-                                    <li>
-                                        <Link
-                                            to="/admin/product-image"
-                                            className="block p-2 rounded-lg hover:bg-gray-500 transition duration-300"
-                                        >
-                                            Hình ảnh
-                                        </Link>
                                     </li>
                                     <li>
                                         <Link

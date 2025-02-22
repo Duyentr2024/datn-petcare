@@ -25,6 +25,17 @@ const ProductImagesService = {
         }
     },
 
+     // Get a product image by ID
+     getAllImagesByProductDetails: async (productDetailId) => {
+        try {
+            const response = await axios.get(`${API_URL}/getImages/${productDetailId}`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching productDetails by image by ID ${productDetailId}:`, error);
+            throw error;
+        }
+    },
+
     // Create a new product image
     createProductImage: async (imageData) => {  // ✅ Đã sửa lỗi
         try {
@@ -39,8 +50,8 @@ const ProductImagesService = {
         }
     },
 
+
        // Cập nhật ảnh sản phẩm theo ID
-       
     updateProductImage: async (id, imageData) => {
         await axios.put(`${API_URL}/updates/${id}`, imageData);
     },

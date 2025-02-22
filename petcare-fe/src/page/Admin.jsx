@@ -7,7 +7,7 @@ import ManageProductBrand from "../components/Manage/ManageProductBrand";
 import ManageProductCategories from "../components/Manage/ManageProductCategories";
 import ManageProducts from "../components/Manage/ManageProducts";
 import ManageProductImages from "../components/Manage/ManageProductImages";
-import ManageProductDetails from "../components/Manage/ManageProductDetails";
+import ProductListDetails from "../components/Manage/ProductListDetais";
 function Admin() {
   return (
     <div className="flex flex-col h-screen bg-gray-100 font-sans">
@@ -26,8 +26,9 @@ function Admin() {
             <Route path="/product-brands" element={<ManageProductBrand />} />
             <Route path="/product-categories" element={<ManageProductCategories />} />
             <Route path="/products-list" element={<ManageProducts />} />
-            <Route path="/product-image" element={<ManageProductImages />} />
-            <Route path="/product-details" element={<ManageProductDetails />} />
+            <Route path="/products-list/manage-product-details/:productId" element={<ProductListDetails />} />
+            <Route path="/products-list/manage-product-details/:productId/product-image/:productDetailId" element={<ManageProductImages />} />
+
           </Routes>
         </main>
       </div>

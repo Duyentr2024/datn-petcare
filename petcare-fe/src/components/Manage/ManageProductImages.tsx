@@ -7,7 +7,7 @@ import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import { FiEdit, FiTrash2 } from "react-icons/fi";
 import "react-toastify/dist/ReactToastify.css";
-
+import { useParams, useNavigate } from "react-router-dom";
 const ManageProductImages = () => {
     const [images, setImages] = useState([]);
     const [productDetails, setProductDetails] = useState([]);
@@ -15,23 +15,36 @@ const ManageProductImages = () => {
     const [selectedProductDetailId, setSelectedProductDetailId] = useState("");
     const [selectedImage, setSelectedImage] = useState(null);
     const [imageInputKey, setImageInputKey] = useState(Date.now());
-    const [isModalOpen, setIsModalOpen] = useState(false); // State mở modal
-    const [currentPage, setCurrentPage] = useState(1); // Pagination state
-    const [itemsPerPage, setItemsPerPage] = useState(10); // Items per page
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(5);
+    const [isUploading, setIsUploading] = useState(false);
+    const { productDetailId } = useParams();
+    const { Navigate } = useNavigate();
 
     useEffect(() => {
-        fetchImages();
+        fetchImages(productDetailId);
         fetchProductDetails();
     }, [currentPage]);
 
-    const fetchImages = async () => {
+    useEffect(() => {
+        if (productDetailId) {
+            setSelectedProductDetailId(productDetailId);
+        }
+    }, [productDetailId]);
+
+
+
+    const fetchImages = async (productDetailId) => {
         try {
-            const data = await ProductImagesService.getAllProductImages();
-            setImages(data);
+            const data = await ProductImagesService.getAllImagesByProductDetails(productDetailId);
+            setImages([...data]); // Cập nhật danh sách ngay
+            console.log("✅ Danh sách ảnh đã cập nhật:", data);
         } catch (error) {
             console.error("Lỗi khi tải danh sách ảnh:", error);
         }
     };
+
 
     const fetchProductDetails = async () => {
         try {
@@ -42,43 +55,41 @@ const ManageProductImages = () => {
         }
     };
 
+
     const handleSaveImage = async () => {
-        if (!selectedProductDetailId || !selectedImage) {
-            toast.error("Vui lòng chọn sản phẩm chi tiết và tải lên một hình ảnh.", { position: "top-right" });
+        if (!selectedProductDetailId || !selectedImage || isUploading) {
             return;
         }
 
-        const storageRef = ref(storage, `product-images/${selectedImage.name}`);
+        setIsUploading(true); // Bắt đầu tải ảnh
+
+        const storageRef = ref(storage, `product-images/${Date.now()}-${selectedImage.name}`);
         const uploadTask = uploadBytesResumable(storageRef, selectedImage);
 
         uploadTask.on(
             "state_changed",
             null,
             (error) => {
-                console.error("Lỗi khi tải ảnh lên Firebase:", error);
-                toast.error("Lỗi khi tải ảnh lên!", { position: "top-right" });
+                console.error("❌ Lỗi khi tải ảnh lên Firebase:", error);
+                setIsUploading(false);
             },
             async () => {
                 const imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
-                const imageData = {
-                    productDetailId: selectedProductDetailId,
-                    imageUrl: imageUrl,
-                };
+                const imageData = { productDetailId: selectedProductDetailId, imageUrl };
 
                 try {
                     if (productImageId) {
                         await ProductImagesService.updateProductImage(productImageId, imageData);
-                        toast.success("🎉 Cập nhật ảnh thành công!", { position: "top-right" });
                     } else {
                         await ProductImagesService.createProductImage(imageData);
-                        toast.success("🎉 Thêm ảnh thành công!", { position: "top-right" });
                     }
 
-                    fetchImages(); // Gọi lại API để cập nhật danh sách ngay lập tức
+                    fetchImages(selectedProductDetailId);
                     resetForm();
                 } catch (error) {
-                    console.error("Lỗi khi lưu ảnh:", error);
-                    toast.error("❌ Lỗi khi lưu ảnh!", { position: "top-right" });
+                    console.error("❌ Lỗi khi lưu ảnh:", error);
+                } finally {
+                    setIsUploading(false); // Kết thúc tải ảnh
                 }
             }
         );
@@ -108,7 +119,7 @@ const ManageProductImages = () => {
             if (result.isConfirmed) {
                 try {
                     await ProductImagesService.deleteProductImage(id);
-                    fetchImages();
+                    fetchImages(productDetailId);
                     toast.success("Xóa ảnh thành công!");
                 } catch (error) {
                     console.error("Lỗi khi xóa ảnh:", error);
@@ -118,16 +129,18 @@ const ManageProductImages = () => {
         });
     };
 
+
     const resetForm = () => {
-        setProductImageId(null);
-        setSelectedProductDetailId("");
         setSelectedImage(null);
-        setImageInputKey(Date.now());
-        setIsModalOpen(false); // Đóng modal khi reset
+        setProductImageId(null);
+        // Nếu có input file, reset nó
+        setIsModalOpen(false);
+        document.getElementById("fileInput").value = "";
     };
 
-     // Handle pagination
-     const paginateImage = () => {
+
+    // Handle pagination
+    const paginateImage = () => {
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
         return images.slice(startIndex, endIndex);
@@ -138,13 +151,25 @@ const ManageProductImages = () => {
     return (
         <div className="p-6">
             <h2 className="text-xl font-bold mb-4">Quản lý ảnh hình ảnh của biến thể</h2>
+            <div className="mb-3">
+                {/* Nút quay về */}
+                <div className="flex justify-between ">
+                    <button
+                        onClick={() => window.history.back()}
+                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                    >
+                        ← Quay về
+                    </button>
 
-            <button
-                onClick={() => setIsModalOpen(true)}
-                className="bg-green-500 text-white px-4 py-2 rounded mb-4"
-            >
-                Thêm ảnh mới
-            </button>
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                    >
+                        Thêm ảnh mới
+                    </button>
+                </div>
+                {/* Nội dung khác giữ nguyên */}
+            </div>
 
             {/* Modal Thêm / Sửa ảnh */}
             {isModalOpen && (
@@ -156,16 +181,16 @@ const ManageProductImages = () => {
 
                         <select
                             value={selectedProductDetailId}
-                            onChange={(e) => setSelectedProductDetailId(e.target.value)}
-                            className="border p-2 rounded w-full mb-4"
+                            className="border p-2 rounded w-full mb-4 bg-gray-200 cursor-not-allowed"
+                            disabled
                         >
-                            <option value="">Chọn sản phẩm chi tiết</option>
                             {productDetails.map((detail) => (
                                 <option key={detail.productDetailId} value={detail.productDetailId}>
                                     {detail.productDetailId} - {detail.productName} - {detail.colorValue} - {detail.sizeValue} - {detail.weightValue}
                                 </option>
                             ))}
                         </select>
+
 
                         {/* Nút chọn ảnh */}
                         <div className="border p-4 rounded-md bg-gray-50 border-dashed text-center">
