@@ -10,6 +10,8 @@ import ManageProductCategories from "./components/Manage/ManageProductCategories
 import ManageProducts from "./components/Manage/ManageProducts";
 import ManageProductImages from "./components/Manage/ManageProductImages";
 import ManageProductDetails from "./components/Manage/ManageProductDetails";
+import TopButton from "./elements/TopButton";
+import ChatBot from './components/ChatBot';
 
 function App() {
   return (
@@ -29,6 +31,8 @@ function App() {
             <Route path="product-details" element={<ManageProductDetails />} />
           </Route>
         </Routes>
+        <ChatBot />
+        <TopButton />
       </Router>
     </AuthProvider>
   );
