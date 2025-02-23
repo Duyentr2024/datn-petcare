@@ -89,7 +89,14 @@ function ProductPage() {
                                         to={`/productDetail/${product.productId}`}
                                         className="transition-transform hover:scale-105 block"
                                     >
-                                        <ProductCard {...product} />
+                                        <ProductCard
+                                            image={product.image}
+                                            name={product.productName.length > 24
+                                                ? product.productName.slice(0, 24) + "..."
+                                                : product.productName}
+                                            price={product.price}
+                                            productId={product.productId}
+                                        />
                                     </Link>
                                 ))}
                             </div>
