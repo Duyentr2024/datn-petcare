@@ -10,6 +10,7 @@ const ManageProductColor = () => {
     const [searchQuery, setSearchQuery] = useState(""); // State for search query
     const [currentPage, setCurrentPage] = useState(1); // Pagination state
     const [itemsPerPage, setItemsPerPage] = useState(10); // Items per page
+    const [successMessage, setSuccessMessage] = useState("");
 
     useEffect(() => {
         fetchColors();
@@ -34,15 +35,15 @@ const ManageProductColor = () => {
         if (invalidColorPattern.test(color)) {
             return "Tên màu không được chứa ký tự đặc biệt hoặc số";
         }
-    
+
         // Kiểm tra độ dài tên màu
         if (color.length < 3 || color.length > 50) {
             return "Tên màu phải có từ 3 đến 50 ký tự";
         }
-    
+
         return "";
     };
-    
+
     const handleAddOrEditColor = async () => {
         if (!colorInput.trim()) return;
 
@@ -51,40 +52,47 @@ const ManageProductColor = () => {
             setColorInputError(error);
             return;
         } else {
-            setColorInputError(""); // Reset error if validation passes
+            setColorInputError("");
         }
 
-        if (editingColor) {
-            try {
+        try {
+            if (editingColor) {
                 await ProductColorService.updateProductColor(editingColor.productColorId, {
                     ...editingColor,
                     colorValue: colorInput,
                 });
+                setSuccessMessage("✅ Cập nhật màu thành công!");
                 setEditingColor(null);
-                setColorInput("");
-            } catch (error) {
-                console.error("Lỗi khi sửa tên màu:", error);
-            }
-        } else {
-            try {
+            } else {
                 await ProductColorService.createProductColor({ colorValue: colorInput, status: true });
-                setColorInput("");
-            } catch (error) {
-                console.error("Lỗi khi thêm màu:", error);
+                setSuccessMessage("✅ Thêm màu mới thành công!");
             }
+
+            setColorInput("");
+            fetchColors();
+        } catch (error) {
+            console.error("❌ Lỗi khi thêm/sửa màu:", error);
         }
-        fetchColors();
+
+        // Ẩn thông báo sau 3 giây
+        setTimeout(() => setSuccessMessage(""), 3000);
     };
+
 
     const handleChangeColorStatus = async (color) => {
         const updatedColor = { ...color, status: !color.status };
         try {
             await ProductColorService.updateProductColor(color.productColorId, updatedColor);
+            setSuccessMessage("✅ Trạng thái màu đã được cập nhật!");
             fetchColors();
+
+            // Ẩn thông báo sau 3 giây
+            setTimeout(() => setSuccessMessage(""), 3000);
         } catch (error) {
-            console.error("Lỗi khi cập nhật trạng thái màu:", error);
+            console.error("❌ Lỗi khi cập nhật trạng thái màu:", error);
         }
     };
+
 
     // Handle pagination
     const paginateColors = () => {
@@ -97,6 +105,11 @@ const ManageProductColor = () => {
 
     return (
         <div className="p-6 bg-white shadow-md rounded-md">
+            {successMessage && (
+                <div className="p-1 text-green-700 bg-green-100 border border-green-400 rounded-md text-center">
+                    {successMessage}
+                </div>
+            )}
             <h2 className="text-2xl font-semibold mb-4">Quản lý màu sắc</h2>
 
             {/* Form thêm hoặc sửa màu */}

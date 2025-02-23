@@ -10,7 +10,7 @@ const ManageProductSize = () => {
     const [searchQuery, setSearchQuery] = useState(""); // State for search query
     const [currentPage, setCurrentPage] = useState(1); // Pagination state
     const [itemsPerPage, setItemsPerPage] = useState(10); // Items per page
-
+    const [successMessage, setSuccessMessage] = useState("");
     useEffect(() => {
         fetchSizes();
     }, [currentPage, searchQuery]); // Fetch sizes when searchQuery or currentPage changes
@@ -44,43 +44,50 @@ const ManageProductSize = () => {
 
         const error = validateSize(sizeInput);
         if (error) {
-            setNewSizeError(error); // Set error if validation fails
+            setNewSizeError(error);
             return;
         } else {
-            setNewSizeError(""); // Reset error if validation passes
+            setNewSizeError("");
         }
 
-        if (editingSize) {
-            try {
+        try {
+            if (editingSize) {
                 await ProductSizeService.updateProductSize(editingSize.productSizeId, {
                     ...editingSize,
                     sizeValue: sizeInput,
                 });
+                setSuccessMessage("✅ Cập nhật kích thước thành công!");
                 setEditingSize(null);
-                setSizeInput("");
-            } catch (error) {
-                console.error("Lỗi khi sửa tên kích thước:", error);
-            }
-        } else {
-            try {
+            } else {
                 await ProductSizeService.createProductSize({ sizeValue: sizeInput, status: true });
-                setSizeInput("");
-            } catch (error) {
-                console.error("Lỗi khi thêm kích thước:", error);
+                setSuccessMessage("✅ Thêm kích thước thành công!");
             }
-        }
-        fetchSizes();
-    };
 
-    const handleChangeSizeStatus = async (size) => {
-        const updatedSize = { ...size, status: !size.status };
-        try {
-            await ProductSizeService.updateProductSize(size.productSizeId, updatedSize);
+            setSizeInput("");
             fetchSizes();
         } catch (error) {
-            console.error("Lỗi khi cập nhật trạng thái kích thước:", error);
+            console.error("❌ Lỗi khi thêm/sửa kích thước:", error);
+        }
+
+        // Ẩn thông báo sau 3 giây
+        setTimeout(() => setSuccessMessage(""), 3000);
+    };
+
+
+    const handleChangeSizeStatus = async (size) => {
+        try {
+            const updatedSize = { ...size, status: !size.status };
+            await ProductSizeService.updateProductSize(size.productSizeId, updatedSize);
+            setSuccessMessage(`✅ Đã cập nhật trạng thái kích thước!`);
+            fetchSizes();
+
+            // Ẩn thông báo sau 3 giây
+            setTimeout(() => setSuccessMessage(""), 3000);
+        } catch (error) {
+            console.error("❌ Lỗi khi cập nhật trạng thái kích thước:", error);
         }
     };
+
 
     // Handle pagination
     const paginateSizes = () => {
@@ -93,8 +100,12 @@ const ManageProductSize = () => {
 
     return (
         <div className="p-6 bg-white shadow-md rounded-md">
+            {successMessage && (
+                <div className="p-1 text-green-700 bg-green-100 border border-green-400 rounded-md text-center">
+                    {successMessage}
+                </div>
+            )}
             <h2 className="text-2xl font-semibold mb-4">Quản lý kích thước sản phẩm</h2>
-
             {/* Form thêm hoặc sửa kích thước */}
             <div className="flex gap-2 mb-4">
                 <input
