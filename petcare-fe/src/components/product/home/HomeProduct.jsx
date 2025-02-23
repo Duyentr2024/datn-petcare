@@ -8,6 +8,9 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import "swiper/css/navigation";
 import { Navigation } from "swiper/modules";
+import Slider from "react-slick";
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
 function HomeProduct() {
     const [loading, setLoading] = useState(true);
     const [productsByCategory, setProductsByCategory] = useState({});
@@ -57,6 +60,21 @@ function HomeProduct() {
         fetchProductDetails();
     }, [selectedProductId]);
 
+    const settings = {
+        dots: true,
+        infinite: true,
+        speed: 500,
+        slidesToShow: 5,
+        slidesToScroll: 1,
+        autoplay: true,
+        autoplaySpeed: 3000,
+        pauseOnHover: true,
+        responsive: [
+          { breakpoint: 1024, settings: { slidesToShow: 3 } },
+          { breakpoint: 768, settings: { slidesToShow: 2 } },
+          { breakpoint: 480, settings: { slidesToShow: 1 } },
+        ],
+      };
    
 return (
     <div className="container mx-32 w-auto py-8">
@@ -74,7 +92,7 @@ return (
                     </div>
 
                     {/* Swiper để hiển thị tối đa 4 sản phẩm và trượt khi có thêm sản phẩm */}
-                    <Swiper
+                    <Slider {...settings}
                         slidesPerView={1} // Mặc định hiển thị 1 sản phẩm
                         breakpoints={{
                             768: { slidesPerView: 2 }, // Màn hình trung bình hiển thị 2 sản phẩm
@@ -104,7 +122,7 @@ return (
                                 </Link>
                             </SwiperSlide>
                         ))}
-                    </Swiper>
+                    </Slider>
                 </div>
             ))
         )}
