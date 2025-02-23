@@ -1,152 +1,114 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-import { FaArrowLeft, FaArrowRight, FaShoppingCart } from "react-icons/fa";
+import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
+import ProductDetailsService from "../../service/serviceProduct/ProductDetailsService";
+import ProductsService from "../../service/serviceProduct/ProductsService";
+import { ProductCard } from "../product/ProductCard";
 
 const RelatedProducts = () => {
-    const products = [
-        {
-            id: 1,
-            name: "Mật Ong Hoa Nhãn 1L",
-            price: "45.000₫",
-            isBestSeller: true,
-            image: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-1.png",
-        },
-        {
-            id: 2,
-            name: "Mật Ong Rừng Đà Lạt 1L",
-            price: "45.000₫",
-            isBestSeller: true,
-            image: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-2.png",
-        },
-        {
-            id: 3,
-            name: "Mật Ong Nguyên Chất 1L",
-            price: "80.000₫",
-            oldPrice: "85.000₫",
-            isBestSeller: true,
-            image: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-3.png",
-        },
-        {
-            id: 4,
-            name: "Mật Ong Nhập Khẩu 1L",
-            price: "80.000₫",
-            oldPrice: "85.000₫",
-            isBestSeller: true,
-            image: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-4.png",
-        },
-        {
-            id: 5,
-            name: "Mật Ong Hảo Hạng 4L",
-            price: "65.000₫",
-            isBestSeller: true,
-            image: "http://nongsan.monamedia.net/wp-content/uploads/2023/11/sp-1.png",
-        },
-    ];
+  const { productId } = useParams();
+  const [isLoading, setIsLoading] = useState(true);
+  const [products, setProducts] = useState([]);
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [currentProduct, setCurrentProduct] = useState(null);
 
-    const settings = {
-        dots: true,
-        infinite: true,
-        speed: 500,
-        slidesToShow: 4,
-        slidesToScroll: 1,
-        autoplay: true,
-        autoplaySpeed: 3000,
-        pauseOnHover: true,
-        nextArrow: <NextArrow />,
-        prevArrow: <PrevArrow />,
-        responsive: [
-            {
-                breakpoint: 1024,
-                settings: {
-                    slidesToShow: 3,
-                },
-            },
-            {
-                breakpoint: 768,
-                settings: {
-                    slidesToShow: 2,
-                },
-            },
-            {
-                breakpoint: 480,
-                settings: {
-                    slidesToShow: 1,
-                },
-            },
-        ],
+  useEffect(() => {
+    const fetchProductDetails = async () => {
+      try {
+        const productList = await ProductDetailsService.getProductDetailsDTOByProductId(productId);
+        if (Array.isArray(productList) && productList.length > 0) {
+          const product = productList[0]; // Lấy sản phẩm đầu tiên trong danh sách
+          setCurrentProduct(product);
+        } else {
+          console.warn("❗ Không tìm thấy sản phẩm.");
+        }
+      } catch (error) {
+        console.error("❌ Lỗi khi lấy chi tiết sản phẩm:", error);
+      }
     };
 
-    function NextArrow(props) {
-        const { onClick } = props;
-        return (
-            <button
-                className="absolute top-1/2 right-2 transform -translate-y-1/2 bg-white border border-yellow-500 text-yellow-500 p-2 rounded-full shadow hover:bg-yellow-500 hover:text-white transition z-10"
-                onClick={onClick}
-            >
-                <FaArrowRight size={20} />
-            </button>
-        );
+    fetchProductDetails();
+  }, [productId]);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await ProductsService.getAllProductsWithCategory();
+        setProducts(response);
+      } catch (error) {
+        console.error("❌ Lỗi khi lấy danh sách sản phẩm:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  useEffect(() => {
+    if (currentProduct && products.length > 0) {
+      const category = currentProduct.categoryName?.trim().toLowerCase(); // Lấy loại sản phẩm
+
+      const filteredProducts = products.filter(
+        (product) =>
+          product.categoryName?.trim().toLowerCase() === category &&
+          Number(product.productId) !== Number(productId) // Loại bỏ chính sản phẩm hiện tại
+      );
+
+      setRelatedProducts(filteredProducts);
     }
+  }, [currentProduct, products, productId]);
 
-    function PrevArrow(props) {
-        const { onClick } = props;
-        return (
-            <button
-                className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-white border border-yellow-500 text-yellow-500 p-2 rounded-full shadow hover:bg-yellow-500 hover:text-white transition z-10"
-                onClick={onClick}
-            >
-                <FaArrowLeft size={20} />
-            </button>
-        );
-    }
+  const settings = {
+    dots: true,
+    infinite: true,
+    speed: 500,
+    slidesToShow: 4,
+    slidesToScroll: 1,
+    autoplay: true,
+    autoplaySpeed: 3000,
+    pauseOnHover: true,
+    responsive: [
+      { breakpoint: 1024, settings: { slidesToShow: 3 } },
+      { breakpoint: 768, settings: { slidesToShow: 2 } },
+      { breakpoint: 480, settings: { slidesToShow: 1 } },
+    ],
+  };
 
-    return (
-        <div className="py-8 px-4 relative">
-            <h2 className="text-2xl font-bold text-yellow-500 mb-6">Sản phẩm liên quan</h2>
-            <Slider {...settings}>
-                {products.map((product) => (
-                    <div
-                        key={product.id}
-                        className="p-4 bg-white border border-gray-200 rounded-lg shadow hover:shadow-lg transition flex flex-col"
-                        style={{
-                            margin: "0 10px", // Adds 20px spacing between cards
-                            height: "350px",
-                        }}
-                    >
-
-                        <img
-                            src={product.image}
-                            alt={product.name}
-                            className="w-full h-40 object-cover rounded-lg mb-4 hover:scale-105 transition-transform"
-                        />
-                        <h3 className="text-lg font-bold text-gray-800 flex-grow">{product.name}</h3>
-                        {product.isBestSeller && (
-                            <span className="inline-block bg-yellow-100 text-yellow-500 text-sm px-2 py-1 rounded mt-2">
-                    Bán chạy
-                </span>
-                        )}
-                        <div className="flex items-center mt-2">
-                            <span className="text-yellow-500 font-bold text-lg">{product.price}</span>
-                            {product.oldPrice && (
-                                <span className="text-gray-400 line-through text-sm ml-2">
-                        {product.oldPrice}
-                    </span>
-                            )}
-                        </div>
-                        <button
-                            className="mt-4 w-full flex items-center justify-center text-yellow-500 border border-yellow-500 rounded-full p-2 hover:bg-yellow-500 hover:text-white transition">
-                            <FaShoppingCart className="mr-2"/>
-                            Thêm vào giỏ hàng
-                        </button>
-                    </div>
-                ))}
-            </Slider>
-
-
+  return (
+    <div className="py-8 px-4 relative">
+      <h2 className="text-2xl font-bold text-yellow-500 mb-6">Sản phẩm liên quan</h2>
+      {isLoading ? (
+        <div className="flex justify-center items-center h-40">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-yellow-500"></div>
         </div>
-    );
+      ) : relatedProducts.length > 0 ? (
+        <Slider {...settings}>
+          {relatedProducts.map((product) => (
+            <div key={product.productId} className="p-4">
+              <Link to={`/productDetail/${product.productId}`} className="transition-transform hover:scale-105">
+                <ProductCard
+                  image={product.image}
+                  name={
+                    product.productName.length > 24
+                      ? product.productName.slice(0, 24) + "..."
+                      : product.productName
+                  }
+                  price={product.price}
+                  productId={product.productId}
+                />
+              </Link>
+            </div>
+          ))}
+        </Slider>
+      ) : (
+        <p className="text-center text-gray-500">Không có sản phẩm liên quan.</p>
+      )}
+    </div>
+  );
 };
 
 export default RelatedProducts;

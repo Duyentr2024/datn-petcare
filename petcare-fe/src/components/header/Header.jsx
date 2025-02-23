@@ -175,7 +175,8 @@ export default function Header() {
             <img
               src={logo}
               alt="Honey The Mona logo"
-              className="h-[250-px] w-[300px]"
+              className="h-[250-px] w-[300px] cursor-pointer"
+              onClick={() => navigate("/")}
             />
           </div>
           <div className="items-center w-[1000px]">
@@ -188,7 +189,7 @@ export default function Header() {
                    onChange={(e) => setSearchTerm(e.target.value)}
                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                     type="text"
-                    placeholder="Tiềm kiếm sản phẩm..."
+                    placeholder="Tìm kiếm sản phẩm..."
                     className="border border-yellow-500 rounded-2xl px-4 py-2 pl-4 pr-12 w-full focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-50 transition-all duration-300 ease-in-out"
                   />
                   <button className="absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500"
