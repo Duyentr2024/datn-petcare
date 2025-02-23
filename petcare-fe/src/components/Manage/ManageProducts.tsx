@@ -2,11 +2,6 @@ import React, { useEffect, useState } from "react";
 import ProductsService from "../../service/manageService/ProductsService";
 import CategoriesService from "../../service/manageService/ProductCategoriesService";
 import BrandService from "../../service/manageService/ProductBrandService";
-// import ProductDetailsServices from "../../service/manageService/ProductDetailsService";
-import ProductColorService from "../../service/manageService/ProductColorService";
-import ProductSizeService from "../../service/manageService/ProductSizeService";
-import ProductWeightsService from "../../service/manageService/ProductWeightsService";
-import ProductDetailsService from "../../service/serviceProduct/ProductDetailsService"
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { storage } from "../../firebaseConfig";
 import { Link } from "react-router-dom";
@@ -17,6 +12,7 @@ const ManageProducts = () => {
     const [categories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [successMessage, setSuccessMessage] = useState("");
     const [editProduct, setEditProduct] = useState({
         productId: null,
         productName: "",
@@ -55,7 +51,6 @@ const ManageProducts = () => {
 
 
     const handleUpdateProduct = async () => {
-        // Reset errors
         setErrors({
             productName: "",
             categoryId: "",
@@ -66,44 +61,33 @@ const ManageProducts = () => {
         let isValid = true;
         const newErrors = {};
 
-        // Kiểm tra tên sản phẩm
         if (!editProduct.productName.trim()) {
             newErrors.productName = "Vui lòng nhập tên sản phẩm.";
             isValid = false;
         }
 
-        // Kiểm tra ảnh (chỉ khi ảnh bị xóa hoặc chưa có)
         if (!editProduct.image) {
             newErrors.image = "Vui lòng chọn hình ảnh.";
             isValid = false;
         }
 
-        // Kiểm tra danh mục (categoryId phải tồn tại và hợp lệ)
-        if (!editProduct.categoryId || isNaN(editProduct.categoryId) || editProduct.categoryId === "") {
+        if (!editProduct.categoryId || isNaN(editProduct.categoryId)) {
             newErrors.categoryId = "Vui lòng chọn danh mục hợp lệ.";
             isValid = false;
         }
 
-        // Kiểm tra thương hiệu (brandId phải tồn tại và hợp lệ)
-        if (!editProduct.brandId || isNaN(editProduct.brandId) || editProduct.brandId === "") {
+        if (!editProduct.brandId || isNaN(editProduct.brandId)) {
             newErrors.brandId = "Vui lòng chọn thương hiệu hợp lệ.";
             isValid = false;
         }
 
         setErrors(newErrors);
-
-        if (!isValid) {
-            return;
-        }
+        if (!isValid) return;
 
         try {
-            console.log("📝 Dữ liệu sản phẩm trước khi cập nhật:", editProduct);
-
             let imageUrl = editProduct.image;
             if (typeof editProduct.image === "object") {
-                console.log("📤 Upload ảnh mới lên Firebase...");
                 imageUrl = await uploadImageToFirebase(editProduct.image);
-                console.log("✅ Ảnh tải lên thành công:", imageUrl);
             }
 
             const updatedData = {
@@ -115,20 +99,17 @@ const ManageProducts = () => {
                 brand: { brandId: parseInt(editProduct.brandId, 10) },
             };
 
-            console.log("📤 Dữ liệu gửi lên API:", JSON.stringify(updatedData, null, 2));
-
             await ProductsService.updateProduct(editProduct.productId, updatedData);
+            setSuccessMessage("Sản phẩm đã được cập nhật thành công!");
 
-            console.log("✅ Cập nhật sản phẩm thành công!");
+            setTimeout(() => setSuccessMessage(""), 3000);
             setIsEditModalOpen(false);
             fetchProducts();
         } catch (error) {
-            console.error("❌ Lỗi khi cập nhật sản phẩm:", error);
-            if (error.response) {
-                console.error("🔴 Phản hồi lỗi từ server:", error.response.data);
-            }
+            console.error("Lỗi khi cập nhật sản phẩm:", error);
         }
     };
+
 
 
 
@@ -207,7 +188,6 @@ const ManageProducts = () => {
     const totalPages = Math.ceil(products.length / itemsPerPage);
 
     const handleAddProduct = async () => {
-        // Reset errors
         setErrors({
             productName: "",
             categoryId: "",
@@ -218,7 +198,6 @@ const ManageProducts = () => {
         let isValid = true;
         const newErrors = {};
 
-        // Validate fields
         if (!newProduct.productName) {
             newErrors.productName = "Vui lòng nhập tên sản phẩm.";
             isValid = false;
@@ -237,10 +216,7 @@ const ManageProducts = () => {
         }
 
         setErrors(newErrors);
-
-        if (!isValid) {
-            return;
-        }
+        if (!isValid) return;
 
         try {
             let imageUrl = "";
@@ -256,17 +232,17 @@ const ManageProducts = () => {
                 brand: { brandId: parseInt(newProduct.brandId, 10) },
             };
 
-            const response = await ProductsService.createProduct(productData);
-            console.log("Sản phẩm đã tạo:", response);
+            await ProductsService.createProduct(productData);
+            setSuccessMessage("Sản phẩm đã được thêm thành công!");
 
-            // Reset modal state after product creation
+            setTimeout(() => setSuccessMessage(""), 3000); // Ẩn sau 3 giây
             setIsModalOpen(false);
             setNewProduct({
                 productName: "",
                 description: "",
                 categoryId: "",
                 brandId: "",
-                image: null, // Reset the image input
+                image: null,
             });
             fetchProducts();
         } catch (error) {
@@ -314,6 +290,11 @@ const ManageProducts = () => {
 
     return (
         <div className="p-6 bg-white shadow-md rounded-md">
+            {successMessage && (
+                <div className="p-4 mb-4 text-green-700 bg-green-100 border border-green-400 rounded-md text-center">
+                    {successMessage}
+                </div>
+            )}
             <h2 className="text-2xl font-semibold mb-4 text-gray-700">Quản lý sản phẩm</h2>
             <div className="flex justify-between gap-2 mb-4">
                 <input
@@ -436,7 +417,7 @@ const ManageProducts = () => {
                                     }
                                     className="border p-2 rounded w-full"
                                 />
-                                 {errors.productName && <span className="text-red-500 text-sm">{errors.productName}</span>}
+                                {errors.productName && <span className="text-red-500 text-sm">{errors.productName}</span>}
                             </div>
 
                             <div>
