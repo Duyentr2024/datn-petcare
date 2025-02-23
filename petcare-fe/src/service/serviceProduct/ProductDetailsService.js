@@ -99,6 +99,8 @@ const ProductDetailsService = {
         }
     },
 
+
+    // Tìm kiếm sản phẩm theo tên
     searchProducts: async (query) => {
         try {
             const response = await axios.get(`${API_BASE_URL}/search?productName=${query}`);
@@ -109,6 +111,10 @@ const ProductDetailsService = {
         }
     }
     
-};
+
+}
+
+
+
 
 export default ProductDetailsService;

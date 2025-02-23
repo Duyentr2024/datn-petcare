@@ -78,8 +78,24 @@ const ProductsService = {
             console.error("Lỗi khi tải dữ liệu:", error);
             return [];
           }
+    },
+
+    /**
+    * Lấy thông tin sản phẩm theo ID từ API /products-summary/{productDetailId}
+    * @param {number} productDetailId
+    * @returns {Promise<Object>}
+    */
+    getProductSummaryById: async (productId) => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/products-summary/${productId}`);
+            return response.data;
+        } catch (error) {
+            console.error(`Lỗi khi lấy ProductSummary ID=${productId}:`, error);
+            throw error;
+        }
     }
 
+    
     
 };
 
