@@ -2,13 +2,14 @@ import React, { useEffect, useState } from "react";
 import { Home, ChevronRight } from "lucide-react";
 import { Sidebar } from "./siderBar/Sidebar.jsx";
 import { ProductCard } from "./ProductCard.jsx";
-import ProductsService from "../../service/ProductsService.js";
+import ProductsService from "../../service/serviceProduct/ProductsService.js";
 import { Link } from "react-router-dom";
 
 function ProductPage() {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
+    const [searchQuery, setSearchQuery] = useState("");
     const productsPerPage = 8;
 
     useEffect(() => {
@@ -33,8 +34,12 @@ function ProductPage() {
         fetchProducts();
     }, []);
 
-    const totalPages = Math.ceil(products.length / productsPerPage);
-    const displayedProducts = products.slice((currentPage - 1) * productsPerPage, currentPage * productsPerPage);
+    const filteredProducts = products.filter(product =>
+        product.productName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+    const displayedProducts = filteredProducts.slice((currentPage - 1) * productsPerPage, currentPage * productsPerPage);
 
     const handlePageChange = (newPage) => {
         if (newPage >= 1 && newPage <= totalPages) {
@@ -53,12 +58,22 @@ function ProductPage() {
             </div>
 
             <div className="container mx-auto px-4 py-6">
+                <div className="flex justify-center items-center mb-6">
+                    <input
+                        type="text"
+                        placeholder="Tìm kiếm sản phẩm..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="border px-4 py-2 rounded-lg w-full md:w-1/3 focus:outline-none focus:ring-2 focus:ring-[#F7941D] focus:border-transparent"
+                    />
+                </div>
+
                 <div className="flex gap-8">
                     <Sidebar />
 
                     <div className="flex-1">
                         <div className="flex justify-between items-center mb-6">
-                            <p className="text-sm text-gray-600">{products.length} kết quả cho "Tất cả sản phẩm"</p>
+                            <p className="text-sm text-gray-600">{filteredProducts.length} kết quả cho "Tất cả sản phẩm"</p>
                             <select className="border rounded-lg px-4 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#F7941D] focus:border-transparent">
                                 <option>Mới nhất</option>
                                 <option>Giá thấp đến cao</option>
