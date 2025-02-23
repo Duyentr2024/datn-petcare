@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { FaEye } from "react-icons/fa"; // Import icon con mắt
 import ProductDetailsService from "../../service/serviceProduct/ProductDetailsService";
 import ProductsService from "../../service/manageService/ProductsService";
 import ProductColorService from "../../service/manageService/ProductColorService";
@@ -292,7 +291,7 @@ const ProductListDetails = () => {
 
                 <button
                     onClick={() => setIsModalOpen(true)}
-                    className="p-2 bg-green-500 text-white rounded hover:bg-green-600"
+                    className="px-4 py-2 bg-green-500 text-white rounded-md"
                 >
                     Thêm biến thể
                 </button>
@@ -318,7 +317,9 @@ const ProductListDetails = () => {
                             <tr key={product.productDetailId} className="text-center">
                                 <td className="border border-gray-300 px-4 py-2">{product.productDetailId}</td>
                                 <td className="border border-gray-300 px-4 py-2">{product.productName}</td>
-                                <td className="border border-gray-300 px-4 py-2 font-bold">{product.price}VND</td>
+                                <td className="border border-gray-300 px-4 py-2 font-bold">
+                                    {new Intl.NumberFormat("vi-VN",).format(product.price)} VND
+                                </td>
                                 <td className="border border-gray-300 px-4 py-2">{product.colorValue}</td>
                                 <td className="border border-gray-300 px-4 py-2">{product.sizeValue}</td>
                                 <td className="border border-gray-300 px-4 py-2">{product.weightValue} kg</td>
@@ -329,19 +330,18 @@ const ProductListDetails = () => {
                                         className="px-3 py-2 bg-blue-500 text-white rounded-md flex items-center gap-2"
 
                                     >
-                                        <FaEye /> Xem ảnh
+                                        👁️ Xem ảnh
                                     </Link>
 
                                 </td>
                                 <td className="border border-gray-300 px-4 py-2">
                                     <div className="flex gap-2 mt-2">
                                         <button
-                                            className="px-3 py-1 bg-blue-500 text-white rounded-md"
+                                            className="px-3 py-1 bg-yellow-500 text-white rounded-md"
                                             onClick={() => openEditModal(product)}
                                         >
-                                            Sửa
+                                            ✏️ Sửa
                                         </button>
-                                        <button className="px-3 py-1 bg-red-500 text-white rounded-md">Xóa</button>
                                     </div>
                                 </td>
 
