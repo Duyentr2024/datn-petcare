@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Home, ChevronRight } from 'lucide-react';
 import { Sidebar } from './siderBar/Sidebar.jsx';
 import { ProductCard } from './ProductCard.jsx';
-import ProductsService from '../../service/ProductsService.js';
+import ProductsService from '../../service/serviceProduct/ProductsService.js';
 import { Link } from 'react-router-dom';
 
 function ProductPage() {

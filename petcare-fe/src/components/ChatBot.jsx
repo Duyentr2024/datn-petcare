@@ -87,9 +87,9 @@ function ChatBot() {
     }, [chatHistory]);
 
     return (
-        <div className="fixed right-6 bottom-6 z-50">
+        <div className="fixed right-6 bottom-[150px] z-50">
             <button
-                className={`bg-[#FBB321] text-white p-4 rounded-full shadow-xl hover:bg-amber-700 transition-all duration-300 ${isOpen ? 'hidden' : ''}`}
+                className={`bg-[#0270D4] text-white p-4 rounded-full shadow-xl hover:bg-amber-700 transition-all duration-300 ${isOpen ? 'hidden' : ''}`}
                 onClick={toggleChat}
             >
                 <FaRobot size={28} />
