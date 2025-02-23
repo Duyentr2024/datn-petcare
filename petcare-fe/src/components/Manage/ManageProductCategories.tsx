@@ -8,6 +8,7 @@ const ManageProductCategories = () => {
     const [searchQuery, setSearchQuery] = useState(""); // State for search query
     const [editingCategory, setEditingCategory] = useState(null);
     const [categoryInputError, setCategoryInputError] = useState("");
+    const [successMessage, setSuccessMessage] = useState("");
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -48,38 +49,44 @@ const ManageProductCategories = () => {
             setCategoryInputError("");
         }
 
-        if (editingCategory) {
-            try {
+        try {
+            if (editingCategory) {
                 await ProductCategoriesService.updateCategory(editingCategory.categoryId, {
                     ...editingCategory,
                     categoryName: categoryInput,
                 });
+                setSuccessMessage("✅ Cập nhật danh mục thành công!");
                 setEditingCategory(null);
-                setCategoryInput("");
-            } catch (error) {
-                console.error("Error updating category:", error);
-            }
-        } else {
-            try {
+            } else {
                 await ProductCategoriesService.createCategory({ categoryName: categoryInput, status: true });
-                setCategoryInput("");
-            } catch (error) {
-                console.error("Error adding category:", error);
+                setSuccessMessage("✅ Thêm danh mục thành công!");
             }
+
+            setCategoryInput("");
+            fetchCategories();
+        } catch (error) {
+            console.error("❌ Lỗi khi thêm/sửa danh mục:", error);
         }
 
-        fetchCategories();
+        // Ẩn thông báo sau 3 giây
+        setTimeout(() => setSuccessMessage(""), 3000);
     };
+
 
     const handleChangeCategoryStatus = async (category) => {
         const updatedCategory = { ...category, status: !category.status };
         try {
             await ProductCategoriesService.updateCategory(category.categoryId, updatedCategory);
+            setSuccessMessage("✅ Trạng thái danh mục đã được cập nhật!");
             fetchCategories();
+
+            // Ẩn thông báo sau 3 giây
+            setTimeout(() => setSuccessMessage(""), 3000);
         } catch (error) {
-            console.error("Error updating category status:", error);
+            console.error("❌ Lỗi khi cập nhật trạng thái danh mục:", error);
         }
     };
+
 
     // Handle pagination
     const paginateCategories = () => {
@@ -92,8 +99,12 @@ const ManageProductCategories = () => {
 
     return (
         <div className="p-6 bg-white shadow-md rounded-md">
+            {successMessage && (
+                <div className="p-1 text-green-700 bg-green-100 border border-green-400 rounded-md text-center">
+                    {successMessage}
+                </div>
+            )}
             <h2 className="text-2xl font-semibold mb-4">Quản lý danh mục sản phẩm</h2>
-
             {/* Form thêm hoặc sửa danh mục */}
             <div className="flex gap-2 mb-4">
                 <input
