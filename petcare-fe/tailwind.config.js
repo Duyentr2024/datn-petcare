@@ -256,6 +256,21 @@ export default {
           rotating: {
             '0%, 100%': { transform: 'rotate(360deg)' },
             '50%': { transform: 'rotate(0deg)' },
+            arrow: {
+              '0%': {
+                opacity: '0',
+                transform: 'translate(-50%, 20%) scale(0.8)'
+              },
+              '50%': {
+                opacity: '1',
+                transform: 'translate(-50%, -50%) scale(1)'
+              },
+              '100%': {
+                opacity: '0',
+                transform: 'translate(-50%, -120%) scale(0.8)'
+              },
+            }
+
           },
         },
         animation: {
@@ -264,6 +279,10 @@ export default {
           'spin-1.5': 'spin 1.5s linear infinite',
           'spin-2': 'spin 2s linear infinite',
           'spin-3': 'spin 3s linear infinite',
+          'arrow-1': 'arrow 1.5s infinite',
+          'arrow-2': 'arrow 1.5s infinite 0.25s',
+          'arrow-3': 'arrow 1.5s infinite 0.5s',
+
         },
       },
     },
