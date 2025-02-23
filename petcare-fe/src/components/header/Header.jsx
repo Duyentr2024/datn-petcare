@@ -15,7 +15,7 @@ import { useCookies } from "react-cookie";
 import { useAuth } from "../../context/AuthContext"; // Import hook useAuth từ context
 import logo from "../../assets/images/banner1.png";
 import { motion } from "framer-motion";
-
+import CartDetailsService from "../../service/CartDetailsService/CartDetailsService.jsx";
 export default function Header() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -29,6 +29,7 @@ export default function Header() {
   const { user, token, setUser, setToken } = useAuth(); // Lấy setUser từ context
   const navigate = useNavigate();
   const dropdownRef = useRef(null); // Thêm useRef
+
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
@@ -159,6 +160,40 @@ export default function Header() {
     };
   }, []);
 
+
+  const [cartCount, setCartCount] = useState(0);
+
+  // Hàm lấy userId từ token
+  const getUserIdFromToken = () => {
+    const accessToken = Cookies.get("accessToken");
+    if (!accessToken) return null;
+    try {
+      const payload = JSON.parse(atob(accessToken.split(".")[1]));
+      return payload.userId;
+    } catch (error) {
+      console.error("Invalid token:", error);
+      return null;
+    }
+  };
+
+
+  useEffect(() => {
+    const fetchCartCount = async () => {
+      if (!userId) return;
+
+      try {
+        const cartItems = await CartDetailsService.getCartDetailsByUserId(userId);
+        const totalItems = cartItems.length; // Chỉ đếm số mặt hàng khác nhau
+        setCartCount(totalItems);
+      } catch (error) {
+        console.error("Error fetching cart count:", error);
+      }
+    };
+
+    fetchCartCount();
+  }, [userId]);
+
+
   return (
     <>
       <div className="bg-[#FBB321] text-center py-2 text-white rounded-b-2xl px-4 w-full sm:w-full lg:w-full">
@@ -250,17 +285,19 @@ export default function Header() {
                 )}
 
                 {/* Giỏ hàng */}
-                <Link
-                  to="/shoppingCart"
-                  className="flex items-center space-x-3 cursor-pointer"
-                >
-                  <div className="bg-green-100 p-3 rounded-full flex items-center justify-center">
+                <Link to="/shoppingCart" className="flex items-center space-x-3 cursor-pointer">
+                  <div className="bg-green-100 p-3 rounded-full flex items-center justify-center relative">
                     <FaShoppingCart className="text-green-700 text-xl" />
+                    {cartCount > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                        {cartCount}
+                    </span>
+                    )}
                   </div>
                   <div className="hidden sm:block">
                     <span className="text-sm text-gray-700">Giỏ hàng</span>
                     <br />
-                    <span className="font-bold text-green-700">0 Sản phẩm</span>
+                    <span className="font-bold text-green-700">{cartCount} Sản phẩm</span>
                   </div>
                 </Link>
 

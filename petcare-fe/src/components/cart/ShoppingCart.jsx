@@ -6,6 +6,7 @@ import "react-toastify/dist/ReactToastify.css";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 
+
 const ShoppingCart = () => {
     const [products, setProducts] = useState([]);
     const navigate = useNavigate();
