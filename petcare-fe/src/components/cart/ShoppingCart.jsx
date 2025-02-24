@@ -6,7 +6,6 @@ import "react-toastify/dist/ReactToastify.css";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 
-
 const ShoppingCart = () => {
     const [products, setProducts] = useState([]);
     const navigate = useNavigate();
@@ -59,31 +58,32 @@ const ShoppingCart = () => {
     const handleQuantityChange = async (cartDetailId, newQuantity) => {
         if (newQuantity < 1) return;
 
-        // Cập nhật UI trước để có cảm giác mượt mà
+        const product = products.find((p) => p.cartDetailId === cartDetailId);
+        if (!product) return;
+
+        if (newQuantity > product.quantity) {
+            toast.error("Số lượng đặt hàng vượt quá số lượng tồn kho!");
+            return;
+        }
+
         setProducts((prevProducts) =>
-            prevProducts.map((product) =>
-                product.cartDetailId === cartDetailId ? { ...product, quantityItem: newQuantity } : product
+            prevProducts.map((p) =>
+                p.cartDetailId === cartDetailId ? { ...p, quantityItem: newQuantity } : p
             )
         );
 
         try {
-            // Cập nhật dữ liệu lên server
             await CartDetailsService.updateCartDetails(cartDetailId, newQuantity);
         } catch (error) {
             console.error("Error updating quantity:", error);
             toast.error("Failed to update quantity. Please try again.");
-
-            // Nếu API lỗi, hoàn tác thay đổi
             setProducts((prevProducts) =>
-                prevProducts.map((product) =>
-                    product.cartDetailId === cartDetailId
-                        ? { ...product, quantityItem: newQuantity - 1 }
-                        : product
+                prevProducts.map((p) =>
+                    p.cartDetailId === cartDetailId ? { ...p, quantityItem: product.quantityItem } : p
                 )
             );
         }
     };
-
 
     const handleCheckout = () => {
         const checkoutItems = products.map(({ productDetailId, productName, price, quantityItem }) => ({
@@ -117,7 +117,7 @@ const ShoppingCart = () => {
 
                 {products.map((product) => (
                     <div
-                        key={product.productDetailId}
+                        key={product.cartDetailId}
                         className="flex flex-col md:flex-row items-center mt-6 bg-gray-50 p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
                     >
                         <img
@@ -138,9 +138,21 @@ const ShoppingCart = () => {
                             </div>
                             <div className="text-center md:flex-1">
                                 <div className="flex items-center justify-center space-x-4">
-                                    <button onClick={() => handleQuantityChange(product.cartDetailId, product.quantityItem - 1)} className="text-yellow-500 text-xl md:text-2xl">-</button>
+                                    <button
+                                        onClick={() => handleQuantityChange(product.cartDetailId, product.quantityItem - 1)}
+                                        className="text-yellow-500 text-xl md:text-2xl"
+                                        disabled={product.quantityItem <= 1}
+                                    >
+                                        -
+                                    </button>
                                     <span className="mx-2 text-lg md:text-xl">{product.quantityItem}</span>
-                                    <button onClick={() => handleQuantityChange(product.cartDetailId, product.quantityItem + 1)} className="text-yellow-500 text-xl md:text-2xl">+</button>
+                                    <button
+                                        onClick={() => handleQuantityChange(product.cartDetailId, product.quantityItem + 1)}
+                                        className={`text-yellow-500 text-xl md:text-2xl ${product.quantityItem >= product.quantity ? "opacity-50 cursor-not-allowed" : ""}`}
+                                        disabled={product.quantityItem >= product.quantity}
+                                    >
+                                        +
+                                    </button>
                                 </div>
                             </div>
                             <div className="text-center md:flex-1">

@@ -6,7 +6,7 @@ const ManageProductWeights = () => {
     const [weights, setWeights] = useState([]);
     const [weightInput, setWeightInput] = useState("");
     const [editingWeight, setEditingWeight] = useState(null);
-    
+    const [successMessage, setSuccessMessage] = useState("");
     // Validation state
     const [weightInputError, setWeightInputError] = useState("");
 
@@ -50,38 +50,43 @@ const ManageProductWeights = () => {
             setWeightInputError("");
         }
 
-        if (editingWeight) {
-            try {
+        try {
+            if (editingWeight) {
                 await ProductWeightService.updateProductWeight(editingWeight.weightId, {
                     ...editingWeight,
                     weightValue: weightInput,
                 });
+                setSuccessMessage("✅ Cập nhật trọng lượng thành công!");
                 setEditingWeight(null);
-                setWeightInput("");
-            } catch (error) {
-                console.error("Error updating weight:", error);
-            }
-        } else {
-            try {
+            } else {
                 await ProductWeightService.createProductWeight({ weightValue: weightInput, status: true });
-                setWeightInput("");
-            } catch (error) {
-                console.error("Error adding weight:", error);
+                setSuccessMessage("✅ Thêm trọng lượng thành công!");
             }
+
+            setWeightInput("");
+            fetchWeights();
+        } catch (error) {
+            console.error("❌ Lỗi khi thêm/sửa trọng lượng:", error);
         }
 
-        fetchWeights();
+        // Ẩn thông báo sau 3 giây
+        setTimeout(() => setSuccessMessage(""), 3000);
     };
 
     const handleChangeWeightStatus = async (weight) => {
         const updatedWeight = { ...weight, status: !weight.status };
         try {
             await ProductWeightService.updateProductWeight(weight.weightId, updatedWeight);
+            setSuccessMessage("✅ Trạng thái trọng lượng đã được cập nhật!");
             fetchWeights();
+
+            // Ẩn thông báo sau 3 giây
+            setTimeout(() => setSuccessMessage(""), 3000);
         } catch (error) {
-            console.error("Error updating weight status:", error);
+            console.error("❌ Lỗi khi cập nhật trạng thái trọng lượng:", error);
         }
     };
+
 
     // Handle pagination
     const paginateWeights = () => {
@@ -94,8 +99,13 @@ const ManageProductWeights = () => {
 
     return (
         <div className="p-6 bg-white shadow-md rounded-md">
-            <h2 className="text-2xl font-semibold mb-4">Quản lý trọng lượng sản phẩm</h2>
+            {successMessage && (
+                <div className="p-1 text-green-700 bg-green-100 border border-green-400 rounded-md text-center">
+                    {successMessage}
+                </div>
+            )}
 
+            <h2 className="text-2xl font-semibold mb-4">Quản lý trọng lượng sản phẩm</h2>
             {/* Form thêm hoặc sửa trọng lượng */}
             <div className="flex gap-2 mb-4">
                 <input

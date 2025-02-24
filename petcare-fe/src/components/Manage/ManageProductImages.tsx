@@ -19,8 +19,9 @@ const ManageProductImages = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(5);
     const [isUploading, setIsUploading] = useState(false);
+    const [successMessage, setSuccessMessage] = useState("");
     const { productDetailId } = useParams();
-    const { Navigate } = useNavigate();
+    const [errorMessage, setErrorMessage] = useState("");
 
     useEffect(() => {
         fetchImages(productDetailId);
@@ -55,13 +56,39 @@ const ManageProductImages = () => {
         }
     };
 
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+
+        if (!file) {
+            setErrorMessage("❌ Vui lòng chọn một tệp ảnh.");
+            return;
+        }
+
+        const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+        if (!allowedTypes.includes(file.type)) {
+            setErrorMessage("❌ Chỉ chấp nhận hình ảnh định dạng JPG, PNG, JPEG.");
+            return;
+        }
+
+        const maxSize = 2 * 1024 * 1024; // 2MB
+        if (file.size > maxSize) {
+            setErrorMessage("❌ Kích thước ảnh không được vượt quá 2MB.");
+            return;
+        }
+
+        setErrorMessage(""); // Xóa lỗi nếu hợp lệ
+        setSelectedImage(file);
+    };
 
     const handleSaveImage = async () => {
         if (!selectedProductDetailId || !selectedImage || isUploading) {
+            setErrorMessage("❌ Vui lòng chọn ảnh trước khi lưu.");
             return;
         }
 
         setIsUploading(true); // Bắt đầu tải ảnh
+        setErrorMessage(""); // Xóa thông báo lỗi cũ
+        setSuccessMessage("⏳ Đang tải ảnh lên..."); // Hiển thị thông báo tải lên
 
         const storageRef = ref(storage, `product-images/${Date.now()}-${selectedImage.name}`);
         const uploadTask = uploadBytesResumable(storageRef, selectedImage);
@@ -71,29 +98,43 @@ const ManageProductImages = () => {
             null,
             (error) => {
                 console.error("❌ Lỗi khi tải ảnh lên Firebase:", error);
+                setErrorMessage("❌ Lỗi khi tải ảnh lên, vui lòng thử lại.");
+                setSuccessMessage(""); // Ẩn thông báo thành công
                 setIsUploading(false);
             },
             async () => {
-                const imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
-                const imageData = { productDetailId: selectedProductDetailId, imageUrl };
-
                 try {
+                    const imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
+                    const imageData = { productDetailId: selectedProductDetailId, imageUrl };
+
                     if (productImageId) {
                         await ProductImagesService.updateProductImage(productImageId, imageData);
+                        setSuccessMessage("✅ Ảnh đã được cập nhật thành công!");
                     } else {
                         await ProductImagesService.createProductImage(imageData);
+                        setSuccessMessage("✅ Ảnh đã được thêm thành công!");
                     }
 
                     fetchImages(selectedProductDetailId);
                     resetForm();
                 } catch (error) {
                     console.error("❌ Lỗi khi lưu ảnh:", error);
+                    setErrorMessage("❌ Lỗi khi lưu ảnh, vui lòng thử lại.");
                 } finally {
-                    setIsUploading(false); // Kết thúc tải ảnh
+                    setIsUploading(false);
+
+                    // Ẩn thông báo sau 3 giây
+                    setTimeout(() => {
+                        setSuccessMessage("");
+                        setErrorMessage("");
+                    }, 3000);
                 }
             }
         );
     };
+
+
+
 
 
 
@@ -104,6 +145,8 @@ const ManageProductImages = () => {
         setImageInputKey(Date.now());
         setIsModalOpen(true); // Mở modal khi sửa
     };
+
+
 
     const handleDeleteImage = async (id) => {
         Swal.fire({
@@ -120,14 +163,18 @@ const ManageProductImages = () => {
                 try {
                     await ProductImagesService.deleteProductImage(id);
                     fetchImages(productDetailId);
-                    toast.success("Xóa ảnh thành công!");
+                    setSuccessMessage("Xóa ảnh thành công!");
                 } catch (error) {
                     console.error("Lỗi khi xóa ảnh:", error);
-                    toast.error("Lỗi khi xóa ảnh!");
+
+                } finally {
+                    setIsUploading(false);
+                    setTimeout(() => setSuccessMessage(""), 3000);
                 }
             }
         });
     };
+
 
 
     const resetForm = () => {
@@ -135,6 +182,7 @@ const ManageProductImages = () => {
         setProductImageId(null);
         // Nếu có input file, reset nó
         setIsModalOpen(false);
+        setErrorMessage(null);
         document.getElementById("fileInput").value = "";
     };
 
@@ -150,6 +198,11 @@ const ManageProductImages = () => {
 
     return (
         <div className="p-6">
+            {successMessage && (
+                <div className="p-4 mb-4 text-green-700 bg-green-100 border border-green-400 rounded-md text-center">
+                    {successMessage}
+                </div>
+            )}
             <h2 className="text-xl font-bold mb-4">Quản lý ảnh hình ảnh của biến thể</h2>
             <div className="mb-3">
                 {/* Nút quay về */}
@@ -179,6 +232,12 @@ const ManageProductImages = () => {
                             {productImageId ? "Chỉnh sửa ảnh sản phẩm" : "Thêm ảnh sản phẩm"}
                         </h3>
 
+                        {/* Hiển thị thông báo lỗi nếu có */}
+                        {errorMessage && (
+                            <p className="p-2 mb-2 text-red-700 bg-red-100 border border-red-400 rounded-md text-center">
+                                {errorMessage}
+                            </p>
+                        )}
                         <select
                             value={selectedProductDetailId}
                             className="border p-2 rounded w-full mb-4 bg-gray-200 cursor-not-allowed"
@@ -190,7 +249,6 @@ const ManageProductImages = () => {
                                 </option>
                             ))}
                         </select>
-
 
                         {/* Nút chọn ảnh */}
                         <div className="border p-4 rounded-md bg-gray-50 border-dashed text-center">
@@ -204,8 +262,7 @@ const ManageProductImages = () => {
                                 type="file"
                                 id="fileInput"
                                 className="hidden"
-                                key={imageInputKey}
-                                onChange={(e) => setSelectedImage(e.target.files[0])}
+                                onChange={handleImageChange}
                             />
                             <p className="text-gray-500 text-sm mt-2">Chỉ chấp nhận hình ảnh JPG, PNG, JPEG</p>
                         </div>
@@ -226,9 +283,10 @@ const ManageProductImages = () => {
                         <div className="flex gap-2 mt-4">
                             <button
                                 onClick={handleSaveImage}
-                                className={`px-4 py-2 rounded text-white ${productImageId ? "bg-yellow-500" : "bg-green-500"} hover:opacity-90`}
+                                className={`px-4 py-2 rounded text-white ${productImageId ? "bg-yellow-500" : "bg-green-500"} hover:opacity-90 ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+                                disabled={isUploading}
                             >
-                                {productImageId ? "Cập nhật ảnh" : "Thêm ảnh"}
+                                {isUploading ? "Đang lưu..." : productImageId ? "Cập nhật ảnh" : "Thêm ảnh"}
                             </button>
 
                             <button onClick={resetForm} className="bg-gray-500 text-white px-4 py-2 rounded hover:opacity-90">
