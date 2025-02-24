@@ -1,33 +1,30 @@
 import React, { useEffect, useState } from "react";
 import { RiCloseCircleLine } from "react-icons/ri";
-import CartDetailsService from "../../service/CartDetailsService/CartDetailsService.jsx"; // Đường dẫn đến file CartDetailsService
+import CartDetailsService from "../../service/CartDetailsService/CartDetailsService.jsx";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 
+
 const ShoppingCart = () => {
     const [products, setProducts] = useState([]);
     const navigate = useNavigate();
 
-    // Hàm lấy userId từ token
     const getUserIdFromToken = () => {
-        const accessToken = Cookies.get("accessToken"); // Lấy token từ cookies
+        const accessToken = Cookies.get("accessToken");
         if (!accessToken) return null;
-
-        // Nếu là JWT, giải mã payload để lấy userId
         try {
             const payload = JSON.parse(atob(accessToken.split(".")[1]));
-            return payload.userId; // Thay đổi key này theo cấu trúc token của bạn
+            return payload.userId;
         } catch (error) {
             console.error("Invalid token:", error);
             return null;
         }
     };
 
-    const userId = getUserIdFromToken(); // Gọi hàm sau khi đã khai báo
+    const userId = getUserIdFromToken();
 
-    // Fetch cart details
     useEffect(() => {
         const fetchCartDetails = async () => {
             try {
@@ -46,7 +43,6 @@ const ShoppingCart = () => {
         }
     }, [userId]);
 
-    // Handle product removal
     const handleRemoveProduct = async (cartDetailId) => {
         try {
             await CartDetailsService.deleteCartDetails(cartDetailId);
@@ -60,9 +56,36 @@ const ShoppingCart = () => {
         }
     };
 
+    const handleQuantityChange = async (cartDetailId, newQuantity) => {
+        if (newQuantity < 1) return;
+
+        // Cập nhật UI trước để có cảm giác mượt mà
+        setProducts((prevProducts) =>
+            prevProducts.map((product) =>
+                product.cartDetailId === cartDetailId ? { ...product, quantityItem: newQuantity } : product
+            )
+        );
+
+        try {
+            // Cập nhật dữ liệu lên server
+            await CartDetailsService.updateCartDetails(cartDetailId, newQuantity);
+        } catch (error) {
+            console.error("Error updating quantity:", error);
+            toast.error("Failed to update quantity. Please try again.");
+
+            // Nếu API lỗi, hoàn tác thay đổi
+            setProducts((prevProducts) =>
+                prevProducts.map((product) =>
+                    product.cartDetailId === cartDetailId
+                        ? { ...product, quantityItem: newQuantity - 1 }
+                        : product
+                )
+            );
+        }
+    };
+
 
     const handleCheckout = () => {
-        // Chỉ lấy những thông tin cần thiết cho trang checkout
         const checkoutItems = products.map(({ productDetailId, productName, price, quantityItem }) => ({
             productDetailId,
             productName,
@@ -78,14 +101,13 @@ const ShoppingCart = () => {
     }, [products]);
 
     return (
-        <div className="max-w-[1200px] mx-auto p-8 bg-white rounded-lg shadow-md mt-10">
+        <div className="max-w-[1200px] mx-auto p-8 bg-white rounded-lg shadow-md mt-10 mb-10">
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl md:text-3xl font-bold text-yellow-500">Giỏ Hàng</h1>
                 <span className="text-yellow-500 text-sm md:text-lg">({products.length} sản phẩm)</span>
             </div>
 
             <div className="mt-6">
-                {/* Header Row */}
                 <div className="hidden md:flex justify-between items-center border-b pb-4">
                     <span className="text-green-600 font-medium flex-1 pl-11">Sản phẩm</span>
                     <p className="text-green-600 font-medium flex-1 text-right pl-20">Đơn giá</p>
@@ -93,7 +115,6 @@ const ShoppingCart = () => {
                     <p className="text-green-600 font-medium text-left pr-16">Thành tiền</p>
                 </div>
 
-                {/* Product Rows */}
                 {products.map((product) => (
                     <div
                         key={product.productDetailId}
@@ -117,9 +138,9 @@ const ShoppingCart = () => {
                             </div>
                             <div className="text-center md:flex-1">
                                 <div className="flex items-center justify-center space-x-4">
-                                    <button className="text-yellow-500 text-xl md:text-2xl">-</button>
+                                    <button onClick={() => handleQuantityChange(product.cartDetailId, product.quantityItem - 1)} className="text-yellow-500 text-xl md:text-2xl">-</button>
                                     <span className="mx-2 text-lg md:text-xl">{product.quantityItem}</span>
-                                    <button className="text-yellow-500 text-xl md:text-2xl">+</button>
+                                    <button onClick={() => handleQuantityChange(product.cartDetailId, product.quantityItem + 1)} className="text-yellow-500 text-xl md:text-2xl">+</button>
                                 </div>
                             </div>
                             <div className="text-center md:flex-1">
@@ -137,46 +158,13 @@ const ShoppingCart = () => {
                     </div>
                 ))}
 
-                {/* Border for separation */}
-                <div className="border-t mt-6 pt-6">
-                    <h3 className="text-md md:text-lg font-semibold text-gray-800 mb-4">
-                        Ưu đãi & Mã giảm giá
-                    </h3>
-                    <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
-                        {/* Combobox for Discount Code */}
-                        <select
-                            className="border rounded-lg p-2 md:p-4 text-sm md:text-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all duration-300 w-full md:w-1/3">
-                            <option value="">Chọn mã giảm giá</option>
-                            <option value="10off">Giảm 10%</option>
-                            <option value="20off">Giảm 20%</option>
-                        </select>
-
-                        {/* Total Price */}
-                        <div className="text-right">
-                            <p className="text-lg md:text-xl font-semibold">
-                                Tổng tiền:{" "}
-                                <span className="text-[#fbb321]">
-                                    {products.reduce((total, product) => total + product.price * product.quantityItem, 0).toLocaleString()}₫
-                                </span>
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Order Button */}
-                    <div className="mt-6 text-right">
-                        <button
-                            onClick={handleCheckout}
-                            disabled={products.length === 0}
-                            className={`font-bold rounded-full px-6 py-3 shadow-lg transition-all duration-300 transform ${
-                                products.length === 0
-                                    ? "bg-gray-400 text-white cursor-not-allowed"
-                                    : "bg-[#fbb321] text-white hover:bg-[#fef0d3] hover:text-orange-500 hover:scale-105"
-                            }`}
-                        >
-                            Đặt hàng
-                        </button>
-
-                    </div>
+                <div className="border-t mt-6 pt-6 text-right">
+                    <p className="text-lg md:text-xl font-semibold">
+                        Tổng tiền: <span className="text-[#fbb321]">{products.reduce((total, product) => total + product.price * product.quantityItem, 0).toLocaleString()}₫</span>
+                    </p>
+                    <button onClick={handleCheckout} disabled={products.length === 0} className={`font-bold rounded-full px-6 py-3 shadow-lg transition-all duration-300 transform ${products.length === 0 ? "bg-gray-400 text-white cursor-not-allowed" : "bg-[#fbb321] text-white hover:bg-[#fef0d3] hover:text-orange-500 hover:scale-105"}`}>
+                        Đặt hàng
+                    </button>
                 </div>
             </div>
         </div>
