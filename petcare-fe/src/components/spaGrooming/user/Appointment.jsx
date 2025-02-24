@@ -29,6 +29,9 @@ const Appointment = () => {
     phone: ''
   });
 
+  // Thêm state để theo dõi buổi được chọn
+  const [selectedSession, setSelectedSession] = useState(''); // 'morning' hoặc 'afternoon'
+
   // Generate week dates starting from current date
   useEffect(() => {
     const generateWeekDates = () => {
@@ -65,17 +68,21 @@ const Appointment = () => {
   const formatDate = (date) => {
     return new Intl.DateTimeFormat('vi-VN', {
       weekday: 'long',
-      year: 'numeric',
+      day: 'numeric',
       month: 'numeric',
-      day: 'numeric'
+      year: 'numeric'
     }).format(date);
   };
 
   // Format day and date for radio labels
   const formatDayDate = (date) => {
-    const day = new Intl.DateTimeFormat('vi-VN', { weekday: 'short' }).format(date);
-    const dateNum = date.getDate();
-    return { day, dateNum };
+    return {
+      day: new Intl.DateTimeFormat('vi-VN', { weekday: 'short' }).format(date),
+      date: new Intl.DateTimeFormat('vi-VN', { 
+        day: 'numeric',
+        month: 'numeric'
+      }).format(date)
+    };
   };
 
   // Định nghĩa các khung giờ
@@ -342,7 +349,7 @@ const Appointment = () => {
               {/* Date Radio Buttons */}
               <div className="grid grid-cols-7 gap-4">
                 {weekDates.map((date, index) => {
-                  const { day, dateNum } = formatDayDate(date);
+                  const { day, date: dateStr } = formatDayDate(date);
                   return (
                     <div key={index} className="text-center">
                       <input
@@ -351,19 +358,23 @@ const Appointment = () => {
                         name="booking-date"
                         className="hidden"
                         checked={selectedDate.toDateString() === date.toDateString()}
-                        onChange={() => setSelectedDate(date)}
+                        onChange={() => {
+                          setSelectedDate(date);
+                          setSelectedSession('');
+                          setSelectedTime('');
+                          setSelectedSlots([]);
+                        }}
                       />
                       <label
                         htmlFor={`date-${index}`}
                         className={`cursor-pointer flex flex-col items-center p-2 rounded-lg transition-colors
-                          ${
-                            selectedDate.toDateString() === date.toDateString()
-                              ? 'bg-blue-600 text-white'
-                              : 'hover:bg-gray-100'
+                          ${selectedDate.toDateString() === date.toDateString()
+                            ? 'bg-blue-600 text-white'
+                            : 'hover:bg-gray-100'
                           }`}
                       >
                         <span className="text-sm">{day}</span>
-                        <span className="text-lg font-semibold">{dateNum}</span>
+                        <span className="text-lg font-semibold">{dateStr}</span>
                       </label>
                     </div>
                   );
@@ -378,65 +389,37 @@ const Appointment = () => {
                 <h3 className="text-md font-medium">Chọn khung giờ</h3>
               </div>
 
-              {/* Buổi sáng */}
-              <div className="mb-6">
-                <div className="bg-blue-50 p-3 rounded-t-lg border-b-2 border-blue-200">
-                  <h4 className="text-blue-700 font-medium">Buổi sáng (9:00 - 14:00)</h4>
-                </div>
-                <div className="bg-white p-4 rounded-b-lg shadow-sm">
-                  {timeSlots.morning.map((block, blockIndex) => (
-                    <div key={blockIndex} className="mb-4 last:mb-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="w-16 text-sm font-medium text-gray-600">
-                          {block.hour}
-                        </span>
-                        <div className="flex-1 grid grid-cols-4 gap-3">
-                          {block.slots.map((_, slotIndex) => (
-                            <div key={slotIndex}>
-                              <input
-                                type="checkbox"
-                                id={`time-${block.hour}-${slotIndex}`}
-                                className="hidden"
-                                disabled={selectedSlots.length > 0 && !selectedSlots.includes(`${block.hour}-${slotIndex}`) && selectedTime !== block.hour}
-                                checked={selectedSlots.includes(`${block.hour}-${slotIndex}`)}
-                                onChange={() => handleSlotSelection(block.hour, slotIndex)}
-                              />
-                              <label
-                                htmlFor={`time-${block.hour}-${slotIndex}`}
-                                className={`block w-full h-10 relative rounded-lg cursor-pointer transition-all border-2
-                                  ${selectedSlots.includes(`${block.hour}-${slotIndex}`)
-                                    ? 'bg-blue-600 border-blue-600 shadow-md transform scale-105'
-                                    : selectedTime && selectedTime !== block.hour
-                                      ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-50'
-                                      : 'bg-white border-gray-200 hover:border-blue-400 hover:shadow'
-                                  }`}
-                              >
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <span className={`text-sm font-medium ${
-                                    selectedSlots.includes(`${block.hour}-${slotIndex}`)
-                                      ? 'text-white'
-                                      : 'text-gray-600'
-                                  }`}>
-                                    Slot {slotIndex + 1}
-                                  </span>
-                                </div>
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              {/* Session Selection */}
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <button
+                  onClick={() => setSelectedSession('morning')}
+                  className={`p-4 rounded-lg text-center transition-colors ${
+                    selectedSession === 'morning'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white hover:bg-gray-100'
+                  }`}
+                >
+                  <h4 className="font-medium">Buổi sáng</h4>
+                  <p className="text-sm">9:00 - 14:00</p>
+                </button>
+
+                <button
+                  onClick={() => setSelectedSession('afternoon')}
+                  className={`p-4 rounded-lg text-center transition-colors ${
+                    selectedSession === 'afternoon'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white hover:bg-gray-100'
+                  }`}
+                >
+                  <h4 className="font-medium">Buổi chiều</h4>
+                  <p className="text-sm">14:00 - 20:00</p>
+                </button>
               </div>
 
-              {/* Buổi chiều */}
-              <div>
-                <div className="bg-orange-50 p-3 rounded-t-lg border-b-2 border-orange-200">
-                  <h4 className="text-orange-700 font-medium">Buổi chiều (14:00 - 20:00)</h4>
-                </div>
-                <div className="bg-white p-4 rounded-b-lg shadow-sm">
-                  {timeSlots.afternoon.map((block, blockIndex) => (
+              {/* Time Slots */}
+              {selectedSession && (
+                <div className="bg-white p-4 rounded-lg shadow-sm">
+                  {timeSlots[selectedSession].map((block, blockIndex) => (
                     <div key={blockIndex} className="mb-4 last:mb-0">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="w-16 text-sm font-medium text-gray-600">
@@ -480,7 +463,7 @@ const Appointment = () => {
                     </div>
                   ))}
                 </div>
-              </div>
+              )}
 
               {/* Legend */}
               <div className="mt-4 p-3 bg-white rounded-lg">
