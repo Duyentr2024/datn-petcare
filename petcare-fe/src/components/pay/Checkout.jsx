@@ -98,8 +98,8 @@ const Checkout = () => {
 
         try {
             const payload = JSON.parse(atob(accessToken.split(".")[1])); // Giải mã payload
-            const {fullName, phone} = payload; // Lấy thông tin từ payload
-            return {fullName, phone};
+            const { fullName, phone } = payload; // Lấy thông tin từ payload
+            return { fullName, phone };
         } catch (error) {
             console.error("Invalid token:", error);
             return null;
@@ -239,22 +239,22 @@ const Checkout = () => {
 
     // 🔹 Xử lý thay đổi input khi chỉnh sửa
     const handleInputChange = async (e) => {
-        const {name, value} = e.target;
+        const { name, value } = e.target;
 
         setSelectedAddress((prev) => {
             let updatedValue = value;
 
             if (name === "province") {
                 GHNService.getDistricts(value).then(setDistricts);
-                return {...prev, province: value, district: "", ward: ""};
+                return { ...prev, province: value, district: "", ward: "" };
             } else if (name === "district") {
                 GHNService.getWards(value).then(setWards);
                 return { ...prev, district: value, ward: "" };
             } else if (name === "ward") {
-                return {...prev, ward: value};
+                return { ...prev, ward: value };
             }
 
-            return {...prev, [name]: updatedValue};
+            return { ...prev, [name]: updatedValue };
         });
 
         // 🔹 Nếu không phải địa chỉ mới, tự động lưu khi thay đổi tỉnh, huyện, xã hoặc đường
@@ -371,9 +371,10 @@ const Checkout = () => {
             paymentMethod: String(paymentMethod),
             shippingAddress: String(shippingAddress),
             shippingCost: Number(shippingCosts),
-            voucherId: selectedAddress?.voucherId ? Number(selectedAddress.voucherId) : null,
+            voucherId: selectedVoucher ? Number(selectedVoucher) : null,
+            totalAmount: totalAmount,
             type: "ORDER ONLINE",
-            items: products.map(({productDetailId, quantityItem, price}) => ({
+            items: products.map(({ productDetailId, quantityItem, price }) => ({
                 productDetailId: Number(productDetailId),
                 quantity: Number(quantityItem),
                 price: Number(price),
@@ -463,6 +464,7 @@ const Checkout = () => {
             console.error("Lỗi trong quá trình xử lý đơn hàng:", error);
         }
     };
+
 
     const getDaysUntilExpiry = (endDate) => {
         const today = new Date();
@@ -717,8 +719,6 @@ const Checkout = () => {
                             Thanh toán
                         </button>
                     </div>
-
-
                 </div>
             </div>
         </div>
