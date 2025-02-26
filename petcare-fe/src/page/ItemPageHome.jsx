@@ -18,7 +18,7 @@ const fadeInUp = {
 
 const ItemPageHome = () => {
     return (
-        <div className="space-y-10 p-5">
+        <div className="space-y-10">
             {/* Banner */}
             <motion.div
                 initial="hidden"
