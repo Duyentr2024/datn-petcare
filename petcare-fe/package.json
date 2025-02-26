@@ -39,6 +39,7 @@
     "react-slick": "^0.30.3",
     "react-toastify": "^11.0.3",
     "react-transition-group": "^4.4.5",
+    "recharts": "^2.15.1",
     "slick-carousel": "^1.8.1",
     "styled-components": "^6.1.15",
     "sweetalert2": "^11.15.10",

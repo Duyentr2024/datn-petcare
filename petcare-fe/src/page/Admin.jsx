@@ -8,6 +8,8 @@ import ManageProductCategories from "../components/Manage/ManageProductCategorie
 import ManageProducts from "../components/Manage/ManageProducts";
 import ManageProductImages from "../components/Manage/ManageProductImages";
 import ProductListDetails from "../components/Manage/ProductListDetais";
+import ManageStatistics from "../components/Manage/ManageStatistics";
+import StockPage from "../components/Manage/StockPage"
 function Admin() {
   return (
     <div className="flex flex-col h-screen bg-gray-100 font-sans">
@@ -19,7 +21,8 @@ function Admin() {
 
         <main className="flex-1 p-6 bg-gray-50 overflow-auto">
           <Routes>
-            <Route path="/" element={<h1>Admin Dashboard</h1>} />
+            <Route path="/" element={<ManageStatistics/>} />
+            <Route path="/warehouse" element={<StockPage />} />
             <Route path="/product-color" element={<ManageProductColor />} />
             <Route path="/product-size" element={<ManageProductSize />} />
             <Route path="/product-weights" element={<ManageProductWeights />} />
