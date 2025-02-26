@@ -8,6 +8,7 @@ const ManageProductBrand = () => {
     const [editingBrand, setEditingBrand] = useState(null);
     const [brandInputError, setBrandInputError] = useState("");
     const [searchQuery, setSearchQuery] = useState(""); // State for search query
+    const [successMessage, setSuccessMessage] = useState("");
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -48,38 +49,44 @@ const ManageProductBrand = () => {
             setBrandInputError("");
         }
 
-        if (editingBrand) {
-            try {
+        try {
+            if (editingBrand) {
                 await ProductBrandService.updateBrand(editingBrand.brandId, {
                     ...editingBrand,
                     brandName: brandInput,
                 });
+                setSuccessMessage("✅ Cập nhật thương hiệu thành công!");
                 setEditingBrand(null);
-                setBrandInput("");
-            } catch (error) {
-                console.error("Error updating brand:", error);
-            }
-        } else {
-            try {
+            } else {
                 await ProductBrandService.createBrand({ brandName: brandInput, status: true });
-                setBrandInput("");
-            } catch (error) {
-                console.error("Error adding brand:", error);
+                setSuccessMessage("✅ Thêm thương hiệu thành công!");
             }
+
+            setBrandInput("");
+            fetchBrands();
+        } catch (error) {
+            console.error("❌ Lỗi khi thêm/sửa thương hiệu:", error);
         }
 
-        fetchBrands();
+        // Ẩn thông báo sau 3 giây
+        setTimeout(() => setSuccessMessage(""), 3000);
     };
+
 
     const handleChangeBrandStatus = async (brand) => {
         const updatedBrand = { ...brand, status: !brand.status };
         try {
             await ProductBrandService.updateBrand(brand.brandId, updatedBrand);
+            setSuccessMessage("✅ Trạng thái thương hiệu đã được cập nhật!");
             fetchBrands();
+
+            // Ẩn thông báo sau 3 giây
+            setTimeout(() => setSuccessMessage(""), 3000);
         } catch (error) {
-            console.error("Error updating brand status:", error);
+            console.error("❌ Lỗi khi cập nhật trạng thái thương hiệu:", error);
         }
     };
+
 
     // Handle pagination
     const paginateBrands = () => {
@@ -92,6 +99,11 @@ const ManageProductBrand = () => {
 
     return (
         <div className="p-6 bg-white shadow-md rounded-md">
+            {successMessage && (
+                <div className="p-1 text-green-700 bg-green-100 border border-green-400 rounded-md text-center">
+                    {successMessage}
+                </div>
+            )}
             <h2 className="text-2xl font-semibold mb-4">Quản lý thương hiệu sản phẩm</h2>
 
             {/* Form thêm hoặc sửa thương hiệu */}

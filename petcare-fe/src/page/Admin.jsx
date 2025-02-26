@@ -9,6 +9,9 @@ import ManageProducts from "../components/Manage/ManageProducts";
 import ManageProductImages from "../components/Manage/ManageProductImages";
 import ProductListDetails from "../components/Manage/ProductListDetais";
 import ManageEmployee from "../components/Manage/ManageEmployee";
+import ManageVoucher from "../components/Manage/ManageVoucher";
+import CreateVoucher from "../components/Manage/createManage/createManageVoucher/CreateVoucher";
+import OrderManage from "../components/Manage/OrderManage";
 function Admin() {
   return (
     <div className="flex flex-col h-screen bg-gray-100 font-sans">
@@ -28,9 +31,11 @@ function Admin() {
             <Route path="/product-brands" element={<ManageProductBrand />} />
             <Route path="/product-categories" element={<ManageProductCategories />} />
             <Route path="/products-list" element={<ManageProducts />} />
+            <Route path="/voucher-management" element={<ManageVoucher />} />
+            <Route path="/voucher-management-create" element={<CreateVoucher />} />
+            <Route path="/product-inventory" element={<OrderManage />} />
             <Route path="/products-list/manage-product-details/:productId" element={<ProductListDetails />} />
             <Route path="/products-list/manage-product-details/:productId/product-image/:productDetailId" element={<ManageProductImages />} />
-
           </Routes>
         </main>
       </div>
