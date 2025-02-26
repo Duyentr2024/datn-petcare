@@ -89,7 +89,7 @@ const SidebarMenu = () => {
                                 >
                                     <li>
                                         <Link
-                                            to="/admin/user"
+                                            to="/admin/employee"
                                             className="block p-2 rounded-lg hover:bg-gray-500 transition duration-300"
                                         >
                                             Quản lý nhân viên

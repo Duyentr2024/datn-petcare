@@ -35,6 +35,7 @@ const AccountInfo = () => {
       console.log("Token không hợp lệ, chuyển hướng về login...");
       navigate("/login");
     }
+    window.scrollTo(0, 0);
   }, [cookies.accessToken, navigate]);
   const [formData, setFormData] = useState({
     fullName: "",

@@ -54,6 +54,7 @@ const Login = () => {
         observer.unobserve(img);
       });
     };
+    window.scrollTo(0, 0);
   }, []);
 
   // Xử lý đăng nhập
@@ -70,7 +71,7 @@ const Login = () => {
         
       if (data.roleName === "ADMIN") {
         navigate("/admin");
-      } else if (data.roleName === "Nhân viên") {
+      } else if (data.roleName === "N") {
         navigate("/admin");
       } else {
         navigate("/");
