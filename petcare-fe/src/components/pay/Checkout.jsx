@@ -1,15 +1,17 @@
-import React, { useEffect, useState } from "react";
-import { useAuth } from "../../context/AuthContext";
+import React, {useEffect, useState} from "react";
+import {useAuth} from "../../context/AuthContext";
 import axios from "axios";
 import Swal from "sweetalert2";
 import GHNService from "../../service/addressService/GHNService.jsx";
 import Cookies from "js-cookie";
 import CartDetailsService from "../../service/CartDetailsService/CartDetailsService.jsx";
-import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom"; // Import useNavigate từ React Router
+import {toast} from "react-toastify";
+import {useNavigate} from "react-router-dom";
 import VoucherService from "../../service/voucherService/VoucherService.jsx";
+
 const Checkout = () => {
-    const { user } = useAuth();
+    const {user} = useAuth();
+    const [errors, setErrors] = useState({});
     const navigate = useNavigate();
     const [addresses, setAddresses] = useState([]);
     const [selectedAddress, setSelectedAddress] = useState({
@@ -30,21 +32,27 @@ const Checkout = () => {
     const [discount, setDiscount] = useState(0);
     const [condition, setCondition] = useState(0);
     const [expiryDate, setExpiryDate] = useState("");
-    // const [shippingFee, setShippingFee] = useState(0);
-    //
-    // const fromDistrictId = 1442; // Mã quận của cửa hàng
-    // const toDistrictId = 1450;   // Mã quận người nhận
-
+    const [shippingFee, setShippingFee] = useState(0);
+    const totalWeight = products.reduce((sum, item) => sum + item.weightValue * item.quantityItem * 1000, 0); // gram
     const [paymentMethod, setPaymentMethod] = useState('COD'); // Mặc định là COD
+    const subtotal = products.reduce((total, item) => total + item.price * item.quantityItem, 0);
+    const totalBeforeDiscount = subtotal + shippingFee;
+    const discountAmount = subtotal >= condition ? (totalBeforeDiscount * discount) / 100 : 0;
+    const totalAmount = (totalBeforeDiscount - discountAmount).toLocaleString();
+
 
     const handlePaymentMethodChange = (method) => {
         setPaymentMethod(method);
     };
 
-    // Tính tổng trọng lượng
-    const totalWeight = products.reduce((sum, item) => sum + item.weightValue * item.quantityItem * 1000, 0); // gram
-
     useEffect(() => {
+        window.scrollTo(0, 0);
+
+        if (selectedAddress.district && selectedAddress.ward && totalWeight > 0) {
+            console.log("📦 Gọi API GHN với:", selectedAddress.district, selectedAddress.ward);
+            fetchShippingFee(selectedAddress.district, selectedAddress.ward);
+        }
+
         const fetchCartDetails = async () => {
             try {
                 const data = await CartDetailsService.getCartDetailsByUserId(userId);
@@ -55,24 +63,32 @@ const Checkout = () => {
             }
         };
 
-        const fetchShippingFee = async () => {
-            try {
-                const fee = await GHNService.getShippingFee({
-                    fromDistrictId,
-                    toDistrictId,
-                    weight: totalWeight,
-                });
-                setShippingFee(fee);
-            } catch (error) {
-                toast.error("Không thể lấy phí vận chuyển!");
-            }
+        fetchCartDetails();
+    }, [selectedAddress, totalWeight]);
+
+    const fetchShippingFee = async (districtId, wardCode) => {
+        if (!districtId || !wardCode) {
+            console.error("🚨 Thiếu thông tin Quận/Huyện hoặc Phường/Xã!", {districtId, wardCode});
+            return;
+        }
+
+        const payload = {
+            districtId,
+            wardCode,
+            weight: totalWeight || 1000,
         };
 
-        fetchCartDetails();
-        if (totalWeight > 0) {
-            fetchShippingFee();
+        console.log("📤 Gửi payload đến GHNService:", payload);
+
+        try {
+            const fee = await GHNService.calculateShippingFee(payload);
+            console.log("✅ Shipping Fee:", fee);
+            setShippingFee(fee);
+        } catch (error) {
+            console.error("❌ Không thể lấy phí vận chuyển!", error);
+            toast.error("Không thể lấy phí vận chuyển!");
         }
-    }, [totalWeight]);
+    };
 
     // Hàm lấy userId từ token
     const getUserIdFromToken = () => {
@@ -108,7 +124,7 @@ const Checkout = () => {
 
     const userInfo = getPhoneAndNameFromToken();
     if (userInfo) {
-        const { fullName, phone } = userInfo;
+        const {fullName, phone} = userInfo;
     }
 
     // Fetch cart details
@@ -208,26 +224,28 @@ const Checkout = () => {
             const address = addresses.find(addr => addr.addressId.toString() === addressId);
             if (address) {
                 const provinceData = provinces.find(p => p.ProvinceName === address.province);
-                if (!provinceData) {
-                    console.error("Không tìm thấy tỉnh:", address.province);
-                    return;
-                }
+                const provinceID = provinceData ? provinceData.ProvinceID : "";
 
-                const districtData = await GHNService.getDistricts(provinceData.ProvinceID);
+                const districtData = provinceID ? await GHNService.getDistricts(provinceID) : [];
                 const district = districtData.find(d => d.DistrictName === address.district);
-                if (!district) {
-                    console.error("Không tìm thấy quận:", address.district);
-                    return;
-                }
+                const districtID = district ? district.DistrictID : "";
 
-                const wardData = await GHNService.getWards(district.DistrictID);
+                const wardData = districtID ? await GHNService.getWards(districtID) : [];
                 const ward = wardData.find(w => w.WardName === address.ward);
+                const wardID = ward ? ward.WardCode : "";
+
+                console.log("🏠 Selected Address:", {
+                    ...address,
+                    province: provinceID,
+                    district: districtID,
+                    ward: wardID,
+                });
 
                 setSelectedAddress({
                     ...address,
-                    province: provinceData.ProvinceID,
-                    district: district.DistrictID,
-                    ward: ward ? ward.WardCode : "",
+                    province: provinceID,
+                    district: districtID,
+                    ward: wardID,
                     isNew: false,
                 });
 
@@ -237,50 +255,42 @@ const Checkout = () => {
         }
     };
 
+
     // 🔹 Xử lý thay đổi input khi chỉnh sửa
     const handleInputChange = async (e) => {
         const {name, value} = e.target;
 
         setSelectedAddress((prev) => {
-            let updatedValue = value;
-
             if (name === "province") {
                 GHNService.getDistricts(value).then(setDistricts);
                 return {...prev, province: value, district: "", ward: ""};
-            } else if (name === "district") {
-                GHNService.getWards(value).then(setWards);
-                return { ...prev, district: value, ward: "" };
-            } else if (name === "ward") {
-                return {...prev, ward: value};
             }
-
-            return {...prev, [name]: updatedValue};
+            if (name === "district") {
+                GHNService.getWards(value).then(setWards);
+                return {...prev, district: value, ward: ""};
+            }
+            return {...prev, [name]: value};
         });
 
-        // 🔹 Nếu không phải địa chỉ mới, tự động lưu khi thay đổi tỉnh, huyện, xã hoặc đường
-        if (!selectedAddress.isNew && ["street", "ward", "district"].includes(name)) {
+        // 🔹 Chỉ cập nhật API nếu thay đổi `street` hoặc `ward`
+        if (!selectedAddress.isNew && ["street", "ward"].includes(name)) {
             const updatedAddress = {
                 ...selectedAddress,
                 [name]: value,
                 province:
-                    isNaN(selectedAddress.province)
-                        ? selectedAddress.province
-                        : provinces.find((p) => p.ProvinceID.toString() === selectedAddress.province)?.ProvinceName || "",
+                    provinces.find(p => String(p.ProvinceID) === String(selectedAddress.province))?.ProvinceName || selectedAddress.province,
                 district:
-                    isNaN(selectedAddress.district)
-                        ? selectedAddress.district
-                        : districts.find((d) => d.DistrictID.toString() === selectedAddress.district)?.DistrictName || "",
+                    districts.find(d => String(d.DistrictID) === String(selectedAddress.district))?.DistrictName || selectedAddress.district,
                 ward:
-                    isNaN(selectedAddress.ward)
-                        ? selectedAddress.ward
-                        : wards.find((w) => w.WardCode.toString() === selectedAddress.ward)?.WardName || "",
+                    wards.find(w => String(w.WardCode) === String(selectedAddress.ward))?.WardName || selectedAddress.ward,
             };
 
             delete updatedAddress.isNew;
 
             try {
+                console.log("📤 Gửi API cập nhật:", updatedAddress);
                 await axios.put(`http://localhost:8080/api/addresses/${updatedAddress.addressId}`, updatedAddress);
-                setAddresses((prev) =>
+                setAddresses(prev =>
                     prev.map((addr) => (addr.addressId === updatedAddress.addressId ? updatedAddress : addr))
                 );
             } catch (error) {
@@ -291,16 +301,22 @@ const Checkout = () => {
 
     // 🔹 Khi `ward` hoặc `street` thay đổi, tự động cập nhật API
     useEffect(() => {
-        if (!selectedAddress.isNew && (selectedAddress.ward || selectedAddress.street)) {
+        if (!selectedAddress.isNew && selectedAddress.ward && selectedAddress.street) {
             const updatedAddress = {
                 ...selectedAddress,
-                province: provinces.find(p => String(p.ProvinceID) === String(selectedAddress.province))?.ProvinceName || "",
-                district: districts.find(d => String(d.DistrictID) === String(selectedAddress.district))?.DistrictName || "",
-                ward: wards.find(w => String(w.WardCode) === String(selectedAddress.ward))?.WardName || "",
+                province: provinces.find(p => String(p.ProvinceID) === String(selectedAddress.province))?.ProvinceName || selectedAddress.province,
+                district: districts.find(d => String(d.DistrictID) === String(selectedAddress.district))?.DistrictName || selectedAddress.district,
+                ward: wards.find(w => String(w.WardCode) === String(selectedAddress.ward))?.WardName || selectedAddress.ward,
             };
+
+            if (!updatedAddress.province || !updatedAddress.district || !updatedAddress.ward) {
+                console.warn("⚠️ Không gửi API vì thiếu dữ liệu:", updatedAddress);
+                return;
+            }
 
             (async () => {
                 try {
+                    console.log("📤 Auto Update API:", updatedAddress);
                     await axios.put(`http://localhost:8080/api/addresses/${updatedAddress.addressId}`, updatedAddress);
                     setAddresses(prev => prev.map(addr => addr.addressId === updatedAddress.addressId ? updatedAddress : addr));
                 } catch (error) {
@@ -308,7 +324,7 @@ const Checkout = () => {
                 }
             })();
         }
-    }, [selectedAddress.ward, selectedAddress.street]); // Chỉ chạy khi `ward` hoặc `street` thay đổi
+    }, [selectedAddress.ward, selectedAddress.street]); // Chỉ cập nhật khi `street` hoặc `ward` thay đổi
 
     const handleSaveAddress = async () => {
         // 🔹 Lấy tên từ ID trước khi gửi lên API
@@ -324,13 +340,13 @@ const Checkout = () => {
         // 🔹 Chuẩn bị dữ liệu để gửi lên API
         const addressData = {
             ...selectedAddress,
-            province: provinceName,  // Đảm bảo lưu tên tỉnh
-            district: districtName,  // Đảm bảo lưu tên huyện
-            ward: wardName,          // Đảm bảo lưu tên xã
-            userId: user?.userId,
+            province: provinceName || "",
+            district: districtName || "",
+            ward: wardName || "",
+            userId: user?.userId || null,
         };
 
-        console.log("📤 Dữ liệu gửi lên API:", addressData); // Kiểm tra dữ liệu
+        console.log("📤 Dữ liệu gửi lên API:", addressData); // Kiểm tra dữ liệu trước khi gửi
 
         try {
             let response;
@@ -342,14 +358,30 @@ const Checkout = () => {
 
             Swal.fire("Thành công!", selectedAddress.isNew ? "Đã thêm địa chỉ mới" : "Đã cập nhật địa chỉ", "success");
 
-
             // 🔹 Gọi API để cập nhật danh sách địa chỉ
             const updatedAddresses = await axios.get(`http://localhost:8080/api/addresses/user/${user.userId}`);
             setAddresses(updatedAddresses.data);
 
-            // 🔹 Cập nhật địa chỉ được chọn thành địa chỉ mới nhất
-            setSelectedAddress({ ...response.data, isNew: false });
+            // 🔥 Đảm bảo cập nhật selectedAddress với tỉnh/quận/xã đúng tên
+            const newSelected = updatedAddresses.data.find(addr => addr.addressId === response.data.addressId);
+            if (newSelected) {
+                const provinceData = provinces.find(p => p.ProvinceName === newSelected.province);
+                const districtData = provinceData ? await GHNService.getDistricts(provinceData.ProvinceID) : [];
+                const district = districtData.find(d => d.DistrictName === newSelected.district);
+                const wardData = district ? await GHNService.getWards(district.DistrictID) : [];
+                const ward = wardData.find(w => w.WardName === newSelected.ward);
 
+                setSelectedAddress({
+                    ...newSelected,
+                    province: provinceData ? provinceData.ProvinceID : "",
+                    district: district ? district.DistrictID : "",
+                    ward: ward ? ward.WardCode : "",
+                    isNew: false,
+                });
+
+                setDistricts(districtData);
+                setWards(wardData);
+            }
         } catch (error) {
             Swal.fire("Lỗi!", "Không thể lưu địa chỉ. Vui lòng thử lại!", "error");
         }
@@ -358,19 +390,16 @@ const Checkout = () => {
     const provinceName = provinces.find(p => String(p.ProvinceID) === String(selectedAddress.province))?.ProvinceName || "";
     const districtName = districts.find(d => String(d.DistrictID) === String(selectedAddress.district))?.DistrictName || "";
     const wardName = wards.find(w => String(w.WardCode) === String(selectedAddress.ward))?.WardName || "";
-
     const shippingAddress = `${selectedAddress.street}, ${wardName}, ${districtName}, ${provinceName}`
         .replace(/, ,/g, ',')
         .replace(/, $/, '');
-
-    const shippingCosts = 30000;
 
     const handlePayment = async () => {
         const orderDetails = {
             userId: Number(userId),
             paymentMethod: String(paymentMethod),
             shippingAddress: String(shippingAddress),
-            shippingCost: Number(shippingCosts),
+            shippingCost: Number(shippingFee),
             voucherId: selectedAddress?.voucherId ? Number(selectedAddress.voucherId) : null,
             type: "ORDER ONLINE",
             items: products.map(({productDetailId, quantityItem, price}) => ({
@@ -384,7 +413,7 @@ const Checkout = () => {
 
         try {
             const response = await axios.post("http://localhost:8080/api/orders/checkout", orderDetails, {
-                headers: { "Content-Type": "application/json" },
+                headers: {"Content-Type": "application/json"},
             });
 
             Swal.fire({
@@ -405,7 +434,7 @@ const Checkout = () => {
         }
     };
 
-    // voucher
+    //Voucher
     useEffect(() => {
         const fetchVouchers = async () => {
             try {
@@ -449,6 +478,7 @@ const Checkout = () => {
             console.error("Lỗi khi thanh toán:", error);
         }
     };
+
     const handleOrderProcess = async () => {
         try {
             console.log("Bắt đầu xử lý đơn hàng...");
@@ -469,13 +499,9 @@ const Checkout = () => {
         const expiryDate = new Date(endDate);
         const diffTime = expiryDate - today;
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays > 0 ? <span className="text-red-500">{diffDays} ngày</span> : <span className="text-red-500">Hết hạn</span>;
+        return diffDays > 0 ? <span className="text-red-500">{diffDays} ngày</span> :
+            <span className="text-red-500">Hết hạn</span>;
     };
-
-    const subtotal = products.reduce((total, item) => total + item.price * item.quantityItem, 0);
-    const totalBeforeDiscount = subtotal + shippingCosts;
-    const discountAmount = subtotal >= condition ? (totalBeforeDiscount * discount) / 100 : 0;
-    const totalAmount = (totalBeforeDiscount - discountAmount).toLocaleString();
 
     return (
         <div className="min-h-screen flex justify-center items-center px-4 md:px-0 relative">
@@ -503,9 +529,9 @@ const Checkout = () => {
                         <h2 className="text-2xl font-bold text-[#fbb321] mb-4 mt-4">Thông tin thanh toán</h2>
                         <form className="space-y-4">
                             {[
-                                { label: "Họ và tên", name: "fullName", type: "text" },
-                                { label: "Số điện thoại", name: "phone", type: "text" },
-                                { label: "Địa chỉ", name: "street", type: "text" },
+                                {label: "Họ và tên", name: "fullName", type: "text"},
+                                {label: "Số điện thoại", name: "phone", type: "text"},
+                                {label: "Địa chỉ", name: "street", type: "text"},
                             ].map((field, index) => (
                                 <div key={index} className="flex flex-col md:flex-row md:items-center md:space-x-4">
                                     <label className="block text-sm font-medium text-gray-700 md:w-1/3">
@@ -569,7 +595,6 @@ const Checkout = () => {
                                 </select>
                             </div>
 
-
                             <div className="flex flex-col md:flex-row md:items-center md:space-x-4">
                                 <label className="block text-sm font-medium text-gray-700 md:w-1/3">
                                     Phường / Xã
@@ -590,7 +615,8 @@ const Checkout = () => {
                                 </select>
                             </div>
 
-                            <div className="flex flex-col md:flex-row md:items-center md:space-x-4 bg-gray-100 p-4 rounded-lg shadow-md">
+                            <div
+                                className="flex flex-col md:flex-row md:items-center md:space-x-4 bg-gray-100 p-4 rounded-lg shadow-md">
                                 <label className="block text-sm font-medium text-gray-700 md:w-1/3">
                                     Mã giảm giá
                                 </label>
@@ -612,7 +638,8 @@ const Checkout = () => {
                                             >
                                                 {voucher.percents}% |
                                                 🎟 <span className="text-green-500">Số lượng: {voucher.quantity}</span> |
-                                                ⏳ <span className="text-red-500">{getDaysUntilExpiry(voucher.endDate)}</span>
+                                                ⏳ <span
+                                                className="text-red-500">{getDaysUntilExpiry(voucher.endDate)}</span>
                                             </option>
                                         ))}
                                 </select>
@@ -623,12 +650,11 @@ const Checkout = () => {
                         {selectedAddress.isNew && (
                             <div className="mt-4">
                                 <button className="bg-green-500 text-white px-4 py-2 rounded-md w-full"
-                                    onClick={handleSaveAddress}>
+                                        onClick={handleSaveAddress}>
                                     Lưu địa chỉ
                                 </button>
                             </div>
                         )}
-
 
                         <div className="mt-8">
                             <h1 className="text-2xl font-bold text-yellow-500 mb-6">Phương thức thanh toán</h1>
@@ -643,7 +669,7 @@ const Checkout = () => {
                                     value: "COD",
                                 }].map((method, index) => (
                                     <label key={index}
-                                        className={`flex flex-col items-center justify-center border w-40 h-40 px-3 py-2 rounded-lg cursor-pointer ${paymentMethod === method.value ? 'border-yellow-500' : 'border-gray-300'}`}>
+                                           className={`flex flex-col items-center justify-center border w-40 h-40 px-3 py-2 rounded-lg cursor-pointer ${paymentMethod === method.value ? 'border-yellow-500' : 'border-gray-300'}`}>
                                         <input
                                             type="radio"
                                             value={method.value}
@@ -652,16 +678,13 @@ const Checkout = () => {
                                             className="mb-2"
                                         />
                                         <img src={method.img} alt={method.text}
-                                            className="w-12 h-12 object-cover mb-2 rounded-full" />
+                                             className="w-12 h-12 object-cover mb-2 rounded-full"/>
                                         <span className="font-medium text-xs text-center">{method.text}</span>
                                     </label>
                                 ))}
                             </div>
                         </div>
-
-
                     </div>
-
 
                     {/* Giỏ hàng */}
                     <div
@@ -695,7 +718,7 @@ const Checkout = () => {
                             </div>
                             <div className="flex justify-between font-medium">
                                 <p>Phí giao hàng:</p>
-                                <p>{shippingCosts.toLocaleString()}₫</p>
+                                <p>{shippingFee.toLocaleString()}₫</p>
                             </div>
                             <div className="flex justify-between font-medium">
                                 <p>Giảm giá:</p>
@@ -710,15 +733,11 @@ const Checkout = () => {
                         {/* Nút Thanh toán */}
                         <button
                             onClick={handleOrderProcess}
-                            className="mt-5 w-full bg-[#fef0d3] text-[#fbb321] font-bold py-3 rounded-3xl
-        transition-all duration-300 ease-in-out
-        hover:bg-[#408630] hover:text-white hover:shadow-lg"
+                            className="mt-5 w-full bg-[#fef0d3] text-[#fbb321] font-bold py-3 rounded-3xl transition-all duration-300 ease-in-out hover:bg-[#408630] hover:text-white hover:shadow-lg"
                         >
                             Thanh toán
                         </button>
                     </div>
-
-
                 </div>
             </div>
         </div>
