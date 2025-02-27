@@ -289,11 +289,11 @@ export default function Header() {
                 <Link to="/shoppingCart" className="flex items-center space-x-3 cursor-pointer">
                   <div className="bg-green-100 p-3 rounded-full flex items-center justify-center relative">
                     <FaShoppingCart className="text-green-700 text-xl" />
-                    {cartCount > 0 && (
+                    {/* {cartCount > 0 && (
                         <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
                         {cartCount}
                     </span>
-                    )}
+                    )} */}
                   </div>
                   <div className="hidden sm:block">
                     <span className="text-sm text-gray-700">Giỏ hàng</span>
@@ -431,10 +431,7 @@ export default function Header() {
                   Sản phẩm
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
                 </Link>
-                <a className="menu-item font-bold relative">
-                  Dịch vụ doanh nghiệp
-                  <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
-                </a>
+               
                 <Link to="/newsPage" className="menu-item font-bold relative">
                   Tin tức
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>

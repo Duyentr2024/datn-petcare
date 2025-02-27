@@ -4,10 +4,11 @@ import ProductDetailsService from "../../service/manageService/ProductDetailsSer
 import { storage } from "../../firebaseConfig";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import Swal from "sweetalert2";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify"; // Fixed: Added ToastContainer to the import
 import { FiEdit, FiTrash2 } from "react-icons/fi";
 import "react-toastify/dist/ReactToastify.css";
 import { useParams, useNavigate } from "react-router-dom";
+
 const ManageProductImages = () => {
     const [images, setImages] = useState([]);
     const [productDetails, setProductDetails] = useState([]);
@@ -20,7 +21,7 @@ const ManageProductImages = () => {
     const [itemsPerPage, setItemsPerPage] = useState(5);
     const [isUploading, setIsUploading] = useState(false);
     const { productDetailId } = useParams();
-    const { Navigate } = useNavigate();
+    const [errorMessage, setErrorMessage] = useState("");
 
     useEffect(() => {
         fetchImages(productDetailId);
@@ -33,18 +34,15 @@ const ManageProductImages = () => {
         }
     }, [productDetailId]);
 
-
-
     const fetchImages = async (productDetailId) => {
         try {
             const data = await ProductImagesService.getAllImagesByProductDetails(productDetailId);
-            setImages([...data]); // Cập nhật danh sách ngay
-            console.log("✅ Danh sách ảnh đã cập nhật:", data);
+            setImages([...data]);
+            console.log("Danh sách ảnh đã cập nhật:", data);
         } catch (error) {
             console.error("Lỗi khi tải danh sách ảnh:", error);
         }
     };
-
 
     const fetchProductDetails = async () => {
         try {
@@ -55,13 +53,38 @@ const ManageProductImages = () => {
         }
     };
 
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
 
-    const handleSaveImage = async () => {
-        if (!selectedProductDetailId || !selectedImage || isUploading) {
+        if (!file) {
+            setErrorMessage("❌ Vui lòng chọn một tệp ảnh.");
             return;
         }
 
-        setIsUploading(true); // Bắt đầu tải ảnh
+        const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
+        if (!allowedTypes.includes(file.type)) {
+            setErrorMessage("❌ Chỉ chấp nhận hình ảnh định dạng JPG, PNG, JPEG.");
+            return;
+        }
+
+        const maxSize = 2 * 1024 * 1024; // 2MB
+        if (file.size > maxSize) {
+            setErrorMessage("❌ Kích thước ảnh không được vượt quá 2MB.");
+            return;
+        }
+
+        setErrorMessage("");
+        setSelectedImage(file);
+    };
+
+    const handleSaveImage = async () => {
+        if (!selectedProductDetailId || !selectedImage || isUploading) {
+            setErrorMessage("❌ Vui lòng chọn ảnh trước khi lưu.");
+            return;
+        }
+
+        setIsUploading(true);
+        setErrorMessage("");
 
         const storageRef = ref(storage, `product-images/${Date.now()}-${selectedImage.name}`);
         const uploadTask = uploadBytesResumable(storageRef, selectedImage);
@@ -71,38 +94,40 @@ const ManageProductImages = () => {
             null,
             (error) => {
                 console.error("❌ Lỗi khi tải ảnh lên Firebase:", error);
+                setErrorMessage("❌ Lỗi khi tải ảnh lên, vui lòng thử lại.");
                 setIsUploading(false);
             },
             async () => {
-                const imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
-                const imageData = { productDetailId: selectedProductDetailId, imageUrl };
-
                 try {
+                    const imageUrl = await getDownloadURL(uploadTask.snapshot.ref);
+                    const imageData = { productDetailId: selectedProductDetailId, imageUrl };
+
                     if (productImageId) {
                         await ProductImagesService.updateProductImage(productImageId, imageData);
+                        toast.success("Ảnh đã được cập nhật thành công!");
                     } else {
                         await ProductImagesService.createProductImage(imageData);
+                        toast.success("Ảnh đã được thêm thành công!");
                     }
 
                     fetchImages(selectedProductDetailId);
                     resetForm();
                 } catch (error) {
                     console.error("❌ Lỗi khi lưu ảnh:", error);
+                    setErrorMessage("❌ Lỗi khi lưu ảnh, vui lòng thử lại.");
                 } finally {
-                    setIsUploading(false); // Kết thúc tải ảnh
+                    setIsUploading(false);
                 }
             }
         );
     };
-
-
 
     const handleEditImage = (image) => {
         setProductImageId(image.productImageId);
         setSelectedProductDetailId(image.productDetailId);
         setSelectedImage(null);
         setImageInputKey(Date.now());
-        setIsModalOpen(true); // Mở modal khi sửa
+        setIsModalOpen(true);
     };
 
     const handleDeleteImage = async (id) => {
@@ -123,23 +148,21 @@ const ManageProductImages = () => {
                     toast.success("Xóa ảnh thành công!");
                 } catch (error) {
                     console.error("Lỗi khi xóa ảnh:", error);
-                    toast.error("Lỗi khi xóa ảnh!");
+                } finally {
+                    setIsUploading(false);
                 }
             }
         });
     };
 
-
     const resetForm = () => {
         setSelectedImage(null);
         setProductImageId(null);
-        // Nếu có input file, reset nó
         setIsModalOpen(false);
+        setErrorMessage(null);
         document.getElementById("fileInput").value = "";
     };
 
-
-    // Handle pagination
     const paginateImage = () => {
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
@@ -150,9 +173,19 @@ const ManageProductImages = () => {
 
     return (
         <div className="p-6">
-            <h2 className="text-xl font-bold mb-4">Quản lý ảnh hình ảnh của biến thể</h2>
+            <ToastContainer 
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+            />
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">Quản lý ảnh hình ảnh của biến thể</h2>
             <div className="mb-3">
-                {/* Nút quay về */}
                 <div className="flex justify-between ">
                     <button
                         onClick={() => window.history.back()}
@@ -168,10 +201,8 @@ const ManageProductImages = () => {
                         Thêm ảnh mới
                     </button>
                 </div>
-                {/* Nội dung khác giữ nguyên */}
             </div>
 
-            {/* Modal Thêm / Sửa ảnh */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center">
                     <div className="bg-white p-6 rounded shadow-lg w-1/3">
@@ -179,6 +210,11 @@ const ManageProductImages = () => {
                             {productImageId ? "Chỉnh sửa ảnh sản phẩm" : "Thêm ảnh sản phẩm"}
                         </h3>
 
+                        {errorMessage && (
+                            <p className="p-2 mb-2 text-red-700 bg-red-100 border border-red-400 rounded-md text-center">
+                                {errorMessage}
+                            </p>
+                        )}
                         <select
                             value={selectedProductDetailId}
                             className="border p-2 rounded w-full mb-4 bg-gray-200 cursor-not-allowed"
@@ -191,8 +227,6 @@ const ManageProductImages = () => {
                             ))}
                         </select>
 
-
-                        {/* Nút chọn ảnh */}
                         <div className="border p-4 rounded-md bg-gray-50 border-dashed text-center">
                             <label
                                 htmlFor="fileInput"
@@ -204,13 +238,11 @@ const ManageProductImages = () => {
                                 type="file"
                                 id="fileInput"
                                 className="hidden"
-                                key={imageInputKey}
-                                onChange={(e) => setSelectedImage(e.target.files[0])}
+                                onChange={handleImageChange}
                             />
                             <p className="text-gray-500 text-sm mt-2">Chỉ chấp nhận hình ảnh JPG, PNG, JPEG</p>
                         </div>
 
-                        {/* Khu vực hiển thị ảnh xem trước */}
                         <div className="mt-4 flex justify-center items-center" style={{ minHeight: '200px', maxHeight: '200px' }}>
                             {selectedImage && (
                                 <img
@@ -222,13 +254,13 @@ const ManageProductImages = () => {
                             )}
                         </div>
 
-                        {/* Nút hành động */}
                         <div className="flex gap-2 mt-4">
                             <button
                                 onClick={handleSaveImage}
-                                className={`px-4 py-2 rounded text-white ${productImageId ? "bg-yellow-500" : "bg-green-500"} hover:opacity-90`}
+                                className={`px-4 py-2 rounded text-white ${productImageId ? "bg-yellow-500" : "bg-green-500"} hover:opacity-90 ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+                                disabled={isUploading}
                             >
-                                {productImageId ? "Cập nhật ảnh" : "Thêm ảnh"}
+                                {isUploading ? "Đang lưu..." : productImageId ? "Cập nhật ảnh" : "Thêm ảnh"}
                             </button>
 
                             <button onClick={resetForm} className="bg-gray-500 text-white px-4 py-2 rounded hover:opacity-90">
@@ -239,8 +271,6 @@ const ManageProductImages = () => {
                 </div>
             )}
 
-
-            {/* Danh sách ảnh sản phẩm */}
             <table className="w-full border-collapse border">
                 <thead>
                     <tr className="bg-gray-200">
@@ -293,7 +323,6 @@ const ManageProductImages = () => {
                     Sau
                 </button>
             </div>
-
         </div>
     );
 };

@@ -1,36 +1,38 @@
 import React, { useEffect, useState } from "react";
 import ProductCategoriesService from "../../service/manageService/ProductCategoriesService";
 import { FiEdit, FiCheck, FiX } from "react-icons/fi";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ManageProductCategories = () => {
     const [categories, setCategories] = useState([]);
     const [categoryInput, setCategoryInput] = useState("");
-    const [searchQuery, setSearchQuery] = useState(""); // State for search query
+    const [searchQuery, setSearchQuery] = useState("");
     const [editingCategory, setEditingCategory] = useState(null);
     const [categoryInputError, setCategoryInputError] = useState("");
+    // Removed successMessage state as it's no longer needed with toast
 
-    // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(10);
+    const [itemsPerPage] = useState(10);
 
     useEffect(() => {
         fetchCategories();
-    }, [currentPage, searchQuery]); // Fetch categories when searchQuery or currentPage changes
+    }, [currentPage, searchQuery]);
 
     const fetchCategories = async () => {
         try {
             const response = await ProductCategoriesService.getAllCategories();
-            // Filter categories by search query
             const filteredCategories = response.filter((category) =>
                 category.categoryName.toLowerCase().includes(searchQuery.toLowerCase())
             );
             setCategories(filteredCategories);
         } catch (error) {
             console.error("Error fetching categories:", error);
+            toast.error("Lỗi khi tải danh sách danh mục!");
         }
     };
 
-    const validateCategory = (category: string) => {
+    const validateCategory = (category) => {
         if (category.trim().length < 3) {
             return "Tên danh mục phải có ít nhất 3 ký tự";
         }
@@ -43,45 +45,45 @@ const ManageProductCategories = () => {
         const error = validateCategory(categoryInput);
         if (error) {
             setCategoryInputError(error);
+            toast.error(error);
             return;
         } else {
             setCategoryInputError("");
         }
 
-        if (editingCategory) {
-            try {
+        try {
+            if (editingCategory) {
                 await ProductCategoriesService.updateCategory(editingCategory.categoryId, {
                     ...editingCategory,
                     categoryName: categoryInput,
                 });
+                toast.success("Cập nhật danh mục thành công!");
                 setEditingCategory(null);
-                setCategoryInput("");
-            } catch (error) {
-                console.error("Error updating category:", error);
-            }
-        } else {
-            try {
+            } else {
                 await ProductCategoriesService.createCategory({ categoryName: categoryInput, status: true });
-                setCategoryInput("");
-            } catch (error) {
-                console.error("Error adding category:", error);
+                toast.success("Thêm danh mục thành công!");
             }
-        }
 
-        fetchCategories();
+            setCategoryInput("");
+            fetchCategories();
+        } catch (error) {
+            console.error("Lỗi khi thêm/sửa danh mục:", error);
+            toast.error("Lỗi khi thêm/sửa danh mục!");
+        }
     };
 
     const handleChangeCategoryStatus = async (category) => {
         const updatedCategory = { ...category, status: !category.status };
         try {
             await ProductCategoriesService.updateCategory(category.categoryId, updatedCategory);
+            toast.success("Trạng thái danh mục đã được cập nhật!");
             fetchCategories();
         } catch (error) {
-            console.error("Error updating category status:", error);
+            console.error("Lỗi khi cập nhật trạng thái danh mục:", error);
+            toast.error("Lỗi khi cập nhật trạng thái danh mục!");
         }
     };
 
-    // Handle pagination
     const paginateCategories = () => {
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
@@ -92,9 +94,20 @@ const ManageProductCategories = () => {
 
     return (
         <div className="p-6 bg-white shadow-md rounded-md">
-            <h2 className="text-2xl font-semibold mb-4">Quản lý danh mục sản phẩm</h2>
-
-            {/* Form thêm hoặc sửa danh mục */}
+            <ToastContainer 
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+            />
+            
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">Quản lý danh mục sản phẩm</h2>
+            
             <div className="flex gap-2 mb-4">
                 <input
                     type="text"
@@ -110,10 +123,8 @@ const ManageProductCategories = () => {
                     {editingCategory ? "Lưu" : "Thêm"}
                 </button>
             </div>
-            {/* Error message */}
             {categoryInputError && <div className="text-red-600 text-sm">{categoryInputError}</div>}
 
-            {/* Search input placed below and to the right */}
             <div className="flex justify-end gap-2 mb-4">
                 <input
                     type="text"
@@ -124,7 +135,6 @@ const ManageProductCategories = () => {
                 />
             </div>
 
-            {/* Danh sách danh mục */}
             <table className="w-full border-collapse border">
                 <thead>
                     <tr className="bg-gray-200">
@@ -187,7 +197,6 @@ const ManageProductCategories = () => {
                 </tbody>
             </table>
 
-            {/* Pagination controls */}
             <div className="mt-4 flex justify-between items-center">
                 <button
                     onClick={() => setCurrentPage(currentPage - 1)}

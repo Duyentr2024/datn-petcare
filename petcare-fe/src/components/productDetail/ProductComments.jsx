@@ -11,18 +11,27 @@ const ProductComments = () => {
   const [productVariants, setProductVariants] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const productDetailId = localStorage.getItem("ProductDetailId");
+console.log(productDetailId);
+
   useEffect(() => {
     if (productId) {
       setLoading(true);
-      fetchReviews(productId);
       fetchProductDetails(productId);
       window.scrollTo(0, 0);
     }
   }, [productId]);
 
-  const fetchReviews = async (id) => {
+   useEffect(() => {
+    if (productDetailId) {
+      setLoading(true);
+      fetchReviews(productDetailId);
+    }
+  }, [productDetailId]);
+
+  const fetchReviews = async () => {
     try {
-      const reviews = await ReviewService.getReviewsByProductDetail(id);
+      const reviews = await ReviewService.getReviewsByProductDetail(productDetailId);
       if (Array.isArray(reviews)) {
         setComments(
           reviews.sort(

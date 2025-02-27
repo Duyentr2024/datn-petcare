@@ -109,8 +109,42 @@ const ProductDetailsService = {
             console.error("Lỗi khi tìm kiếm sản phẩm:", error);
             return [];
         }
-    }
+    },
     
+
+    createProductDetail: async (data) => {
+        try {
+            const response = await axios.post(`${API_BASE_URL}/add`, data);
+            return response.data;
+        } catch (error) {
+            console.error("Error creating product detail:", error);
+            throw error;
+        }
+    },
+
+    updateProductDetail: async (id, data) => {
+        try {
+            const response = await axios.put(`${API_BASE_URL}/update/${id}`, data, {
+                headers: { "Content-Type": "application/json" }
+            });
+            console.log("✅ Phản hồi từ server:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("❌ Lỗi khi cập nhật sản phẩm:", error);
+            throw error;
+        }
+    },
+    
+
+    deleteProductDetail: async (id) => {
+        try {
+            const response = await axios.delete(`${API_BASE_URL}/${id}`);
+            return response.data;
+        } catch (error) {
+            console.error("Error deleting product detail:", error);
+            throw error;
+        }
+    }
 
 }
 

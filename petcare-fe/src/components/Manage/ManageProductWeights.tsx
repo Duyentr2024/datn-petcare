@@ -1,34 +1,31 @@
 import React, { useEffect, useState } from "react";
 import ProductWeightService from "../../service/manageService/ProductWeightsService.js";
 import { FiEdit, FiCheck, FiX } from "react-icons/fi";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ManageProductWeights = () => {
     const [weights, setWeights] = useState([]);
     const [weightInput, setWeightInput] = useState("");
     const [editingWeight, setEditingWeight] = useState(null);
-    
-    // Validation state
-    const [weightInputError, setWeightInputError] = useState("");
-
-    // New states for search and pagination
-    const [searchQuery, setSearchQuery] = useState(""); // Search query state
-    const [currentPage, setCurrentPage] = useState(1); // Pagination state
-    const [itemsPerPage] = useState(10); // Items per page
+    const [searchQuery, setSearchQuery] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(10); // Removed unused setter
 
     useEffect(() => {
         fetchWeights();
-    }, [currentPage, searchQuery]); // Fetch weights when searchQuery or currentPage changes
+    }, [currentPage, searchQuery]);
 
     const fetchWeights = async () => {
         try {
             const response = await ProductWeightService.getAllProductWeights();
-            // Filter weights by search query
             const filteredWeights = response.filter((weight) =>
-                weight.weightValue.toString().includes(searchQuery) // Searching by weight value
+                weight.weightValue.toString().includes(searchQuery)
             );
             setWeights(filteredWeights);
         } catch (error) {
             console.error("Error fetching weights:", error);
+            toast.error("Lỗi khi tải danh sách trọng lượng!");
         }
     };
 
@@ -44,46 +41,43 @@ const ManageProductWeights = () => {
 
         const error = validateWeight(weightInput);
         if (error) {
-            setWeightInputError(error);
+            toast.error(error);
             return;
-        } else {
-            setWeightInputError("");
         }
 
-        if (editingWeight) {
-            try {
+        try {
+            if (editingWeight) {
                 await ProductWeightService.updateProductWeight(editingWeight.weightId, {
                     ...editingWeight,
                     weightValue: weightInput,
                 });
+                toast.success("Cập nhật trọng lượng thành công!");
                 setEditingWeight(null);
-                setWeightInput("");
-            } catch (error) {
-                console.error("Error updating weight:", error);
-            }
-        } else {
-            try {
+            } else {
                 await ProductWeightService.createProductWeight({ weightValue: weightInput, status: true });
-                setWeightInput("");
-            } catch (error) {
-                console.error("Error adding weight:", error);
+                toast.success("Thêm trọng lượng thành công!");
             }
-        }
 
-        fetchWeights();
+            setWeightInput("");
+            fetchWeights();
+        } catch (error) {
+            console.error("Lỗi khi thêm/sửa trọng lượng:", error);
+            toast.error("Lỗi khi thêm/sửa trọng lượng!");
+        }
     };
 
     const handleChangeWeightStatus = async (weight) => {
         const updatedWeight = { ...weight, status: !weight.status };
         try {
             await ProductWeightService.updateProductWeight(weight.weightId, updatedWeight);
+            toast.success("Trạng thái trọng lượng đã được cập nhật!");
             fetchWeights();
         } catch (error) {
-            console.error("Error updating weight status:", error);
+            console.error("Lỗi khi cập nhật trạng thái trọng lượng:", error);
+            toast.error("Lỗi khi cập nhật trạng thái trọng lượng!");
         }
     };
 
-    // Handle pagination
     const paginateWeights = () => {
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
@@ -94,9 +88,20 @@ const ManageProductWeights = () => {
 
     return (
         <div className="p-6 bg-white shadow-md rounded-md">
-            <h2 className="text-2xl font-semibold mb-4">Quản lý trọng lượng sản phẩm</h2>
+            <ToastContainer 
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+            />
 
-            {/* Form thêm hoặc sửa trọng lượng */}
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">Quản lý trọng lượng sản phẩm</h2>
+            
             <div className="flex gap-2 mb-4">
                 <input
                     type="number"
@@ -112,10 +117,6 @@ const ManageProductWeights = () => {
                     {editingWeight ? "Lưu" : "Thêm"}
                 </button>
             </div>
-            {/* Error message */}
-            {weightInputError && <div className="text-red-600 text-sm">{weightInputError}</div>}
-
-            {/* Search input */}
             <div className="flex justify-end gap-2 mb-4">
                 <input
                     type="text"
@@ -126,7 +127,6 @@ const ManageProductWeights = () => {
                 />
             </div>
 
-            {/* Danh sách trọng lượng */}
             <table className="w-full border-collapse border">
                 <thead>
                     <tr className="bg-gray-200">
@@ -170,7 +170,7 @@ const ManageProductWeights = () => {
                                     <button
                                         onClick={() => {
                                             setEditingWeight(weight);
-                                            setWeightInput(weight.weightValue); // Pre-fill input for editing
+                                            setWeightInput(weight.weightValue);
                                         }}
                                         className="bg-yellow-500 text-white px-3 py-1 rounded flex items-center gap-1 hover:bg-yellow-600"
                                     >
@@ -189,7 +189,6 @@ const ManageProductWeights = () => {
                 </tbody>
             </table>
 
-            {/* Pagination controls */}
             <div className="mt-4 flex justify-between items-center">
                 <button
                     onClick={() => setCurrentPage(currentPage - 1)}
