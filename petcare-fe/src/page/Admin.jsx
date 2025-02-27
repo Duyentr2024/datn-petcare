@@ -12,6 +12,7 @@ import ManageEmployee from "../components/Manage/ManageEmployee";
 import ManageVoucher from "../components/Manage/ManageVoucher";
 import CreateVoucher from "../components/Manage/createManage/createManageVoucher/CreateVoucher";
 import OrderManage from "../components/Manage/OrderManage";
+import ManageEmployee from "../components/Manage/ManageEmployee";
 function Admin() {
   return (
     <div className="flex flex-col h-screen bg-gray-100 font-sans">
