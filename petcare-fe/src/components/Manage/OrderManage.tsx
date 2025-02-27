@@ -57,6 +57,24 @@ const OrderManage = () => {
     const order = orders.find((o) => o.orderId === orderId);
     if (!order) return;
 
+    // Danh sách các trạng thái không thể thay đổi (Hoàn thành, Đã hủy, Trả hàng)
+    const finalStatuses = [
+      statusMap["completed"],
+      statusMap["cancelled"],
+      statusMap["returned"],
+    ];
+
+    // Kiểm tra nếu trạng thái hiện tại nằm trong danh sách không thể thay đổi
+    if (finalStatuses.includes(order.statusId)) {
+      Swal.fire({
+        icon: "warning",
+        title: "Không thể thay đổi!",
+        text: "Đơn hàng ở trạng thái 'Hoàn thành', 'Đã hủy' hoặc 'Trả hàng' không thể cập nhật trạng thái.",
+        confirmButtonColor: "#d33",
+      });
+      return;
+    }
+
     // Kiểm tra nếu hủy đơn thì chỉ được khi trạng thái là "Chờ xác nhận"
     if (
       newStatus == statusMap["cancelled"] &&
@@ -91,7 +109,14 @@ const OrderManage = () => {
         setOrders((prevOrders) =>
           prevOrders.map((order) =>
             order.orderId === orderId
-              ? { ...order, statusId: parseInt(newStatus) }
+              ? {
+                  ...order,
+                  statusId: parseInt(newStatus),
+                  paymentStatus:
+                    parseInt(newStatus) === statusMap["completed"]
+                      ? "Đã thanh toán"
+                      : order.paymentStatus, // Cập nhật paymentStatus nếu trạng thái là "Hoàn thành"
+                }
               : order
           )
         );
@@ -268,6 +293,7 @@ const OrderManage = () => {
         </div>
       )}
 
+      {/* Model chi tiết đơn hàng */}
       {selectedOrder && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded-lg w-full max-w-2xl shadow-lg relative">
@@ -276,7 +302,7 @@ const OrderManage = () => {
               onClick={() => setSelectedOrder(null)}
               className="absolute top-3 right-3 text-gray-600 hover:text-gray-900 text-2xl"
             >
-              &times;
+              ×
             </button>
 
             <h2 className="text-2xl font-bold mb-4 text-center text-blue-600">
@@ -290,6 +316,18 @@ const OrderManage = () => {
               </p>
               <p className="text-lg">
                 <strong>Khách hàng:</strong> {selectedOrder.userName}
+              </p>
+              <p className="text-lg">
+                <strong>Ngày đặt hàng:</strong>{" "}
+                {new Date(selectedOrder.orderDate).toLocaleString("vi-VN", {
+                  timeZone: "Asia/Ho_Chi_Minh", // Giờ Việt Nam (UTC+7)
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })}
               </p>
               <p className="text-lg">
                 <strong>Địa chỉ:</strong> {selectedOrder.shippingAddress}
