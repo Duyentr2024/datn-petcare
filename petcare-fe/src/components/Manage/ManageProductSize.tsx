@@ -1,30 +1,32 @@
 import React, { useEffect, useState } from "react";
 import ProductSizeService from "../../service/manageService/ProductSizeService";
 import { FiEdit, FiCheck, FiX } from "react-icons/fi";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ManageProductSize = () => {
     const [sizes, setSizes] = useState([]);
     const [sizeInput, setSizeInput] = useState("");
     const [editingSize, setEditingSize] = useState(null);
-    const [newSizeError, setNewSizeError] = useState(""); // State for new size error
-    const [searchQuery, setSearchQuery] = useState(""); // State for search query
-    const [currentPage, setCurrentPage] = useState(1); // Pagination state
-    const [itemsPerPage, setItemsPerPage] = useState(10); // Items per page
-    const [successMessage, setSuccessMessage] = useState("");
+    const [newSizeError, setNewSizeError] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(10); // Removed setItemsPerPage as it's not used
+
     useEffect(() => {
         fetchSizes();
-    }, [currentPage, searchQuery]); // Fetch sizes when searchQuery or currentPage changes
+    }, [currentPage, searchQuery]);
 
     const fetchSizes = async () => {
         try {
             const response = await ProductSizeService.getAllProductSizes();
-            // Filter sizes by search query
             const filteredSizes = response.filter((size) =>
                 size.sizeValue.toLowerCase().includes(searchQuery.toLowerCase())
             );
             setSizes(filteredSizes);
         } catch (error) {
             console.error("Lỗi khi lấy danh sách kích thước:", error);
+            toast.error("Lỗi khi tải danh sách kích thước!");
         }
     };
 
@@ -45,6 +47,7 @@ const ManageProductSize = () => {
         const error = validateSize(sizeInput);
         if (error) {
             setNewSizeError(error);
+            toast.error(error);
             return;
         } else {
             setNewSizeError("");
@@ -56,40 +59,33 @@ const ManageProductSize = () => {
                     ...editingSize,
                     sizeValue: sizeInput,
                 });
-                setSuccessMessage("✅ Cập nhật kích thước thành công!");
+                toast.success("Cập nhật kích thước thành công!");
                 setEditingSize(null);
             } else {
                 await ProductSizeService.createProductSize({ sizeValue: sizeInput, status: true });
-                setSuccessMessage("✅ Thêm kích thước thành công!");
+                toast.success("Thêm kích thước thành công!");
             }
 
             setSizeInput("");
             fetchSizes();
         } catch (error) {
-            console.error("❌ Lỗi khi thêm/sửa kích thước:", error);
+            console.error("Lỗi khi thêm/sửa kích thước:", error);
+            toast.error("Lỗi khi thêm/sửa kích thước!");
         }
-
-        // Ẩn thông báo sau 3 giây
-        setTimeout(() => setSuccessMessage(""), 3000);
     };
-
 
     const handleChangeSizeStatus = async (size) => {
         try {
             const updatedSize = { ...size, status: !size.status };
             await ProductSizeService.updateProductSize(size.productSizeId, updatedSize);
-            setSuccessMessage(`✅ Đã cập nhật trạng thái kích thước!`);
+            toast.success("Đã cập nhật trạng thái kích thước!");
             fetchSizes();
-
-            // Ẩn thông báo sau 3 giây
-            setTimeout(() => setSuccessMessage(""), 3000);
         } catch (error) {
-            console.error("❌ Lỗi khi cập nhật trạng thái kích thước:", error);
+            console.error("Lỗi khi cập nhật trạng thái kích thước:", error);
+            toast.error("Lỗi khi cập nhật trạng thái kích thước!");
         }
     };
 
-
-    // Handle pagination
     const paginateSizes = () => {
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
@@ -100,13 +96,20 @@ const ManageProductSize = () => {
 
     return (
         <div className="p-6 bg-white shadow-md rounded-md">
-            {successMessage && (
-                <div className="p-1 text-green-700 bg-green-100 border border-green-400 rounded-md text-center">
-                    {successMessage}
-                </div>
-            )}
-            <h2 className="text-2xl font-semibold mb-4">Quản lý kích thước sản phẩm</h2>
-            {/* Form thêm hoặc sửa kích thước */}
+            <ToastContainer 
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+            />
+            
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">Quản lý kích thước sản phẩm</h2>
+            
             <div className="flex gap-2 mb-4">
                 <input
                     type="text"
@@ -123,10 +126,8 @@ const ManageProductSize = () => {
                 </button>
             </div>
 
-            {/* Error message for new size */}
             {newSizeError && <div className="text-red-600 text-sm">{newSizeError}</div>}
 
-            {/* Search input */}
             <div className="flex justify-end gap-2 mb-4">
                 <input
                     type="text"
@@ -137,7 +138,6 @@ const ManageProductSize = () => {
                 />
             </div>
 
-            {/* Danh sách kích thước */}
             <table className="w-full border-collapse border">
                 <thead>
                     <tr className="bg-gray-200">
@@ -186,7 +186,7 @@ const ManageProductSize = () => {
                                     <button
                                         onClick={() => {
                                             setEditingSize(size);
-                                            setSizeInput(size.sizeValue); // Pre-fill input for editing
+                                            setSizeInput(size.sizeValue);
                                         }}
                                         className="bg-yellow-500 text-white px-3 py-1 rounded flex items-center gap-1 hover:bg-yellow-600"
                                     >
@@ -205,7 +205,6 @@ const ManageProductSize = () => {
                 </tbody>
             </table>
 
-            {/* Pagination controls */}
             <div className="mt-4 flex justify-between items-center">
                 <button
                     onClick={() => setCurrentPage(currentPage - 1)}

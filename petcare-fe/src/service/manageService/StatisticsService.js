@@ -52,6 +52,11 @@ const StatisticsService = {
     return axios.get(`${API_BASE_URL}/orders/today`);
   },
 
+  // Tổng số đơn hàng hôm qua (new method)
+  getTotalOrdersYesterday: () => {
+    return axios.get(`${API_BASE_URL}/orders/yesterday`);
+  },
+
   // Tổng số đơn hàng trong tuần này
   getTotalOrdersThisWeek: () => {
     return axios.get(`${API_BASE_URL}/orders/week`);
@@ -62,6 +67,15 @@ const StatisticsService = {
     return axios.get(`${API_BASE_URL}/orders/month`);
   },
   
+  // Tổng số khách hàng
+  getTotalCustomers: () => {
+    return axios.get(`${API_BASE_URL}/total-customers`);
+  },
+
+  // Top 5 khách hàng mua nhiều nhất
+  getTopFiveCustomers: () => {
+    return axios.get(`${API_BASE_URL}/top-customers`);
+  },
   getTotalStock: () => {
     return axios.get(`${API_BASE_URL}/total-stock`);
   },
