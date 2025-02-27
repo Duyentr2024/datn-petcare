@@ -28,8 +28,9 @@ const Register = () => {
 
         const images = document.querySelectorAll(".load-img");
         images.forEach((img) => observer.observe(img));
-
+        window.scrollTo(0, 0);
         return () => images.forEach((img) => observer.unobserve(img));
+        
     }, []);
 
     const handleInputChange = (e) => {

@@ -14,6 +14,9 @@ import ManageVoucher from "../components/Manage/ManageVoucher";
 import CreateVoucher from "../components/Manage/createManage/createManageVoucher/CreateVoucher";
 import OrderManage from "../components/Manage/OrderManage";
 
+
+import ManageEmployee from "../components/Manage/ManageEmployee";
+
 function Admin() {
   return (
     <div className="flex flex-col h-screen bg-gray-100 font-sans">
@@ -25,8 +28,11 @@ function Admin() {
 
         <main className="flex-1 p-6 bg-gray-50 overflow-auto">
           <Routes>
+
             <Route path="/" element={<ManageStatistics/>} />
             <Route path="/warehouse" element={<StockPage />} />
+            <Route path="/" element={<h1>Admin Dashboard</h1>} />
+            <Route path="/employee" element={<ManageEmployee />} />
             <Route path="/product-color" element={<ManageProductColor />} />
             <Route path="/product-size" element={<ManageProductSize />} />
             <Route path="/product-weights" element={<ManageProductWeights />} />
