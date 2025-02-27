@@ -431,10 +431,7 @@ export default function Header() {
                   Sản phẩm
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
                 </Link>
-                <a className="menu-item font-bold relative">
-                  Dịch vụ doanh nghiệp
-                  <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
-                </a>
+               
                 <Link to="/newsPage" className="menu-item font-bold relative">
                   Tin tức
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
