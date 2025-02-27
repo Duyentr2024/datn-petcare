@@ -1,42 +1,40 @@
 import React, { useEffect, useState } from "react";
 import ProductColorService from "../../service/manageService/ProductColorService";
 import { FiEdit, FiCheck, FiX } from "react-icons/fi";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ManageProductColor = () => {
     const [colors, setColors] = useState([]);
     const [colorInput, setColorInput] = useState("");
     const [editingColor, setEditingColor] = useState(null);
-    const [colorInputError, setColorInputError] = useState("");
-    const [searchQuery, setSearchQuery] = useState(""); // State for search query
-    const [currentPage, setCurrentPage] = useState(1); // Pagination state
-    const [itemsPerPage, setItemsPerPage] = useState(10); // Items per page
-    const [successMessage, setSuccessMessage] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(10); // Removed setItemsPerPage as it's not used
 
     useEffect(() => {
         fetchColors();
-    }, [currentPage, searchQuery]); // Fetch colors when searchQuery or currentPage changes
+    }, [currentPage, searchQuery]);
 
     const fetchColors = async () => {
         try {
             const response = await ProductColorService.getAllProductColors();
-            // Filter colors by search query
             const filteredColors = response.filter((color) =>
                 color.colorValue.toLowerCase().includes(searchQuery.toLowerCase())
             );
             setColors(filteredColors);
         } catch (error) {
             console.error("Lỗi khi lấy danh sách màu:", error);
+            toast.error("Lỗi khi tải danh sách màu!");
         }
     };
 
     const validateColor = (color) => {
-        // Regex kiểm tra chỉ chứa các ký tự chữ cái (bao gồm cả dấu tiếng Việt) và khoảng trắng
         const invalidColorPattern = /[^a-zA-ZÀ-ỹ\s]/;
         if (invalidColorPattern.test(color)) {
             return "Tên màu không được chứa ký tự đặc biệt hoặc số";
         }
 
-        // Kiểm tra độ dài tên màu
         if (color.length < 3 || color.length > 50) {
             return "Tên màu phải có từ 3 đến 50 ký tự";
         }
@@ -49,10 +47,8 @@ const ManageProductColor = () => {
 
         const error = validateColor(colorInput);
         if (error) {
-            setColorInputError(error);
+            toast.error(error);
             return;
-        } else {
-            setColorInputError("");
         }
 
         try {
@@ -61,40 +57,33 @@ const ManageProductColor = () => {
                     ...editingColor,
                     colorValue: colorInput,
                 });
-                setSuccessMessage("✅ Cập nhật màu thành công!");
+                toast.success("Cập nhật màu thành công!");
                 setEditingColor(null);
             } else {
                 await ProductColorService.createProductColor({ colorValue: colorInput, status: true });
-                setSuccessMessage("✅ Thêm màu mới thành công!");
+                toast.success("Thêm màu mới thành công!");
             }
 
             setColorInput("");
             fetchColors();
         } catch (error) {
-            console.error("❌ Lỗi khi thêm/sửa màu:", error);
+            console.error("Lỗi khi thêm/sửa màu:", error);
+            toast.error("Lỗi khi thêm/sửa màu!");
         }
-
-        // Ẩn thông báo sau 3 giây
-        setTimeout(() => setSuccessMessage(""), 3000);
     };
-
 
     const handleChangeColorStatus = async (color) => {
         const updatedColor = { ...color, status: !color.status };
         try {
             await ProductColorService.updateProductColor(color.productColorId, updatedColor);
-            setSuccessMessage("✅ Trạng thái màu đã được cập nhật!");
+            toast.success("Trạng thái màu đã được cập nhật!");
             fetchColors();
-
-            // Ẩn thông báo sau 3 giây
-            setTimeout(() => setSuccessMessage(""), 3000);
         } catch (error) {
-            console.error("❌ Lỗi khi cập nhật trạng thái màu:", error);
+            console.error("Lỗi khi cập nhật trạng thái màu:", error);
+            toast.error("Lỗi khi cập nhật trạng thái màu!");
         }
     };
 
-
-    // Handle pagination
     const paginateColors = () => {
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
@@ -105,14 +94,20 @@ const ManageProductColor = () => {
 
     return (
         <div className="p-6 bg-white shadow-md rounded-md">
-            {successMessage && (
-                <div className="p-1 text-green-700 bg-green-100 border border-green-400 rounded-md text-center">
-                    {successMessage}
-                </div>
-            )}
-            <h2 className="text-2xl font-semibold mb-4">Quản lý màu sắc</h2>
+            <ToastContainer 
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+            />
+            
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">Quản lý màu sắc</h2>
 
-            {/* Form thêm hoặc sửa màu */}
             <div className="flex gap-2 mb-4">
                 <input
                     type="text"
@@ -128,10 +123,6 @@ const ManageProductColor = () => {
                     {editingColor ? "Lưu" : "Thêm"}
                 </button>
             </div>
-            {/* Error message */}
-            {colorInputError && <div className="text-red-600 text-sm">{colorInputError}</div>}
-
-            {/* Search input placed below and to the right */}
             <div className="flex justify-end gap-2 mb-4">
                 <input
                     type="text"
@@ -142,7 +133,6 @@ const ManageProductColor = () => {
                 />
             </div>
 
-            {/* Danh sách màu sắc */}
             <table className="w-full border-collapse border">
                 <thead>
                     <tr className="bg-gray-200">
@@ -186,7 +176,7 @@ const ManageProductColor = () => {
                                     <button
                                         onClick={() => {
                                             setEditingColor(color);
-                                            setColorInput(color.colorValue); // Pre-fill input for editing
+                                            setColorInput(color.colorValue);
                                         }}
                                         className="bg-yellow-500 text-white px-3 py-1 rounded flex items-center gap-1 hover:bg-yellow-600"
                                     >
@@ -205,7 +195,6 @@ const ManageProductColor = () => {
                 </tbody>
             </table>
 
-            {/* Pagination controls */}
             <div className="mt-4 flex justify-between items-center">
                 <button
                     onClick={() => setCurrentPage(currentPage - 1)}

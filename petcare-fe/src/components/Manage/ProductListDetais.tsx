@@ -5,6 +5,8 @@ import ProductsService from "../../service/manageService/ProductsService";
 import ProductColorService from "../../service/manageService/ProductColorService";
 import ProductSizeService from "../../service/manageService/ProductSizeService";
 import ProductWeightsService from "../../service/manageService/ProductWeightsService";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ProductListDetails = () => {
     const { productId } = useParams();
@@ -15,7 +17,6 @@ const ProductListDetails = () => {
     const [selectedImages, setSelectedImages] = useState([]);
     const [successMessage, setSuccessMessage] = useState("");
     const [errors, setErrors] = useState({});
-
 
     const [products, setProducts] = useState([]);
     const [colors, setColors] = useState([]);
@@ -31,19 +32,15 @@ const ProductListDetails = () => {
         quantity: "",
     });
 
-
-
     const [editDetail, setEditDetail] = useState(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
     const openEditModal = (productDetails) => {
         if (!productDetails) {
-            console.error("❌ Không có dữ liệu sản phẩm để chỉnh sửa!");
+            console.error("Không có dữ liệu sản phẩm để chỉnh sửa!");
             return;
         }
 
-        console.log("🔍 Dữ liệu gốc của sản phẩm khi sửa:", JSON.stringify(productDetails, null, 2));
-
-        // Tìm ID của màu sắc, kích thước, cân nặng dựa vào value
         const colorId = colors.find(c => c.colorValue === productDetails.colorValue)?.productColorId || 0;
         const sizeId = sizes.find(s => s.sizeValue === productDetails.sizeValue)?.productSizeId || 0;
         const weightId = weights.find(w => w.weightValue === productDetails.weightValue)?.weightId || 0;
@@ -58,42 +55,34 @@ const ProductListDetails = () => {
             colorId
         };
 
-        console.log("📝 Dữ liệu điền vào form khi chỉnh sửa:", JSON.stringify(productData, null, 2));
 
         setEditDetail(productData);
         setIsEditModalOpen(true);
     };
 
-
-
     const handleUpdateProductDetail = async () => {
         if (!editDetail || !editDetail.productDetailId) {
-            console.error("❌ Thiếu dữ liệu cập nhật!");
+            console.error("Thiếu dữ liệu cập nhật!");
             return;
         }
 
         let newErrors = {};
 
-        // Kiểm tra giá (phải là số và lớn hơn 0)
         if (!editDetail.price || isNaN(editDetail.price) || Number(editDetail.price) <= 0) {
             newErrors.price = "Giá không được để trống và phải lớn hơn 0!";
         }
 
-        // Kiểm tra số lượng (phải là số và lớn hơn 0)
         if (!editDetail.quantity || isNaN(editDetail.quantity) || Number(editDetail.quantity) <= 0) {
             newErrors.quantity = "Số lượng không được để trống và phải lớn hơn 0!";
         }
 
-        // Nếu có lỗi, setErrors và dừng xử lý
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
             return;
         }
 
-        // Xóa lỗi nếu dữ liệu hợp lệ
         setErrors({});
 
-        // Format payload để gửi API
         const payload = {
             quantity: Number(editDetail.quantity),
             price: Number(editDetail.price),
@@ -103,26 +92,20 @@ const ProductListDetails = () => {
             productColors: editDetail.colorId ? { productColorId: Number(editDetail.colorId) } : undefined,
         };
 
-        console.log("📤 Dữ liệu gửi lên API:", JSON.stringify(payload, null, 2));
 
         try {
             const response = await ProductDetailsService.updateProductDetail(editDetail.productDetailId, payload);
-
-            console.log("✅ Phản hồi từ server:", response);
-
-            fetchProductDetails(); // Fetch updated product details
+            fetchProductDetails();
             setIsEditModalOpen(false);
-            setSuccessMessage("Cập nhật thành công!");
-            setTimeout(() => setSuccessMessage(""), 3000);
+            toast.success("Cập nhật thành công!");
         } catch (error) {
-            console.error("❌ Lỗi khi cập nhật biến thể:", error);
+            console.error("Lỗi khi cập nhật biến thể:", error);
 
             if (error.response) {
                 console.error("🔴 Phản hồi lỗi từ server:", error.response.data);
             }
         }
     };
-
 
     useEffect(() => {
         fetchProductDetails();
@@ -131,8 +114,6 @@ const ProductListDetails = () => {
         fetchSizes();
         fetchWeights();
     }, []);
-
-
 
     const fetchProducts = async () => {
         try {
@@ -163,7 +144,6 @@ const ProductListDetails = () => {
         }
     };
 
-
     const fetchWeights = async () => {
         try {
             const response = await ProductWeightsService.getAllProductWeights();
@@ -173,6 +153,7 @@ const ProductListDetails = () => {
             console.error("Error fetching weights:", error);
         }
     };
+
     const fetchProductDetails = async () => {
         if (!productId) return;
 
@@ -188,40 +169,32 @@ const ProductListDetails = () => {
         }
     };
 
-
     useEffect(() => {
         if (isModalOpen && productId) {
             setNewDetail((prev) => ({ ...prev, productId }));
         }
     }, [isModalOpen, productId]);
 
-
     useEffect(() => {
         fetchProductDetails();
     }, [productId]);
 
-    // Mở modal và đặt danh sách ảnh
     const openModal = (images) => {
         setSelectedImages(images);
         setModalOpen(true);
     };
 
-    // Đóng modal
     const closeModal = () => {
         setModalOpen(false);
         setSelectedImages([]);
     };
 
-
-
     if (loading) return <p className="text-center text-gray-500">Đang tải...</p>;
     if (error) return <p className="text-center text-red-500">{error}</p>;
-
 
     const handleAddProductDetail = async () => {
         let newErrors = {};
 
-        // Kiểm tra từng field, nếu trống thì thêm vào `errors`
         if (!newDetail.productId) newErrors.productId = "Vui lòng chọn sản phẩm!";
         if (!newDetail.colorId) newErrors.colorId = "Vui lòng chọn màu!";
         if (!newDetail.sizeId) newErrors.sizeId = "Vui lòng chọn kích cỡ!";
@@ -231,13 +204,11 @@ const ProductListDetails = () => {
         if (!newDetail.quantity || isNaN(newDetail.quantity) || Number(newDetail.quantity) <= 0)
             newErrors.quantity = "Số lượng không được để trống và phải lớn hơn 0!";
 
-        // Nếu có lỗi, setErrors và dừng xử lý
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors);
             return;
         }
 
-        // Xóa lỗi nếu dữ liệu hợp lệ
         setErrors({});
 
         const payload = {
@@ -251,11 +222,8 @@ const ProductListDetails = () => {
 
         try {
             await ProductDetailsService.createProductDetail(payload);
-            fetchProductDetails(); // Refresh danh sách sau khi thêm mới
-            setSuccessMessage("Thêm biến thể thành công!");
-            setTimeout(() => setSuccessMessage(""), 3000);
-
-            // Reset form
+            fetchProductDetails();
+            toast.success("Thêm biến thể thành công!");
             setNewDetail({
                 productId: productId,
                 price: "",
@@ -264,23 +232,32 @@ const ProductListDetails = () => {
                 weightId: "",
                 quantity: "",
             });
-
             setIsModalOpen(false);
         } catch (error) {
             console.error("Lỗi khi thêm biến thể:", error);
         }
 
-        console.log("Payload gửi lên API:", JSON.stringify(payload, null, 2));
     };
 
     return (
         <div className="p-6 bg-white shadow-md rounded-md">
+            <ToastContainer 
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+            />
             {successMessage && (
                 <div className="p-4 mb-4 text-green-700 bg-green-100 border border-green-400 rounded-md text-center">
                     {successMessage}
                 </div>
             )}
-            <h2 className="text-2xl font-semibold mb-4 text-gray-700">Chi tiết sản phẩm</h2>
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">Chi tiết sản phẩm</h2>
             <div className="flex justify-between mb-4">
                 <button
                     onClick={() => window.history.back()}
@@ -318,7 +295,7 @@ const ProductListDetails = () => {
                                 <td className="border border-gray-300 px-4 py-2">{product.productDetailId}</td>
                                 <td className="border border-gray-300 px-4 py-2">{product.productName}</td>
                                 <td className="border border-gray-300 px-4 py-2 font-bold">
-                                    {new Intl.NumberFormat("vi-VN",).format(product.price)} VND
+                                    {new Intl.NumberFormat("vi-VN").format(product.price)} VND
                                 </td>
                                 <td className="border border-gray-300 px-4 py-2">{product.colorValue}</td>
                                 <td className="border border-gray-300 px-4 py-2">{product.sizeValue}</td>
@@ -328,11 +305,9 @@ const ProductListDetails = () => {
                                     <Link
                                         to={`/admin/products-list/manage-product-details/:productId/product-image/${product.productDetailId}`}
                                         className="px-3 py-2 bg-blue-500 text-white rounded-md flex items-center gap-2"
-
                                     >
                                         👁️ Xem ảnh
                                     </Link>
-
                                 </td>
                                 <td className="border border-gray-300 px-4 py-2">
                                     <div className="flex gap-2 mt-2">
@@ -344,7 +319,6 @@ const ProductListDetails = () => {
                                         </button>
                                     </div>
                                 </td>
-
                             </tr>
                         ))}
                     </tbody>
@@ -387,7 +361,6 @@ const ProductListDetails = () => {
                         )}
                         <button
                             className="mt-4 px-4 py-2 bg-green-500 text-white rounded-md w-full"
-
                         >
                             Thêm ảnh
                         </button>
@@ -401,16 +374,14 @@ const ProductListDetails = () => {
                 </div>
             )}
 
-
             {isModalOpen && (
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center">
                     <div className="relative bg-white p-6 rounded-md shadow-lg w-1/3">
-                        {/* Nút đóng ở góc trên bên phải */}
                         <button
                             onClick={() => setIsModalOpen(false)}
                             className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-xl font-bold"
                         >
-                            &times;
+                            ×
                         </button>
 
                         <h3 className="text-lg font-semibold mb-4">Thêm Biến Thể Sản Phẩm</h3>
@@ -421,9 +392,11 @@ const ProductListDetails = () => {
                                 : "Đang tải..."}
                         </p>
 
-                        <select className={`border p-2 rounded w-full mb-2 ${errors.colorId ? 'border-red-500' : ''}`}
+                        <select 
+                            className={`border p-2 rounded w-full mb-2 ${errors.colorId ? 'border-red-500' : ''}`}
                             value={newDetail.colorId}
-                            onChange={(e) => setNewDetail({ ...newDetail, colorId: e.target.value })}>
+                            onChange={(e) => setNewDetail({ ...newDetail, colorId: e.target.value })}
+                        >
                             <option value="">Chọn Màu</option>
                             {colors.map((color) => (
                                 <option key={color.productColorId} value={color.productColorId}>{color.colorValue}</option>
@@ -431,9 +404,11 @@ const ProductListDetails = () => {
                         </select>
                         {errors.colorId && <p className="text-red-500 text-sm">{errors.colorId}</p>}
 
-                        <select className={`border p-2 rounded w-full mb-2 ${errors.sizeId ? 'border-red-500' : ''}`}
+                        <select 
+                            className={`border p-2 rounded w-full mb-2 ${errors.sizeId ? 'border-red-500' : ''}`}
                             value={newDetail.sizeId}
-                            onChange={(e) => setNewDetail({ ...newDetail, sizeId: e.target.value })}>
+                            onChange={(e) => setNewDetail({ ...newDetail, sizeId: e.target.value })}
+                        >
                             <option value="">Chọn Kích Cỡ</option>
                             {sizes.map((size) => (
                                 <option key={size.productSizeId} value={size.productSizeId}>{size.sizeValue}</option>
@@ -441,9 +416,11 @@ const ProductListDetails = () => {
                         </select>
                         {errors.sizeId && <p className="text-red-500 text-sm">{errors.sizeId}</p>}
 
-                        <select className={`border p-2 rounded w-full mb-2 ${errors.weightId ? 'border-red-500' : ''}`}
+                        <select 
+                            className={`border p-2 rounded w-full mb-2 ${errors.weightId ? 'border-red-500' : ''}`}
                             value={newDetail.weightId}
-                            onChange={(e) => setNewDetail({ ...newDetail, weightId: e.target.value })}>
+                            onChange={(e) => setNewDetail({ ...newDetail, weightId: e.target.value })}
+                        >
                             <option value="">Chọn Cân Nặng</option>
                             {weights.map((weight) => (
                                 <option key={weight.weightId} value={weight.weightId}>{weight.weightValue} kg</option>
@@ -451,20 +428,23 @@ const ProductListDetails = () => {
                         </select>
                         {errors.weightId && <p className="text-red-500 text-sm">{errors.weightId}</p>}
 
-                        <input type="number" placeholder="Nhập Giá"
+                        <input 
+                            type="number" 
+                            placeholder="Nhập Giá"
                             value={newDetail.price}
                             onChange={(e) => setNewDetail({ ...newDetail, price: e.target.value })}
                             className={`border p-2 rounded w-full mb-2 ${errors.price ? 'border-red-500' : ''}`}
                         />
                         {errors.price && <p className="text-red-500 text-sm">{errors.price}</p>}
 
-                        <input type="number" placeholder="Nhập Số Lượng"
+                        <input 
+                            type="number" 
+                            placeholder="Nhập Số Lượng"
                             value={newDetail.quantity}
                             onChange={(e) => setNewDetail({ ...newDetail, quantity: e.target.value })}
                             className={`border p-2 rounded w-full mb-2 ${errors.quantity ? 'border-red-500' : ''}`}
                         />
                         {errors.quantity && <p className="text-red-500 text-sm">{errors.quantity}</p>}
-
 
                         <div className="flex justify-end space-x-2">
                             <button onClick={handleAddProductDetail} className="p-2 bg-green-500 text-white rounded">Thêm biến thể</button>
@@ -473,8 +453,6 @@ const ProductListDetails = () => {
                 </div>
             )}
 
-
-
             {isEditModalOpen && (
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center">
                     <div className="relative bg-white p-6 rounded-md shadow-lg w-1/3">
@@ -482,7 +460,7 @@ const ProductListDetails = () => {
                             onClick={() => setIsEditModalOpen(false)}
                             className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-xl font-bold"
                         >
-                            &times;
+                            ×
                         </button>
 
                         <h3 className="text-lg font-semibold mb-4">Chỉnh sửa Biến Thể</h3>
@@ -492,44 +470,53 @@ const ProductListDetails = () => {
                                 : "Đang tải..."}
                         </p>
 
-                        <select className="border p-2 rounded w-full mb-2"
+                        <select 
+                            className="border p-2 rounded w-full mb-2"
                             value={editDetail?.colorId || ""}
-                            onChange={(e) => setEditDetail({ ...editDetail, colorId: e.target.value })}>
+                            onChange={(e) => setEditDetail({ ...editDetail, colorId: e.target.value })}
+                        >
                             {colors.map((color) => (
                                 <option key={color.productColorId} value={color.productColorId}>{color.colorValue}</option>
                             ))}
                         </select>
 
-                        <select className="border p-2 rounded w-full mb-2"
+                        <select 
+                            className="border p-2 rounded w-full mb-2"
                             value={editDetail?.sizeId || ""}
-                            onChange={(e) => setEditDetail({ ...editDetail, sizeId: e.target.value })}>
+                            onChange={(e) => setEditDetail({ ...editDetail, sizeId: e.target.value })}
+                        >
                             {sizes.map((size) => (
                                 <option key={size.productSizeId} value={size.productSizeId}>{size.sizeValue}</option>
                             ))}
                         </select>
 
-                        <select className="border p-2 rounded w-full mb-2"
+                        <select 
+                            className="border p-2 rounded w-full mb-2"
                             value={editDetail?.weightId || ""}
-                            onChange={(e) => setEditDetail({ ...editDetail, weightId: e.target.value })}>
+                            onChange={(e) => setEditDetail({ ...editDetail, weightId: e.target.value })}
+                        >
                             {weights.map((weight) => (
                                 <option key={weight.weightId} value={weight.weightId}>{weight.weightValue} kg</option>
                             ))}
                         </select>
 
-                        <input type="number" placeholder="Nhập Giá"
+                        <input 
+                            type="number" 
+                            placeholder="Nhập Giá"
                             value={editDetail?.price || ""}
                             onChange={(e) => setEditDetail({ ...editDetail, price: e.target.value })}
                             className={`border p-2 rounded w-full mb-2 ${errors.price ? 'border-red-500' : ''}`}
                         />
                         {errors.price && <p className="text-red-500 text-sm">{errors.price}</p>}
 
-                        <input type="number" placeholder="Nhập Số Lượng"
+                        <input 
+                            type="number" 
+                            placeholder="Nhập Số Lượng"
                             value={editDetail?.quantity || ""}
                             onChange={(e) => setEditDetail({ ...editDetail, quantity: e.target.value })}
                             className={`border p-2 rounded w-full mb-2 ${errors.quantity ? 'border-red-500' : ''}`}
                         />
                         {errors.quantity && <p className="text-red-500 text-sm">{errors.quantity}</p>}
-
 
                         <div className="flex justify-end space-x-2">
                             <button onClick={handleUpdateProductDetail} className="p-2 bg-blue-500 text-white rounded">Cập nhật</button>

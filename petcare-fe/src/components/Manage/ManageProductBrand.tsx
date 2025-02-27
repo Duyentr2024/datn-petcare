@@ -1,33 +1,34 @@
 import React, { useEffect, useState } from "react";
 import ProductBrandService from "../../service/manageService/ProductBrandService.js";
 import { FiEdit, FiCheck, FiX } from "react-icons/fi";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const ManageProductBrand = () => {
     const [brands, setBrands] = useState([]);
     const [brandInput, setBrandInput] = useState("");
     const [editingBrand, setEditingBrand] = useState(null);
     const [brandInputError, setBrandInputError] = useState("");
-    const [searchQuery, setSearchQuery] = useState(""); // State for search query
-    const [successMessage, setSuccessMessage] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
+    // Removed successMessage state as it's no longer needed with toast
 
-    // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
 
     useEffect(() => {
         fetchBrands();
-    }, [currentPage, searchQuery]); // Fetch brands when searchQuery or currentPage changes
+    }, [currentPage, searchQuery]);
 
     const fetchBrands = async () => {
         try {
             const response = await ProductBrandService.getAllBrands();
-            // Filter brands by search query
             const filteredBrands = response.filter((brand) =>
                 brand.brandName.toLowerCase().includes(searchQuery.toLowerCase())
             );
             setBrands(filteredBrands);
         } catch (error) {
             console.error("Error fetching brands:", error);
+            toast.error("Lỗi khi tải danh sách thương hiệu!");
         }
     };
 
@@ -44,6 +45,7 @@ const ManageProductBrand = () => {
         const error = validateBrand(brandInput);
         if (error) {
             setBrandInputError(error);
+            toast.error(error);
             return;
         } else {
             setBrandInputError("");
@@ -55,40 +57,33 @@ const ManageProductBrand = () => {
                     ...editingBrand,
                     brandName: brandInput,
                 });
-                setSuccessMessage("✅ Cập nhật thương hiệu thành công!");
+                toast.success(" Cập nhật thương hiệu thành công!");
                 setEditingBrand(null);
             } else {
                 await ProductBrandService.createBrand({ brandName: brandInput, status: true });
-                setSuccessMessage("✅ Thêm thương hiệu thành công!");
+                toast.success("Thêm thương hiệu thành công!");
             }
 
             setBrandInput("");
             fetchBrands();
         } catch (error) {
-            console.error("❌ Lỗi khi thêm/sửa thương hiệu:", error);
+            console.error("Lỗi khi thêm/sửa thương hiệu:", error);
+            toast.error("Lỗi khi thêm/sửa thương hiệu!");
         }
-
-        // Ẩn thông báo sau 3 giây
-        setTimeout(() => setSuccessMessage(""), 3000);
     };
-
 
     const handleChangeBrandStatus = async (brand) => {
         const updatedBrand = { ...brand, status: !brand.status };
         try {
             await ProductBrandService.updateBrand(brand.brandId, updatedBrand);
-            setSuccessMessage("✅ Trạng thái thương hiệu đã được cập nhật!");
+            toast.success("Trạng thái thương hiệu đã được cập nhật!");
             fetchBrands();
-
-            // Ẩn thông báo sau 3 giây
-            setTimeout(() => setSuccessMessage(""), 3000);
         } catch (error) {
-            console.error("❌ Lỗi khi cập nhật trạng thái thương hiệu:", error);
+            console.error("Lỗi khi cập nhật trạng thái thương hiệu:", error);
+            toast.error("Lỗi khi cập nhật trạng thái thương hiệu!");
         }
     };
 
-
-    // Handle pagination
     const paginateBrands = () => {
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
@@ -99,14 +94,20 @@ const ManageProductBrand = () => {
 
     return (
         <div className="p-6 bg-white shadow-md rounded-md">
-            {successMessage && (
-                <div className="p-1 text-green-700 bg-green-100 border border-green-400 rounded-md text-center">
-                    {successMessage}
-                </div>
-            )}
-            <h2 className="text-2xl font-semibold mb-4">Quản lý thương hiệu sản phẩm</h2>
+            {/* Add ToastContainer to display the toast notifications */}
+            <ToastContainer 
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+            />
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">Quản lý thương hiệu sản phẩm</h2>
 
-            {/* Form thêm hoặc sửa thương hiệu */}
             <div className="flex gap-2 mb-4">
                 <input
                     type="text"
@@ -122,10 +123,8 @@ const ManageProductBrand = () => {
                     {editingBrand ? "Lưu" : "Thêm"}
                 </button>
             </div>
-            {/* Error message */}
             {brandInputError && <div className="text-red-600 text-sm">{brandInputError}</div>}
 
-            {/* Search input placed below and to the right */}
             <div className="flex justify-end gap-2 mb-4">
                 <input
                     type="text"
@@ -136,7 +135,6 @@ const ManageProductBrand = () => {
                 />
             </div>
 
-            {/* Danh sách thương hiệu */}
             <table className="w-full border-collapse border">
                 <thead>
                     <tr className="bg-gray-200">
@@ -180,7 +178,7 @@ const ManageProductBrand = () => {
                                     <button
                                         onClick={() => {
                                             setEditingBrand(brand);
-                                            setBrandInput(brand.brandName); // Pre-fill input for editing
+                                            setBrandInput(brand.brandName);
                                         }}
                                         className="bg-yellow-500 text-white px-3 py-1 rounded flex items-center gap-1 hover:bg-yellow-600"
                                     >
@@ -199,7 +197,6 @@ const ManageProductBrand = () => {
                 </tbody>
             </table>
 
-            {/* Pagination controls */}
             <div className="mt-4 flex justify-between items-center">
                 <button
                     onClick={() => setCurrentPage(currentPage - 1)}
