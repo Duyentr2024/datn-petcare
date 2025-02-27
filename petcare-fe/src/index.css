@@ -61,4 +61,26 @@ body {
   .animate-fadeIn {
     animation: fadeIn 0.3s ease-in-out;
   }
+/* Tùy chỉnh thanh cuộn cho class custom-scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px; /* Giảm độ dày thanh cuộn để trông nhẹ nhàng hơn */
+}
 
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent; /* Ẩn track, chỉ để lại thumb */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #fef0d3; /* Màu vàng nhạt cho thumb */
+  border-radius: 12px; /* Bo tròn mạnh hơn để tự nhiên */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #fbb321; /* Màu vàng đậm khi hover */
+}
+
+/* Hỗ trợ Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin; /* Thanh cuộn mỏng */
+  scrollbar-color: #fef0d3 transparent; /* Thumb vàng nhạt, track trong suốt */
+}
