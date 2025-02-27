@@ -4,10 +4,11 @@ import ProductDetailsService from "../../service/manageService/ProductDetailsSer
 import { storage } from "../../firebaseConfig";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import Swal from "sweetalert2";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify"; // Fixed: Added ToastContainer to the import
 import { FiEdit, FiTrash2 } from "react-icons/fi";
 import "react-toastify/dist/ReactToastify.css";
 import { useParams, useNavigate } from "react-router-dom";
+
 const ManageProductImages = () => {
     const [images, setImages] = useState([]);
     const [productDetails, setProductDetails] = useState([]);
@@ -19,7 +20,6 @@ const ManageProductImages = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(5);
     const [isUploading, setIsUploading] = useState(false);
-    const [successMessage, setSuccessMessage] = useState("");
     const { productDetailId } = useParams();
     const [errorMessage, setErrorMessage] = useState("");
 
@@ -34,18 +34,15 @@ const ManageProductImages = () => {
         }
     }, [productDetailId]);
 
-
-
     const fetchImages = async (productDetailId) => {
         try {
             const data = await ProductImagesService.getAllImagesByProductDetails(productDetailId);
-            setImages([...data]); // Cập nhật danh sách ngay
-            console.log("✅ Danh sách ảnh đã cập nhật:", data);
+            setImages([...data]);
+            console.log("Danh sách ảnh đã cập nhật:", data);
         } catch (error) {
             console.error("Lỗi khi tải danh sách ảnh:", error);
         }
     };
-
 
     const fetchProductDetails = async () => {
         try {
@@ -76,7 +73,7 @@ const ManageProductImages = () => {
             return;
         }
 
-        setErrorMessage(""); // Xóa lỗi nếu hợp lệ
+        setErrorMessage("");
         setSelectedImage(file);
     };
 
@@ -86,9 +83,8 @@ const ManageProductImages = () => {
             return;
         }
 
-        setIsUploading(true); // Bắt đầu tải ảnh
-        setErrorMessage(""); // Xóa thông báo lỗi cũ
-        setSuccessMessage("⏳ Đang tải ảnh lên..."); // Hiển thị thông báo tải lên
+        setIsUploading(true);
+        setErrorMessage("");
 
         const storageRef = ref(storage, `product-images/${Date.now()}-${selectedImage.name}`);
         const uploadTask = uploadBytesResumable(storageRef, selectedImage);
@@ -99,7 +95,6 @@ const ManageProductImages = () => {
             (error) => {
                 console.error("❌ Lỗi khi tải ảnh lên Firebase:", error);
                 setErrorMessage("❌ Lỗi khi tải ảnh lên, vui lòng thử lại.");
-                setSuccessMessage(""); // Ẩn thông báo thành công
                 setIsUploading(false);
             },
             async () => {
@@ -109,10 +104,10 @@ const ManageProductImages = () => {
 
                     if (productImageId) {
                         await ProductImagesService.updateProductImage(productImageId, imageData);
-                        setSuccessMessage("✅ Ảnh đã được cập nhật thành công!");
+                        toast.success("Ảnh đã được cập nhật thành công!");
                     } else {
                         await ProductImagesService.createProductImage(imageData);
-                        setSuccessMessage("✅ Ảnh đã được thêm thành công!");
+                        toast.success("Ảnh đã được thêm thành công!");
                     }
 
                     fetchImages(selectedProductDetailId);
@@ -122,31 +117,18 @@ const ManageProductImages = () => {
                     setErrorMessage("❌ Lỗi khi lưu ảnh, vui lòng thử lại.");
                 } finally {
                     setIsUploading(false);
-
-                    // Ẩn thông báo sau 3 giây
-                    setTimeout(() => {
-                        setSuccessMessage("");
-                        setErrorMessage("");
-                    }, 3000);
                 }
             }
         );
     };
-
-
-
-
-
 
     const handleEditImage = (image) => {
         setProductImageId(image.productImageId);
         setSelectedProductDetailId(image.productDetailId);
         setSelectedImage(null);
         setImageInputKey(Date.now());
-        setIsModalOpen(true); // Mở modal khi sửa
+        setIsModalOpen(true);
     };
-
-
 
     const handleDeleteImage = async (id) => {
         Swal.fire({
@@ -163,31 +145,24 @@ const ManageProductImages = () => {
                 try {
                     await ProductImagesService.deleteProductImage(id);
                     fetchImages(productDetailId);
-                    setSuccessMessage("Xóa ảnh thành công!");
+                    toast.success("Xóa ảnh thành công!");
                 } catch (error) {
                     console.error("Lỗi khi xóa ảnh:", error);
-
                 } finally {
                     setIsUploading(false);
-                    setTimeout(() => setSuccessMessage(""), 3000);
                 }
             }
         });
     };
 
-
-
     const resetForm = () => {
         setSelectedImage(null);
         setProductImageId(null);
-        // Nếu có input file, reset nó
         setIsModalOpen(false);
         setErrorMessage(null);
         document.getElementById("fileInput").value = "";
     };
 
-
-    // Handle pagination
     const paginateImage = () => {
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
@@ -198,14 +173,19 @@ const ManageProductImages = () => {
 
     return (
         <div className="p-6">
-            {successMessage && (
-                <div className="p-4 mb-4 text-green-700 bg-green-100 border border-green-400 rounded-md text-center">
-                    {successMessage}
-                </div>
-            )}
-            <h2 className="text-xl font-bold mb-4">Quản lý ảnh hình ảnh của biến thể</h2>
+            <ToastContainer 
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+            />
+            <h2 className="text-2xl font-bold mb-4 text-gray-900">Quản lý ảnh hình ảnh của biến thể</h2>
             <div className="mb-3">
-                {/* Nút quay về */}
                 <div className="flex justify-between ">
                     <button
                         onClick={() => window.history.back()}
@@ -221,10 +201,8 @@ const ManageProductImages = () => {
                         Thêm ảnh mới
                     </button>
                 </div>
-                {/* Nội dung khác giữ nguyên */}
             </div>
 
-            {/* Modal Thêm / Sửa ảnh */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center">
                     <div className="bg-white p-6 rounded shadow-lg w-1/3">
@@ -232,7 +210,6 @@ const ManageProductImages = () => {
                             {productImageId ? "Chỉnh sửa ảnh sản phẩm" : "Thêm ảnh sản phẩm"}
                         </h3>
 
-                        {/* Hiển thị thông báo lỗi nếu có */}
                         {errorMessage && (
                             <p className="p-2 mb-2 text-red-700 bg-red-100 border border-red-400 rounded-md text-center">
                                 {errorMessage}
@@ -250,7 +227,6 @@ const ManageProductImages = () => {
                             ))}
                         </select>
 
-                        {/* Nút chọn ảnh */}
                         <div className="border p-4 rounded-md bg-gray-50 border-dashed text-center">
                             <label
                                 htmlFor="fileInput"
@@ -267,7 +243,6 @@ const ManageProductImages = () => {
                             <p className="text-gray-500 text-sm mt-2">Chỉ chấp nhận hình ảnh JPG, PNG, JPEG</p>
                         </div>
 
-                        {/* Khu vực hiển thị ảnh xem trước */}
                         <div className="mt-4 flex justify-center items-center" style={{ minHeight: '200px', maxHeight: '200px' }}>
                             {selectedImage && (
                                 <img
@@ -279,7 +254,6 @@ const ManageProductImages = () => {
                             )}
                         </div>
 
-                        {/* Nút hành động */}
                         <div className="flex gap-2 mt-4">
                             <button
                                 onClick={handleSaveImage}
@@ -297,8 +271,6 @@ const ManageProductImages = () => {
                 </div>
             )}
 
-
-            {/* Danh sách ảnh sản phẩm */}
             <table className="w-full border-collapse border">
                 <thead>
                     <tr className="bg-gray-200">
@@ -351,7 +323,6 @@ const ManageProductImages = () => {
                     Sau
                 </button>
             </div>
-
         </div>
     );
 };

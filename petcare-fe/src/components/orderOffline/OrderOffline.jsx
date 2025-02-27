@@ -58,6 +58,8 @@ const OrderOffline = () => {
   ]);
   
   const [activeTab, setActiveTab] = useState(1);
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Lấy thông tin của tab hiện tại
   const currentTab = tabs.find(tab => tab.id === activeTab) || tabs[0];
@@ -91,6 +93,71 @@ const OrderOffline = () => {
     if (activeTab === tabId) {
       setActiveTab(newTabs[newTabs.length - 1].id);
     }
+  };
+
+  // Hàm gọi API tìm kiếm sản phẩm
+  const searchProducts = async (keyword) => {
+    setIsSearching(true);
+    try {
+      const response = await fetch(`http://localhost:5713/api/products/search?keyword=${encodeURIComponent(keyword)}`);
+      if (!response.ok) throw new Error('Lỗi kết nối mạng');
+      const data = await response.json();
+      console.log('API Response:', data);
+      setSearchResults(data);
+    } catch (error) {
+      console.error('Lỗi tìm kiếm sản phẩm:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Hàm xử lý khi người dùng nhập từ khóa tìm kiếm
+  const handleSearchChange = (e) => {
+    const keyword = e.target.value;
+    if (keyword.length >= 2) {
+      searchProducts(keyword);
+    } else {
+      setSearchResults([]);
+    }
+  };
+
+  // Hàm thêm sản phẩm vào tab hiện tại
+  const addProductToCurrentTab = async (product) => {
+    try {
+      // Gọi API để lấy chi tiết sản phẩm
+      const response = await fetch(`http://localhost:5713/api/products/products-summary/${product.productId}`);
+      if (!response.ok) throw new Error('Lỗi kết nối mạng');
+      const productDetails = await response.json();
+      
+      if (productDetails && productDetails.length > 0) {
+        const detail = productDetails[0]; // Lấy chi tiết đầu tiên
+        
+        setTabs(tabs.map(tab => {
+          if (tab.id === activeTab) {
+            const newProduct = {
+              id: tab.products.length + 1,
+              code: product.productId.toString(),
+              name: product.productName,
+              variant: `${detail.productColors?.colorName || 'Mặc định'} - ${detail.productSizes?.sizeName || 'Mặc định'} - ${detail.weights?.weightName || 'Mặc định'}`,
+              variants: [], // Có thể thêm logic để lấy các biến thể khác
+              quantity: 1,
+              price: detail.price || 0,
+              total: detail.price || 0
+            };
+            
+            return {
+              ...tab,
+              products: [...tab.products, newProduct]
+            };
+          }
+          return tab;
+        }));
+      }
+    } catch (error) {
+      console.error('Lỗi khi lấy chi tiết sản phẩm:', error);
+    }
+    
+    setSearchResults([]); // Xóa kết quả tìm kiếm sau khi thêm
   };
 
   const handleIncrement = (productId) => {
@@ -205,13 +272,47 @@ const OrderOffline = () => {
     <div className="flex flex-col h-screen">
       <div className="bg-[#fbb321] p-1 sm:p-2">
         <div className="flex items-center gap-1 sm:gap-2">
-          <div className="flex items-center bg-white rounded px-1 sm:px-2 py-1">
+          <div className="flex items-center bg-white rounded px-1 sm:px-2 py-1 relative">
             <IoSearchOutline className="text-gray-500 text-sm sm:text-base" />
             <input
               type="text"
               placeholder="Tìm hàng hóa"
               className="px-1 sm:px-2 outline-none w-24 sm:w-auto text-sm sm:text-base"
+              onChange={handleSearchChange}
+              onFocus={(e) => {
+                if (e.target.value.length >= 2) {
+                  searchProducts(e.target.value);
+                }
+              }}
             />
+            
+            {/* Hiển thị kết quả tìm kiếm */}
+            {isSearching && (
+              <div className="absolute top-[40px] left-0 w-64 bg-white shadow-lg rounded-b-md mt-1 z-50 p-4 text-center">
+                <div className="text-gray-500">Đang tìm kiếm...</div>
+              </div>
+            )}
+
+            {searchResults.length > 0 && !isSearching && (
+              <div className="absolute top-[40px] left-0 w-64 bg-white shadow-lg rounded-b-md mt-1 z-50 max-h-60 overflow-y-auto">
+                {searchResults.map((product) => (
+                  <div
+                    key={product.productId}
+                    className="p-2 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
+                    onClick={() => addProductToCurrentTab(product)}
+                  >
+                    <div className="text-sm font-medium">{product.productName}</div>
+                    <div className="text-xs text-gray-500">Mã: {product.productId}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {searchResults.length === 0 && !isSearching && (
+              <div className="absolute top-[40px] left-0 w-64 bg-white shadow-lg rounded-b-md mt-1 z-50 p-4 text-center">
+                <div className="text-gray-500">Không tìm thấy sản phẩm</div>
+              </div>
+            )}
           </div>
           
           <div className="flex overflow-x-auto hide-scrollbar">
