@@ -39,7 +39,7 @@ const Checkout = () => {
     const totalBeforeDiscount = subtotal + shippingFee;
     const discountAmount = subtotal >= condition ? (totalBeforeDiscount * discount) / 100 : 0;
     const totalAmount = (totalBeforeDiscount - discountAmount).toLocaleString();
-
+   
 
     const handlePaymentMethodChange = (method) => {
         setPaymentMethod(method);
@@ -66,6 +66,7 @@ const Checkout = () => {
         fetchCartDetails();
     }, [selectedAddress, totalWeight]);
 
+    // Hàm tính phí vận chuyển GHN
     const fetchShippingFee = async (districtId, wardCode) => {
         if (!districtId || !wardCode) {
             console.error("🚨 Thiếu thông tin Quận/Huyện hoặc Phường/Xã!", {districtId, wardCode});
@@ -111,16 +112,25 @@ const Checkout = () => {
     const getPhoneAndNameFromToken = () => {
         const accessToken = Cookies.get("accessToken"); // Lấy token từ cookies
         if (!accessToken) return null;
-
+    
         try {
-            const payload = JSON.parse(atob(accessToken.split(".")[1])); // Giải mã payload
-            const {fullName, phone} = payload; // Lấy thông tin từ payload
-            return {fullName, phone};
+            const base64Url = accessToken.split(".")[1]; // Lấy phần payload của JWT
+            const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/"); // Chuyển đổi định dạng base64
+            const jsonPayload = decodeURIComponent(
+                atob(base64)
+                    .split("")
+                    .map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+                    .join("")
+            );
+    
+            const { fullName, phone } = JSON.parse(jsonPayload); // Parse JSON
+            return { fullName, phone };
         } catch (error) {
             console.error("Invalid token:", error);
             return null;
         }
     };
+    
 
     const userInfo = getPhoneAndNameFromToken();
     if (userInfo) {
@@ -400,7 +410,7 @@ const Checkout = () => {
             paymentMethod: String(paymentMethod),
             shippingAddress: String(shippingAddress),
             shippingCost: Number(shippingFee),
-            voucherId: selectedAddress?.voucherId ? Number(selectedAddress.voucherId) : null,
+            voucherId: selectedVoucher ? Number(selectedVoucher) : null,
             type: "ORDER ONLINE",
             items: products.map(({productDetailId, quantityItem, price}) => ({
                 productDetailId: Number(productDetailId),
@@ -421,7 +431,7 @@ const Checkout = () => {
                 text: "Đặt hàng thành công!",
                 icon: "success"
             }).then(() => {
-                navigate("/my-account/info");
+                navigate("/my-account/history");
             });
         } catch (error) {
             if (error.response) {
@@ -688,7 +698,7 @@ const Checkout = () => {
 
                     {/* Giỏ hàng */}
                     <div
-                        className="bg-[#fbb321] p-5 md:p-6 rounded-3xl text-white sticky top-4 max-h-[500px] overflow-y-auto w-full md:w-[320px] shadow-2xl">
+                        className="bg-[#fbb321] p-5  md:p-6 rounded-3xl text-white sticky top-[150px] max-h-[500px] overflow-y-auto w-full md:w-[320px] shadow-2xl z-999 custom-scrollbar">
                         <h2 className="text-2xl font-bold mb-5 border-b border-white pb-3 text-center">Sản phẩm thanh
                             toán</h2>
                         <div className="space-y-4">
