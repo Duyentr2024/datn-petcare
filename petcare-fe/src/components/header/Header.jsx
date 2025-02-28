@@ -56,8 +56,7 @@ export default function Header() {
     }
   };
 
-
- // Xử lý đóng menu khi click ra ngoài
+  // Xử lý đóng menu khi click ra ngoài
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -160,7 +159,6 @@ export default function Header() {
     };
   }, []);
 
-
   const [cartCount, setCartCount] = useState(0);
 
   // Hàm lấy userId từ token
@@ -176,13 +174,14 @@ export default function Header() {
     }
   };
 
-
   useEffect(() => {
     const fetchCartCount = async () => {
       if (!userId) return;
 
       try {
-        const cartItems = await CartDetailsService.getCartDetailsByUserId(userId);
+        const cartItems = await CartDetailsService.getCartDetailsByUserId(
+          userId
+        );
         const totalItems = cartItems.length; // Chỉ đếm số mặt hàng khác nhau
         setCartCount(totalItems);
       } catch (error) {
@@ -192,7 +191,6 @@ export default function Header() {
 
     fetchCartCount();
   }, [userId]);
-
 
   return (
     <>
@@ -220,17 +218,18 @@ export default function Header() {
               <div className="flex sm:w-auto">
                 <div className="flex items-center space-x-4 relative w-[900px] max-w-lg hidden sm:block">
                   <input
-                   value={searchTerm}
-                   onChange={(e) => setSearchTerm(e.target.value)}
-                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                     type="text"
                     placeholder="Tìm kiếm sản phẩm..."
                     className="border border-yellow-500 rounded-2xl px-4 py-2 pl-4 pr-12 w-full focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-opacity-50 transition-all duration-300 ease-in-out"
                   />
-                  <button className="absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500"
-                  onClick={handleSearch}>
+                  <button
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-yellow-500"
+                    onClick={handleSearch}
+                  >
                     <FaSearch size={18} />
-                    
                   </button>
                 </div>
               </div>
@@ -286,7 +285,10 @@ export default function Header() {
                 )}
 
                 {/* Giỏ hàng */}
-                <Link to="/shoppingCart" className="flex items-center space-x-3 cursor-pointer">
+                <Link
+                  to="/shoppingCart"
+                  className="flex items-center space-x-3 cursor-pointer"
+                >
                   <div className="bg-green-100 p-3 rounded-full flex items-center justify-center relative">
                     <FaShoppingCart className="text-green-700 text-xl" />
                     {/* {cartCount > 0 && (
@@ -298,14 +300,17 @@ export default function Header() {
                   <div className="hidden sm:block">
                     <span className="text-sm text-gray-700">Giỏ hàng</span>
                     <br />
-                    <span className="font-bold text-green-700">{cartCount} Sản phẩm</span>
+                    <span className="font-bold text-green-700">
+                      {cartCount} Sản phẩm
+                    </span>
                   </div>
                 </Link>
 
                 {/* Thông báo */}
 
                 <div
-                  className="flex items-center space-x-3 cursor-pointer"  ref={dropdownRef}
+                  className="flex items-center space-x-3 cursor-pointer"
+                  ref={dropdownRef}
                   onClick={() => setIsOpen(!isOpen)}
                 >
                   <div className="bg-yellow-100 p-3 rounded-full flex items-center justify-center relative">
@@ -420,10 +425,16 @@ export default function Header() {
                   Trang chủ <i className="fas fa-home text-yellow-500"></i>
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
                 </Link>
-                <a className="menu-item font-bold relative">
-                  Giới thiệu
-                  <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
-                </a>
+                <Link
+                  to="/introduce"
+                  className="menu-item font-bold flex items-center space-x-1 relative"
+                >
+                  <span className="menu-item font-bold relative">
+                    Giới thiệu<i className="fas fa-home text-yellow-500"></i>
+                    <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
+                  </span>
+                </Link>
+
                 <Link
                   to="/productPage"
                   className="menu-item font-bold relative"
@@ -431,7 +442,7 @@ export default function Header() {
                   Sản phẩm
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
                 </Link>
-               
+
                 <Link to="/newsPage" className="menu-item font-bold relative">
                   Tin tức
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
