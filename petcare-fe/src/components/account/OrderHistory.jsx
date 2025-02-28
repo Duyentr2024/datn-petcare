@@ -49,7 +49,9 @@ const OrderHistory = () => {
     const fetchOrders = async () => {
       try {
         const data = await OrderHistoryService.getOrdersByUserId(userId);
-        const sortedOrders = data.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate)); // Mới nhất lên đầu
+        const sortedOrders = data.sort(
+          (a, b) => new Date(b.orderDate) - new Date(a.orderDate) // Sắp xếp theo ngày giờ giảm dần
+        );
         setOrders(sortedOrders);
       } catch (error) {
         console.error("Lỗi khi lấy đơn hàng:", error);
@@ -78,7 +80,7 @@ const OrderHistory = () => {
         const updatedOrders = orders.map(order =>
           order.orderId === orderId ? { ...order, statusName: result.status } : order
         );
-        const sortedOrders = updatedOrders.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
+        const sortedOrders = updatedOrders.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate)); // Sắp xếp theo thời gian giảm dần
         setOrders(sortedOrders);
 
         Swal.fire({
@@ -148,7 +150,7 @@ const OrderHistory = () => {
         });
         return;
       }
-  
+
       const reviewData = {
         rating,
         comment,
@@ -156,9 +158,9 @@ const OrderHistory = () => {
         user: { userId: user.userId },
         orderDetails: { orderDetailsId },
       };
-  
+
       const result = await ReviewService.addReview(reviewData);
-  
+
       // Hiển thị thông báo thành công
       Swal.fire({
         icon: "success",
@@ -170,10 +172,10 @@ const OrderHistory = () => {
       }).then(() => {
         setSelectedProductReview(null); // Tắt modal sau khi người dùng đóng thông báo
       });
-  
+
     } catch (error) {
       console.error("Gửi đánh giá thất bại:", error);
-  
+
       // Hiển thị thông báo lỗi
       Swal.fire({
         icon: "error",
@@ -183,8 +185,8 @@ const OrderHistory = () => {
       });
     }
   };
-  
-  
+
+
   return (
     <div className="p-6 bg-white rounded-lg shadow-md">
 
@@ -206,7 +208,7 @@ const OrderHistory = () => {
       <table className="w-full border-collapse border border-gray-200">
         <thead>
           <tr className="bg-gray-100 text-left">
-            <th className="p-3 border border-gray-200">Mã đơn hàng</th>
+            {/* <th className="p-3 border border-gray-200">Mã đơn hàng</th> */}
             <th className="p-3 border border-gray-200">Ngày đặt hàng</th>
             <th className="p-3 border border-gray-200">Tổng tiền</th>
             <th className="p-3 border border-gray-200">Trạng thái</th>
@@ -229,8 +231,14 @@ const OrderHistory = () => {
           ) : (
             displayedOrders.map((order) => (
               <tr key={order.orderId} className="border border-gray-200">
-                <td className="p-3 border border-gray-200">#{order.orderId}</td>
-                <td className="p-3 border border-gray-200">{order.orderDate}</td>
+                {/* <td className="p-3 border border-gray-200">#{order.orderId}</td> */}
+                <td className="p-3 border border-gray-200">
+                  {new Date(order.orderDate).toLocaleString("vi-VN", {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                  })}
+                </td>
                 <td className="p-3 border border-gray-200 text-red-500">{formatCurrency(order.totalAmount)}</td>
                 <td className="p-3 border border-gray-200 text-orange-500 font-semibold">
                   {order.statusName}
@@ -309,9 +317,26 @@ const OrderHistory = () => {
 
             {/* Thông tin đơn hàng */}
             <div className="mb-6 space-y-2 text-gray-700">
-              <p><strong className="text-gray-800">📅 Ngày đặt hàng:</strong> {selectedOrder.orderDate}</p>
-              <p><strong className="text-gray-800">💰 Tổng tiền:</strong> <span className="text-red-500 font-semibold">{formatCurrency(selectedOrder.totalAmount)}</span></p>
-              <p><strong className="text-gray-800">📦 Trạng thái:</strong> <span className="font-medium">{selectedOrder.statusName}</span></p>
+              <p>
+                <strong className="text-gray-800">📅 Ngày đặt hàng:</strong>{" "}
+                {new Date(selectedOrder.orderDate).toLocaleString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  timeZone: "Asia/Ho_Chi_Minh", // Chỉ định múi giờ Việt Nam (UTC+7)
+                })}
+              </p>
+              <p>
+                <strong className="text-gray-800">💰 Tổng tiền:</strong>{" "}
+                <span className="text-red-500 font-semibold">{formatCurrency(selectedOrder.totalAmount)}</span>
+              </p>
+              <p>
+                <strong className="text-gray-800">📦 Trạng thái:</strong>{" "}
+                <span className="font-medium">{selectedOrder.statusName}</span>
+              </p>
             </div>
 
             {/* Danh sách sản phẩm */}

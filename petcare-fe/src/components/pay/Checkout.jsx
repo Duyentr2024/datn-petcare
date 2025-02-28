@@ -6,13 +6,16 @@ import GHNService from "../../service/addressService/GHNService.jsx";
 import Cookies from "js-cookie";
 import CartDetailsService from "../../service/CartDetailsService/CartDetailsService.jsx";
 import {toast} from "react-toastify";
-import {useNavigate} from "react-router-dom";
+import {useNavigate, useLocation} from "react-router-dom";
 import VoucherService from "../../service/voucherService/VoucherService.jsx";
+import VNPayService from "../../service/paymentService/VNPayService.jsx";
 
 const Checkout = () => {
     const {user} = useAuth();
-    const [errors, setErrors] = useState({});
     const navigate = useNavigate();
+    const location = useLocation();
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [errors, setErrors] = useState({});
     const [addresses, setAddresses] = useState([]);
     const [selectedAddress, setSelectedAddress] = useState({
         fullName: "",
@@ -39,8 +42,8 @@ const Checkout = () => {
     const totalBeforeDiscount = subtotal + shippingFee;
     const discountAmount = subtotal >= condition ? (totalBeforeDiscount * discount) / 100 : 0;
     const totalAmount = (totalBeforeDiscount - discountAmount).toLocaleString();
-   
-
+    const [hasProcessed, setHasProcessed] = useState(false); // State để kiểm soát xử lý
+    const [processedTxnRef, setProcessedTxnRef] = useState(null); // Lưu vnp_TxnRef đã xử lý
     const handlePaymentMethodChange = (method) => {
         setPaymentMethod(method);
     };
@@ -49,7 +52,6 @@ const Checkout = () => {
         window.scrollTo(0, 0);
 
         if (selectedAddress.district && selectedAddress.ward && totalWeight > 0) {
-            console.log("📦 Gọi API GHN với:", selectedAddress.district, selectedAddress.ward);
             fetchShippingFee(selectedAddress.district, selectedAddress.ward);
         }
 
@@ -58,7 +60,6 @@ const Checkout = () => {
                 const data = await CartDetailsService.getCartDetailsByUserId(userId);
                 setProducts(data);
             } catch (error) {
-                console.error("Error fetching cart details:", error);
                 toast.error("Không thể tải giỏ hàng!");
             }
         };
@@ -69,7 +70,6 @@ const Checkout = () => {
     // Hàm tính phí vận chuyển GHN
     const fetchShippingFee = async (districtId, wardCode) => {
         if (!districtId || !wardCode) {
-            console.error("🚨 Thiếu thông tin Quận/Huyện hoặc Phường/Xã!", {districtId, wardCode});
             return;
         }
 
@@ -79,14 +79,11 @@ const Checkout = () => {
             weight: totalWeight || 1000,
         };
 
-        console.log("📤 Gửi payload đến GHNService:", payload);
 
         try {
             const fee = await GHNService.calculateShippingFee(payload);
-            console.log("✅ Shipping Fee:", fee);
             setShippingFee(fee);
         } catch (error) {
-            console.error("❌ Không thể lấy phí vận chuyển!", error);
             toast.error("Không thể lấy phí vận chuyển!");
         }
     };
@@ -112,7 +109,7 @@ const Checkout = () => {
     const getPhoneAndNameFromToken = () => {
         const accessToken = Cookies.get("accessToken"); // Lấy token từ cookies
         if (!accessToken) return null;
-    
+
         try {
             const base64Url = accessToken.split(".")[1]; // Lấy phần payload của JWT
             const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/"); // Chuyển đổi định dạng base64
@@ -122,15 +119,15 @@ const Checkout = () => {
                     .map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
                     .join("")
             );
-    
-            const { fullName, phone } = JSON.parse(jsonPayload); // Parse JSON
-            return { fullName, phone };
+
+            const {fullName, phone} = JSON.parse(jsonPayload); // Parse JSON
+            return {fullName, phone};
         } catch (error) {
             console.error("Invalid token:", error);
             return null;
         }
     };
-    
+
 
     const userInfo = getPhoneAndNameFromToken();
     if (userInfo) {
@@ -245,13 +242,6 @@ const Checkout = () => {
                 const ward = wardData.find(w => w.WardName === address.ward);
                 const wardID = ward ? ward.WardCode : "";
 
-                console.log("🏠 Selected Address:", {
-                    ...address,
-                    province: provinceID,
-                    district: districtID,
-                    ward: wardID,
-                });
-
                 setSelectedAddress({
                     ...address,
                     province: provinceID,
@@ -305,7 +295,6 @@ const Checkout = () => {
             delete updatedAddress.isNew;
 
             try {
-                console.log("📤 Gửi API cập nhật:", updatedAddress);
                 await axios.put(`http://localhost:8080/api/addresses/${updatedAddress.addressId}`, updatedAddress);
                 setAddresses(prev =>
                     prev.map((addr) => (addr.addressId === updatedAddress.addressId ? updatedAddress : addr))
@@ -334,7 +323,6 @@ const Checkout = () => {
 
             (async () => {
                 try {
-                    console.log("📤 Auto Update API:", updatedAddress);
                     await axios.put(`http://localhost:8080/api/addresses/${updatedAddress.addressId}`, updatedAddress);
                     setAddresses(prev => prev.map(addr => addr.addressId === updatedAddress.addressId ? updatedAddress : addr));
                 } catch (error) {
@@ -363,8 +351,6 @@ const Checkout = () => {
             ward: wardName || "",
             userId: user?.userId || null,
         };
-
-        console.log("📤 Dữ liệu gửi lên API:", addressData); // Kiểm tra dữ liệu trước khi gửi
 
         try {
             let response;
@@ -413,46 +399,6 @@ const Checkout = () => {
         .replace(/, ,/g, ',')
         .replace(/, $/, '');
 
-    const handlePayment = async () => {
-        const orderDetails = {
-            userId: Number(userId),
-            paymentMethod: String(paymentMethod),
-            shippingAddress: String(shippingAddress),
-            shippingCost: Number(shippingFee),
-            voucherId: selectedVoucher ? Number(selectedVoucher) : null,
-            type: "ORDER ONLINE",
-            items: products.map(({productDetailId, quantityItem, price}) => ({
-                productDetailId: Number(productDetailId),
-                quantity: Number(quantityItem),
-                price: Number(price),
-            })),
-        };
-
-        console.log("Sending payment request:", orderDetails);
-
-        try {
-            const response = await axios.post("http://localhost:8080/api/orders/checkout", orderDetails, {
-                headers: {"Content-Type": "application/json"},
-            });
-
-            Swal.fire({
-                title: "Thành công!",
-                text: "Đặt hàng thành công!",
-                icon: "success"
-            }).then(() => {
-                navigate("/my-account/history");
-            });
-        } catch (error) {
-            if (error.response) {
-                const errorMessage = error.response.data.message; // Lấy thông báo lỗi từ BE
-                Swal.fire("Hết hàng!", errorMessage, "warning"); // Hiển thị thông báo bằng tiếng Việt
-            } else {
-                console.error("Error during payment:", error);
-                Swal.fire("Lỗi!", "Không thể hoàn tất thanh toán. Vui lòng thử lại!", "error");
-            }
-        }
-    };
-
     //Voucher
     useEffect(() => {
         const fetchVouchers = async () => {
@@ -480,17 +426,12 @@ const Checkout = () => {
 
     const handleCheckout = async () => {
         try {
-            console.log("Xử lý thanh toán...");
-
             // Gọi API thanh toán thành công (giả lập)
             setTimeout(async () => {
-                console.log("Thanh toán thành công!");
 
                 // Nếu có voucher, giảm số lượng voucher
                 if (selectedVoucher) {
-                    console.log(`Giảm số lượng voucher ID: ${selectedVoucher}`);
                     await VoucherService.decrementVoucherQuantity(selectedVoucher);
-                    console.log("Số lượng voucher đã cập nhật!");
                 }
             }, 1000);
         } catch (error) {
@@ -498,19 +439,139 @@ const Checkout = () => {
         }
     };
 
+    // Trong handleOrderProcess
     const handleOrderProcess = async () => {
+        if (isProcessing) return;
+        setIsProcessing(true);
+
+        const orderDetails = {
+            userId: Number(userId),
+            paymentMethod: String(paymentMethod),
+            shippingAddress: String(shippingAddress),
+            shippingCost: Number(shippingFee),
+            voucherId: selectedVoucher ? Number(selectedVoucher) : null,
+            type: "ORDER ONLINE",
+            paymentStatus: paymentMethod === "COD" ? "Đã thanh toán" : "Chờ thanh toán",
+            items: products.map(({ productDetailId, quantityItem, price }) => ({
+                productDetailId: Number(productDetailId),
+                quantity: Number(quantityItem),
+                price: Number(price),
+            })),
+        };
+
         try {
-            console.log("Bắt đầu xử lý đơn hàng...");
+            if (paymentMethod === "VNPay") {
+                const response = await axios.post("http://localhost:8080/api/orders/checkout", orderDetails, {
+                    headers: { "Content-Type": "application/json" },
+                });
+                const orderId = response.data.orderId;
 
-            // Gọi handleCheckout trước để giảm số lượng voucher (nếu có)
-            await handleCheckout();
+                localStorage.setItem(
+                    "pendingOrder",
+                    JSON.stringify({
+                        orderId,
+                        orderDetails,
+                        voucherId: selectedVoucher,
+                    })
+                );
 
-            // Sau đó gọi handlePayment để thực hiện thanh toán
-            await handlePayment();
-
+                const amount = Math.round(totalBeforeDiscount - discountAmount);
+                const paymentUrl = await VNPayService.createPayment(amount, `${window.location.origin}/checkout`);
+                window.location.href = paymentUrl;
+            } else {
+                await handlePayment(orderDetails);
+                await clearCart();
+            }
         } catch (error) {
-            console.error("Lỗi trong quá trình xử lý đơn hàng:", error);
+            console.error("Error in handleOrderProcess:", error);
+            Swal.fire("Lỗi!", error.message || "Không thể xử lý đơn hàng", "error");
+        } finally {
+            setIsProcessing(false);
         }
+    };
+
+    const handlePayment = async (orderDetails) => {
+        try {
+            const response = await axios.post("http://localhost:8080/api/orders/checkout", orderDetails, {
+                headers: { "Content-Type": "application/json" },
+            });
+
+            Swal.fire({
+                title: "Thành công!",
+                text: "Đặt hàng thành công!",
+                icon: "success",
+            }).then(() => {
+                navigate("/my-account/history");
+            });
+        } catch (error) {
+            throw error;
+        }
+    };
+
+    const clearCart = async () => {
+        try {
+            await CartDetailsService.clearCartDetailsByUserId(userId);
+            setProducts([]);
+        } catch (error) {
+            console.error("Error clearing cart:", error);
+            toast.error("Không thể xóa giỏ hàng!");
+        }
+    };
+
+    useEffect(() => {
+        const handlePaymentResult = async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const pendingOrder = JSON.parse(localStorage.getItem("pendingOrder"));
+            const vnpTxnRef = urlParams.get("vnp_TxnRef");
+
+            if (!urlParams.get("vnp_ResponseCode") || !pendingOrder || hasProcessed || (vnpTxnRef && vnpTxnRef === processedTxnRef)) {
+                return;
+            }
+
+            setHasProcessed(true);
+            if (vnpTxnRef) setProcessedTxnRef(vnpTxnRef);
+
+            try {
+                await VNPayService.handlePaymentResult(
+                    urlParams,
+                    pendingOrder,
+                    async (orderDetails) => {
+                        // Update to "Chờ xác nhận" only on success
+                        const response = await axios.put(
+                            `http://localhost:8080/api/orders/${pendingOrder.orderId}/status`,
+                            { paymentStatus: "Chờ xác nhận" },
+                            { headers: { "Content-Type": "application/json" } }
+                        );
+                        return response;
+                    },
+                    VoucherService.decrementVoucherQuantity,
+                    navigate,
+                    async () => {
+                        localStorage.removeItem("pendingOrder");
+                        await clearCart();
+                    },
+                    async () => {
+                        // Update to "Đã hủy thanh toán" on cancel or exit
+                        await axios.put(
+                            `http://localhost:8080/api/orders/${pendingOrder.orderId}/status`,
+                            { paymentStatus: "Đã hủy thanh toán" },
+                            { headers: { "Content-Type": "application/json" } }
+                        );
+                    }
+                );
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } catch (error) {
+                console.error("Error handling payment result:", error);
+                Swal.fire("Lỗi!", "Không thể xử lý kết quả thanh toán: " + (error.response?.data?.message || error.message), "error");
+            }
+        };
+
+        handlePaymentResult();
+    }, [navigate, hasProcessed, processedTxnRef]);
+
+    const paymentRequest = {
+        amount: Math.round(totalBeforeDiscount - discountAmount), // Đảm bảo đây là số nguyên
+        returnUrl: `${window.location.origin}/checkout`
     };
 
     const getDaysUntilExpiry = (endDate) => {
@@ -755,6 +816,7 @@ const Checkout = () => {
                         {/* Nút Thanh toán */}
                         <button
                             onClick={handleOrderProcess}
+                            disabled={isProcessing}
                             className="mt-5 w-full bg-[#fef0d3] text-[#fbb321] font-bold py-3 rounded-3xl transition-all duration-300 ease-in-out hover:bg-[#408630] hover:text-white hover:shadow-lg"
                         >
                             Thanh toán
