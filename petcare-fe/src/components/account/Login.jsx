@@ -215,7 +215,7 @@ const Login = () => {
           <img
             src={logo}
             alt="Logo with petcare"
-            className="w-full h-auto z-10 hidden md:inline rounded-full shadow-lg object-cover"
+            className="w-full h-auto z-10 hidden md:inline rounded-full object-cover"
           />
         </div>
 
