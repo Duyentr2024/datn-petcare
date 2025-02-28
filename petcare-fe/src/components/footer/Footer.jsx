@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { FaFacebookSquare, FaInstagramSquare, FaTwitterSquare } from 'react-icons/fa';
 import BannerFooter from './BannerFooter';
-
+import footer from '../../assets/images/banner1.png';
 export default function RenderFooter() {
     const [isExpanded, setIsExpanded] = useState(false);
     const contentRef = useRef(null);
@@ -39,8 +39,8 @@ export default function RenderFooter() {
                         <div className="w-1/3 mb-6 md:mb-0 flex justify-center md:justify-start">
                             <img
                                 alt="Honey logo"
-                                className="w-40"
-                                src="http://nongsan.monamedia.net/wp-content/uploads/2023/11/nongsan-logo.png"
+                                className="h-[250-px] w-[300px]"
+                                src={footer}
                             />
                         </div>
                         <div
