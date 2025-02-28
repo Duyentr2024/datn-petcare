@@ -447,14 +447,14 @@ export default function Header() {
                   Tin tức
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
                 </Link>
-                <a className="menu-item font-bold relative" href="#policy">
-                  Chính sách
+                <Link to="/policy" className="menu-item font-bold relative">
+               Chính sách
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
-                </a>
-                <a className="menu-item font-bold relative" href="#guides">
+               </Link>
+                <Link to="/guide" className="menu-item font-bold relative">
                   Hướng dẫn mua hàng
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
-                </a>
+                </Link>
                 <Link
                   to="/contact"
                   className="menu-item font-bold relative"
