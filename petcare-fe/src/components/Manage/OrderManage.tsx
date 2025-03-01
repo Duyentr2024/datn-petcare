@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import OrderManageService from "../../service/orderManageService/OrderManageService.jsx";
+import VoucherService from "../../service/voucherService/VoucherService.jsx";
 import { FaEye } from "react-icons/fa";
 import Swal from "sweetalert2";
 const TABS = [
@@ -22,6 +23,7 @@ const OrderManage = () => {
   const [filterStatus, setFilterStatus] = useState("");
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [currentTab, setCurrentTab] = useState("all"); // Giá trị mặc định là "all"
+  const [vouchers, setVouchers] = useState([]);
 
   useEffect(() => {
     fetchOrders();
@@ -31,16 +33,45 @@ const OrderManage = () => {
     setCurrentPage(1); // Reset về trang đầu tiên khi đổi tab
   }, [activeTab, searchTerm, filterStatus]);
 
+  useEffect(() => {
+    const fetchVouchers = async () => {
+      try {
+        const data = await VoucherService.getAllVouchers();
+        setVouchers(data);
+      } catch (error) {
+        console.error("Error fetching vouchers:", error);
+      }
+    };
+    fetchVouchers();
+  }, []);
+
+  const fetchVouchers = async () => {
+    try {
+      const data = await VoucherService.getAllVouchers();
+      setVouchers(data);
+    } catch (error) {
+      console.error("Failed to fetch vouchers", error);
+      setVouchers([]);
+    }
+  };
+  // Hàm lấy phần trăm giảm giá dựa trên voucherId
+  const getVoucherPercents = (voucherId) => {
+    const voucher = vouchers.find((v) => v.voucherId === voucherId);
+    return voucher ? voucher.percents : 0; // Trả về 0 nếu không có voucher
+  };
+
+  // Trong modal, tìm voucher tương ứng
+
   const fetchOrders = async () => {
     try {
       const data = await OrderManageService.getAllOrders();
-      // Sắp xếp đơn hàng theo ngày đặt giảm dần để đơn mới hiển thị lên đầu tiên
-      const sortedOrders = data.sort(
-        (a, b) => new Date(b.orderDate) - new Date(a.orderDate)
-      );
+      const sortedOrders = data
+        .filter((order) => order && order.orderId)
+        .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
       setOrders(sortedOrders);
     } catch (error) {
       console.error("Failed to fetch orders", error);
+      setOrders([]);
     }
   };
 
@@ -296,8 +327,7 @@ const OrderManage = () => {
       {/* Model chi tiết đơn hàng */}
       {selectedOrder && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-2xl shadow-lg relative">
-            {/* Close Button */}
+          <div className="bg-white p-6 rounded-lg w-full max-w-3xl shadow-lg relative">
             <button
               onClick={() => setSelectedOrder(null)}
               className="absolute top-3 right-3 text-gray-600 hover:text-gray-900 text-2xl"
@@ -309,67 +339,111 @@ const OrderManage = () => {
               Chi tiết đơn hàng
             </h2>
 
-            {/* Order Info */}
-            <div className="border-b pb-4 mb-4">
-              <p className="text-lg">
-                <strong>Mã đơn hàng:</strong> {selectedOrder.orderId}
-              </p>
-              <p className="text-lg">
-                <strong>Khách hàng:</strong> {selectedOrder.userName}
-              </p>
-              <p className="text-lg">
-                <strong>Ngày đặt hàng:</strong>{" "}
-                {new Date(selectedOrder.orderDate).toLocaleString("vi-VN", {
-                  timeZone: "Asia/Ho_Chi_Minh", // Giờ Việt Nam (UTC+7)
-                  year: "numeric",
-                  month: "2-digit",
-                  day: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
-                })}
-              </p>
-              <p className="text-lg">
-                <strong>Địa chỉ:</strong> {selectedOrder.shippingAddress}
-              </p>
-              <p className="text-lg text-red-600 font-normal">
-                <strong>Tổng tiền:</strong>{" "}
-                {selectedOrder.totalAmount.toLocaleString()} VNĐ
-              </p>
+            {/* Chia thành 2 cột ngang */}
+            <div className="flex flex-col md:flex-row gap-6 mb-4">
+              {/* Cột trái */}
+              <div className="flex-1 border-b pb-4">
+                <p className="text-lg">
+                  <strong>Mã đơn hàng:</strong>{" "}
+                  {selectedOrder.orderId || "Không có"}
+                </p>
+                <p className="text-lg">
+                  <strong>Khách hàng:</strong>{" "}
+                  {selectedOrder.userName || "Không có"}
+                </p>
+                <p className="text-lg">
+                  <strong>Số điện thoại:</strong>{" "}
+                  {selectedOrder.phone || "Không có"}
+                </p>
+                <p className="text-lg">
+                  <strong>Ngày đặt hàng:</strong>{" "}
+                  {selectedOrder.orderDate
+                    ? new Date(selectedOrder.orderDate).toLocaleString(
+                        "vi-VN",
+                        {
+                          timeZone: "Asia/Ho_Chi_Minh",
+                          year: "numeric",
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
+                        }
+                      )
+                    : "Không có"}
+                </p>
+              </div>
+
+              {/* Cột phải */}
+              <div className="flex-1 border-b pb-4">
+                <p className="text-lg">
+                  <strong>Địa chỉ:</strong>{" "}
+                  {selectedOrder.shippingAddress || "Không có"}
+                </p>
+                <p className="text-lg">
+                  <strong>Phí ship:</strong>{" "}
+                  {selectedOrder.shippingCost !== undefined
+                    ? selectedOrder.shippingCost.toLocaleString()
+                    : "0"}{" "}
+                  VNĐ
+                </p>
+                <p className="text-lg">
+                  <strong>Voucher áp dụng:</strong>{" "}
+                  {selectedOrder.voucherId
+                    ? `Giảm ${getVoucherPercents(
+                        selectedOrder.voucherId
+                      )}% từ voucher`
+                    : "Không có"}
+                </p>
+                <p className="text-lg text-red-600 font-normal">
+                  <strong>Tổng tiền:</strong>{" "}
+                  {selectedOrder.totalAmount !== undefined
+                    ? selectedOrder.totalAmount.toLocaleString()
+                    : "0"}{" "}
+                  VNĐ
+                </p>
+              </div>
             </div>
 
-            {/* Product List */}
+            {/* Danh sách sản phẩm với chiều cao cố định và thanh cuộn */}
             <h3 className="text-xl font-semibold mb-2 text-gray-700">
               Sản phẩm:
             </h3>
-            <div className="max-h-80 overflow-y-auto space-y-4">
-              {selectedOrder.orderDetails.map((item) => (
-                <div
-                  key={item.productId}
-                  className="flex items-center border p-3 rounded-lg shadow-sm bg-gray-50"
-                >
-                  <img
-                    src={item.imageUrl}
-                    alt={item.productName}
-                    className="w-20 h-20 object-cover rounded-lg border"
-                  />
-                  <div className="ml-4 flex-1">
-                    <p className="text-lg font-medium text-gray-900">
-                      {item.productName}
-                    </p>
-                    <p className="text-sm">Màu sắc: {item.colorValue}</p>
-                    <p className="text-sm text-gray-700">
-                      Kích cỡ: {item.sizeValue}, Cân nặng: {item.weightValue}
-                    </p>
-                    <p className="text-sm text-gray-700">
-                      Số lượng: {item.quantity}
-                    </p>
+            <div className="max-h-60 overflow-y-auto space-y-4">
+              {selectedOrder.orderDetails &&
+              selectedOrder.orderDetails.length > 0 ? (
+                selectedOrder.orderDetails.map((item) => (
+                  <div
+                    key={item.productId}
+                    className="flex items-center border p-3 rounded-lg shadow-sm bg-gray-50"
+                  >
+                    <img
+                      src={item.imageUrl}
+                      alt={item.productName}
+                      className="w-20 h-20 object-cover rounded-lg border"
+                    />
+                    <div className="ml-4 flex-1">
+                      <p className="text-lg font-medium text-gray-900">
+                        {item.productName || "Không có"}
+                      </p>
+                      <p className="text-sm">
+                        Màu sắc: {item.colorValue || "Không có"}
+                      </p>
+                      <p className="text-sm text-gray-700">
+                        Kích cỡ: {item.sizeValue || "Không có"}, Cân nặng:{" "}
+                        {item.weightValue || "Không có"}
+                      </p>
+                      <p className="text-sm text-gray-700">
+                        Số lượng: {item.quantity || "0"}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p>Không có sản phẩm trong đơn hàng</p>
+              )}
             </div>
 
-            {/* Close Button */}
             <div className="text-center mt-6">
               <button
                 onClick={() => setSelectedOrder(null)}
