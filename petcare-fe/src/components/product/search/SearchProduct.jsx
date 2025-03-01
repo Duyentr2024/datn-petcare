@@ -26,6 +26,7 @@ const SearchProduct = () => {
                 .catch((error) => console.error("Lỗi tìm kiếm:", error))
                 .finally(() => setIsLoading(false));
         }
+        window.scrollTo(0, 0);
     }, [query]);
 
     const handlePriceFilter = (e) => {

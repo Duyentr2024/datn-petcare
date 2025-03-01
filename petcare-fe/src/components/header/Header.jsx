@@ -16,8 +16,12 @@ import { useAuth } from "../../context/AuthContext"; // Import hook useAuth từ
 import logo from "../../assets/images/banner1.png";
 import { motion } from "framer-motion";
 import CartDetailsService from "../../service/CartDetailsService/CartDetailsService.jsx";
+
 export default function Header() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeMenuItem, setActiveMenuItem] = useState("");
   const menuRef = useRef(null);
@@ -67,6 +71,7 @@ export default function Header() {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
+   
   }, []);
 
   useEffect(() => {
@@ -215,7 +220,7 @@ export default function Header() {
           <div className="items-center w-[1000px]">
             {/* Search Bar */}
             <div className="flex flex-col sm:flex-row items-start justify-center space-x-8 ">
-              <div className="flex sm:w-auto">
+            <div className="flex sm:w-auto">
                 <div className="flex items-center space-x-4 relative w-[900px] max-w-lg hidden sm:block">
                   <input
                     value={searchTerm}
@@ -448,9 +453,9 @@ export default function Header() {
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
                 </Link>
                 <Link to="/policy" className="menu-item font-bold relative">
-               Chính sách
+                  Chính sách
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
-               </Link>
+                </Link>
                 <Link to="/guide" className="menu-item font-bold relative">
                   Hướng dẫn mua hàng
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>

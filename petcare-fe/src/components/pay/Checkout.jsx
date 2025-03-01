@@ -451,7 +451,7 @@ const Checkout = () => {
             shippingCost: Number(shippingFee),
             voucherId: selectedVoucher ? Number(selectedVoucher) : null,
             type: "ORDER ONLINE",
-            paymentStatus: paymentMethod === "COD" ? "Đã thanh toán" : "Chờ thanh toán",
+            paymentStatus: paymentMethod === "COD" ? "Chờ thanh toán" : "Chờ thanh toán",
             items: products.map(({ productDetailId, quantityItem, price }) => ({
                 productDetailId: Number(productDetailId),
                 quantity: Number(quantityItem),
@@ -459,12 +459,15 @@ const Checkout = () => {
             })),
         };
 
+        console.log(`[FE] Starting order process: paymentMethod=${paymentMethod}, orderDetails=`, orderDetails);
+
         try {
             if (paymentMethod === "VNPay") {
                 const response = await axios.post("http://localhost:8080/api/orders/checkout", orderDetails, {
                     headers: { "Content-Type": "application/json" },
                 });
                 const orderId = response.data.orderId;
+                console.log(`[FE] Order created for VNPay: orderId=${orderId}`);
 
                 localStorage.setItem(
                     "pendingOrder",
@@ -477,13 +480,15 @@ const Checkout = () => {
 
                 const amount = Math.round(totalBeforeDiscount - discountAmount);
                 const paymentUrl = await VNPayService.createPayment(amount, `${window.location.origin}/checkout`);
+                console.log(`[FE] Redirecting to VNPay payment URL: ${paymentUrl}`);
                 window.location.href = paymentUrl;
             } else {
+                console.log(`[FE] Processing COD payment`);
                 await handlePayment(orderDetails);
                 await clearCart();
             }
         } catch (error) {
-            console.error("Error in handleOrderProcess:", error);
+            console.error(`[FE] Error in handleOrderProcess: ${error.message}`);
             Swal.fire("Lỗi!", error.message || "Không thể xử lý đơn hàng", "error");
         } finally {
             setIsProcessing(false);
@@ -525,43 +530,66 @@ const Checkout = () => {
             const vnpTxnRef = urlParams.get("vnp_TxnRef");
 
             if (!urlParams.get("vnp_ResponseCode") || !pendingOrder || hasProcessed || (vnpTxnRef && vnpTxnRef === processedTxnRef)) {
+                console.log(`[FE] Skipping payment result processing: hasProcessed=${hasProcessed}, vnpTxnRef=${vnpTxnRef}`);
                 return;
             }
 
+            console.log(`[FE] Processing VNPay payment result for orderId: ${pendingOrder.orderId}, vnpTxnRef: ${vnpTxnRef}`);
             setHasProcessed(true);
             if (vnpTxnRef) setProcessedTxnRef(vnpTxnRef);
 
             try {
-                await VNPayService.handlePaymentResult(
-                    urlParams,
-                    pendingOrder,
-                    async (orderDetails) => {
-                        // Update to "Chờ xác nhận" only on success
-                        const response = await axios.put(
+                const vnpResponseCode = urlParams.get("vnp_ResponseCode");
+                let message, icon;
+
+                switch (vnpResponseCode) {
+                    case "00":
+                        message = "Thanh toán thành công!";
+                        icon = "success";
+                        console.log(`[FE] VNPay success, updating paymentStatus to "Chờ xác nhận" for orderId: ${pendingOrder.orderId}`);
+                        await axios.put(
                             `http://localhost:8080/api/orders/${pendingOrder.orderId}/status`,
                             { paymentStatus: "Chờ xác nhận" },
                             { headers: { "Content-Type": "application/json" } }
                         );
-                        return response;
-                    },
-                    VoucherService.decrementVoucherQuantity,
-                    navigate,
-                    async () => {
+                        if (pendingOrder.voucherId) {
+                            console.log(`[FE] Decrementing voucher quantity for voucherId: ${pendingOrder.voucherId}`);
+                            await VoucherService.decrementVoucherQuantity(pendingOrder.voucherId);
+                        }
                         localStorage.removeItem("pendingOrder");
                         await clearCart();
-                    },
-                    async () => {
-                        // Update to "Đã hủy thanh toán" on cancel or exit
+                        console.log(`[FE] Cart cleared and pendingOrder removed for orderId: ${pendingOrder.orderId}`);
+                        break;
+                    case "24":
+                        message = "Bạn đã hủy thanh toán.";
+                        icon = "info";
+                        console.log(`[FE] VNPay cancelled, updating paymentStatus to "Đã hủy thanh toán" for orderId: ${pendingOrder.orderId}`);
                         await axios.put(
                             `http://localhost:8080/api/orders/${pendingOrder.orderId}/status`,
                             { paymentStatus: "Đã hủy thanh toán" },
                             { headers: { "Content-Type": "application/json" } }
                         );
+                        break;
+                    default:
+                        message = `Thanh toán không thành công. Mã lỗi: ${vnpResponseCode}, Mã tra cứu: ${vnpTxnRef}`;
+                        icon = "error";
+                        console.log(`[FE] VNPay failed, updating paymentStatus to "Đã hủy thanh toán" for orderId: ${pendingOrder.orderId}`);
+                        await axios.put(
+                            `http://localhost:8080/api/orders/${pendingOrder.orderId}/status`,
+                            { paymentStatus: "Đã hủy thanh toán" },
+                            { headers: { "Content-Type": "application/json" } }
+                        );
+                        break;
+                }
+
+                Swal.fire({ title: vnpResponseCode === "00" ? "Thành công!" : "Thông báo", text: message, icon }).then(() => {
+                    if (vnpResponseCode === "00") {
+                        navigate("/my-account/history");
                     }
-                );
+                });
                 window.history.replaceState({}, document.title, window.location.pathname);
             } catch (error) {
-                console.error("Error handling payment result:", error);
+                console.error(`[FE] Error handling payment result: ${error.message}`);
                 Swal.fire("Lỗi!", "Không thể xử lý kết quả thanh toán: " + (error.response?.data?.message || error.message), "error");
             }
         };

@@ -25,19 +25,34 @@ const VNPayService = {
             case "00":
                 message = "Thanh toán thành công!";
                 icon = "success";
-                await updateOrder(pendingOrder.orderDetails);
+                // Chỉ gọi API cập nhật trạng thái một lần duy nhất
+                await axios.put(
+                    `http://localhost:8080/api/orders/${pendingOrder.orderId}/status`,
+                    { paymentStatus: "Chờ xác nhận" }, // Cố định là "Chờ xác nhận"
+                    { headers: { "Content-Type": "application/json" } }
+                );
                 if (pendingOrder.voucherId) await decrementVoucher(pendingOrder.voucherId);
                 await clearPendingOrder();
                 break;
             case "24":
                 message = "Bạn đã hủy thanh toán.";
                 icon = "info";
-                await cancelOrder(); // Update to "Đã hủy thanh toán"
+                await axios.put(
+                    `http://localhost:8080/api/orders/${pendingOrder.orderId}/status`,
+                    { paymentStatus: "Đã hủy thanh toán" },
+                    { headers: { "Content-Type": "application/json" } }
+                );
+                await cancelOrder();
                 break;
             default:
                 message = `Thanh toán không thành công. Mã lỗi: ${vnpResponseCode}, Mã tra cứu: ${vnpTxnRef}`;
                 icon = "error";
-                await cancelOrder(); // Update to "Đã hủy thanh toán" for other failures
+                await axios.put(
+                    `http://localhost:8080/api/orders/${pendingOrder.orderId}/status`,
+                    { paymentStatus: "Đã hủy thanh toán" },
+                    { headers: { "Content-Type": "application/json" } }
+                );
+                await cancelOrder();
                 break;
         }
 
