@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import NewsDetail from "./NewsDetail.jsx";
 
 const NewsPage = () => {
     return (
@@ -10,21 +12,21 @@ const NewsPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 ">
                 <div className="lg:col-span-2">
                     <div className="relative overflow-hidden rounded-lg group">
-                        <a href="#">
+                        <Link to="/newsdetail">
                             <img
                                 src="https://file.hstatic.net/200000263355/article/xo_giun_cho_meo-2_c91339a8e53946cf8d7b0225ff0243fd_large.png"
                                 alt="Pet shop with various pets"
                                 className="w-full h-48 sm:h-64 lg:h-96 transition-transform duration-1000 group-hover:scale-110"
                             />
-                        </a>
+                        </Link>
                     </div>
                     <div className="group mt-3">
-                        <a
-                            href="#"
+                        <Link
+                            to="/news/cham-soc-thu-cung"
                             className="text-xl font-bold mb-2 transition-colors duration-[1000ms] group-hover:text-[#FBB321]"
                         >
                             CHĂM SÓC THÚ CƯNG TẠI PETSHOP CỦA CHÚNG TÔI
-                        </a>
+                        </Link>
                     </div>
                     <p className="text-gray-500 text-sm sm:text-base">
                         2023-09-20 09:56:24 • Petshop News
@@ -36,20 +38,20 @@ const NewsPage = () => {
 
                 <div className="space-y-4">
                     <div className="flex items-center gap-4 mb-4">
-                        <a href="#" className="group flex-shrink-0">
+                        <Link to="/news/mua-cho-canh" className="group flex-shrink-0">
                             <img
                                 src="https://file.hstatic.net/200000263355/article/thuoc_xo_giun_cho_cho-1_0e28581982ec4ba58642c98b98406b1f_large.png"
                                 alt="Cute puppies for sale"
                                 className="rounded-lg w-32 h-32 object-cover transition-transform duration-500 group-hover:scale-110"
                             />
-                        </a>
+                        </Link>
                         <div className="flex-grow">
-                            <a
-                                href="#"
+                            <Link
+                                to="/news/mua-cho-canh"
                                 className="text-base sm:text-lg font-bold transition-colors duration-500 hover:text-[#FBB321]"
                             >
                                 MUA CHÓ CẢNH VỚI GIÁ CẢ HỢP LÝ
-                            </a>
+                            </Link>
                             <p className="text-gray-500 text-xs sm:text-sm">
                                 2023-09-20 09:55:38 • Petshop News
                             </p>
@@ -57,20 +59,20 @@ const NewsPage = () => {
                     </div>
 
                     <div className="flex items-center gap-4 mb-4">
-                        <a href="#" className="group flex-shrink-0">
+                        <Link to="/news/dich-vu-tam-gom-va-cham-soc-cho-thu-cung" className="group flex-shrink-0">
                             <img
                                 src="https://file.hstatic.net/200000263355/article/vong_co_cho_meo-5_88e337a5810745129edea6e2b0e60385_large.png"
                                 alt="Grooming pet services"
                                 className="rounded-lg w-32 h-32 object-cover transition-transform duration-500 group-hover:scale-110"
                             />
-                        </a>
+                        </Link>
                         <div className="flex-grow">
-                            <a
-                                href="#"
+                            <Link
+                                to="/news/dich-vu-tam-gom-va-cham-soc-cho-thu-cung"
                                 className="text-base sm:text-lg font-bold transition-colors duration-500 hover:text-[#FBB321]"
                             >
                                 DỊCH VỤ TẮM GỘI VÀ CHĂM SÓC CHO THÚ CƯNG
-                            </a>
+                            </Link>
                             <p className="text-gray-500 text-xs sm:text-sm">
                                 2023-09-20 09:55:05 • Petshop News
                             </p>
@@ -78,20 +80,20 @@ const NewsPage = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <a href="#" className="group flex-shrink-0">
+                        <Link to="/news/cac-san-pham-thuc-pham-va-phu-kien-cho-thu-cung" className="group flex-shrink-0">
                             <img
                                 src="https://file.hstatic.net/200000263355/article/quan_ao_cho_meo-1_570823559e9d4d248d88191af21c79a1_large.png"
                                 alt="Pet food and accessories"
                                 className="rounded-lg w-32 h-32 object-cover transition-transform duration-500 group-hover:scale-110"
                             />
-                        </a>
+                        </Link>
                         <div className="flex-grow">
-                            <a
-                                href="#"
+                            <Link
+                                to="/news/cac-san-pham-thuc-pham-va-phu-kien-cho-thu-cung"
                                 className="text-base sm:text-lg font-bold transition-colors duration-500 hover:text-[#FBB321]"
                             >
                                 CÁC SẢN PHẨM THỰC PHẨM VÀ PHỤ KIỆN CHO THÚ CƯNG
-                            </a>
+                            </Link>
                             <p className="text-gray-500 text-xs sm:text-sm">
                                 2023-09-15 07:45:15 • Petshop News
                             </p>
@@ -112,20 +114,20 @@ const NewsPage = () => {
                             <div className="news-item">
                                 <div className="rounded-lg overflow-hidden shadow-md group">
                                     <div className="relative overflow-hidden">
-                                        <a href="#">
+                                        <Link to="/news/cham-soc-thu-cung-va-mua-sam-san-pham-cho-pet">
                                             <img
                                                 src="https://file.hstatic.net/200000263355/article/bang_ten_cho_meo-3_1caac8d380aa4f4e83d515ff6bc477a6_large.png" // Thay đổi URL hình ảnh
                                                 alt="Pet shop products"
                                                 className="w-full h-36 sm:h-48 object-cover transition-transform duration-500 group-hover:scale-110"
                                             />
-                                        </a>
+                                        </Link>
                                     </div>
                                     <div className="content p-4">
-                                        <a href="#">
+                                        <Link to="/news/cham-soc-thu-cung-va-mua-sam-san-pham-cho-pet">
                                             <h2 className="text-base sm:text-lg font-bold mb-2 transition-colors duration-500 hover:text-[#FBB321]">
                                                 CHĂM SÓC THÚ CƯNG VÀ MUA SẮM SẢN PHẨM CHO PET
                                             </h2>
-                                        </a>
+                                        </Link>
                                         <p className="text-gray-600 text-xs sm:text-sm mb-2">
                                             2023-09-20 09:56:24 • Petshop News
                                         </p>
@@ -138,20 +140,20 @@ const NewsPage = () => {
                             <div className="news-item">
                                 <div className="rounded-lg overflow-hidden shadow-md group">
                                     <div className="relative overflow-hidden">
-                                        <a href="#">
+                                        <Link to="/news/cham-soc-thu-cung-va-mua-sam-san-pham-cho-pet">
                                             <img
                                                 src="https://file.hstatic.net/200000263355/article/bang_ten_cho_meo-3_1caac8d380aa4f4e83d515ff6bc477a6_large.png" // Thay đổi URL hình ảnh
                                                 alt="Pet shop products"
                                                 className="w-full h-36 sm:h-48 object-cover transition-transform duration-500 group-hover:scale-110"
                                             />
-                                        </a>
+                                        </Link>
                                     </div>
                                     <div className="content p-4">
-                                        <a href="#">
+                                        <Link to="/news/cham-soc-thu-cung-va-mua-sam-san-pham-cho-pet">
                                             <h2 className="text-base sm:text-lg font-bold mb-2 transition-colors duration-500 hover:text-[#FBB321]">
                                                 CHĂM SÓC THÚ CƯNG VÀ MUA SẮM SẢN PHẨM CHO PET
                                             </h2>
-                                        </a>
+                                        </Link>
                                         <p className="text-gray-600 text-xs sm:text-sm mb-2">
                                             2023-09-20 09:56:24 • Petshop News
                                         </p>
@@ -164,20 +166,20 @@ const NewsPage = () => {
                             <div className="news-item">
                                 <div className="rounded-lg overflow-hidden shadow-md group">
                                     <div className="relative overflow-hidden">
-                                        <a href="#">
+                                        <Link to="/news/cham-soc-thu-cung-va-mua-sam-san-pham-cho-pet">
                                             <img
                                                 src="https://file.hstatic.net/200000263355/article/bang_ten_cho_meo-3_1caac8d380aa4f4e83d515ff6bc477a6_large.png" // Thay đổi URL hình ảnh
                                                 alt="Pet shop products"
                                                 className="w-full h-36 sm:h-48 object-cover transition-transform duration-500 group-hover:scale-110"
                                             />
-                                        </a>
+                                        </Link>
                                     </div>
                                     <div className="content p-4">
-                                        <a href="#">
+                                        <Link to="/news/cham-soc-thu-cung-va-mua-sam-san-pham-cho-pet">
                                             <h2 className="text-base sm:text-lg font-bold mb-2 transition-colors duration-500 hover:text-[#FBB321]">
                                                 CHĂM SÓC THÚ CƯNG VÀ MUA SẮM SẢN PHẨM CHO PET
                                             </h2>
-                                        </a>
+                                        </Link>
                                         <p className="text-gray-600 text-xs sm:text-sm mb-2">
                                             2023-09-20 09:56:24 • Petshop News
                                         </p>
@@ -190,20 +192,20 @@ const NewsPage = () => {
                             <div className="news-item">
                                 <div className="rounded-lg overflow-hidden shadow-md group">
                                     <div className="relative overflow-hidden">
-                                        <a href="#">
+                                        <Link to="/news/cham-soc-thu-cung-va-mua-sam-san-pham-cho-pet">
                                             <img
                                                 src="https://file.hstatic.net/200000263355/article/bang_ten_cho_meo-3_1caac8d380aa4f4e83d515ff6bc477a6_large.png" // Thay đổi URL hình ảnh
                                                 alt="Pet shop products"
                                                 className="w-full h-36 sm:h-48 object-cover transition-transform duration-500 group-hover:scale-110"
                                             />
-                                        </a>
+                                        </Link>
                                     </div>
                                     <div className="content p-4">
-                                        <a href="#">
+                                        <Link to="/news/cham-soc-thu-cung-va-mua-sam-san-pham-cho-pet">
                                             <h2 className="text-base sm:text-lg font-bold mb-2 transition-colors duration-500 hover:text-[#FBB321]">
                                                 CHĂM SÓC THÚ CƯNG VÀ MUA SẮM SẢN PHẨM CHO PET
                                             </h2>
-                                        </a>
+                                        </Link>
                                         <p className="text-gray-600 text-xs sm:text-sm mb-2">
                                             2023-09-20 09:56:24 • Petshop News
                                         </p>
@@ -222,27 +224,27 @@ const NewsPage = () => {
                             <h2 className="text-xl font-bold text-[#FBB321] mb-4 text-center">Danh mục sản phẩm</h2>
                             <ul className="space-y-2">
                                 <li className="flex justify-between items-center">
-                                    <a href="#" className="hover:text-[#FBB321] transition">
+                                    <Link to="/category/thu-cung" className="hover:text-[#FBB321] transition">
                                         Thú cưng
-                                    </a>
+                                    </Link>
                                 </li>
                                 <hr className="flex-grow border-t border-yellow-500" />
                                 <li className="flex justify-between items-center">
-                                    <a href="#" className="hover:text-[#FBB321] transition">
+                                    <Link to="/category/thuc-an-cho-thu-cung" className="hover:text-[#FBB321] transition">
                                         Thức ăn cho thú cưng
-                                    </a>
+                                    </Link>
                                 </li>
                                 <hr className="flex-grow border-t border-yellow-500" />
                                 <li className="flex justify-between items-center">
-                                    <a href="#" className="hover:text-[#FBB321] transition">
+                                    <Link to="/category/phu-kien-thu-cung" className="hover:text-[#FBB321] transition">
                                         Phụ kiện thú cưng
-                                    </a>
+                                    </Link>
                                 </li>
                                 <hr className="flex-grow border-t border-yellow-500" />
                                 <li className="flex justify-between items-center">
-                                    <a href="#" className="hover:text-[#FBB321] transition">
+                                    <Link to="/category/dich-vu-cham-soc-thu-cung" className="hover:text-[#FBB321] transition">
                                         Dịch vụ chăm sóc thú cưng
-                                    </a>
+                                    </Link>
                                 </li>
                                 <hr className="flex-grow border-t border-yellow-500" />
                             </ul>

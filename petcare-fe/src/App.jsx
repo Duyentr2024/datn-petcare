@@ -3,6 +3,7 @@ import HomePage from "./page/HomePage.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import Admin from "./page/Admin.jsx";
 
+
 import TopButton from "./elements/TopButton";
 import SpaPage from "./page/SpaPage.jsx";
 import AppointmentPage from "./page/AppointmentPage.jsx";
@@ -20,6 +21,7 @@ function App() {
 
           <Route path="/spa" element={<SpaPage />} />
           <Route path="/appointment" element={<AppointmentPage />} />
+          
             {/* <Route path="/adspa" element={<AdminSpa/>}/> */}
 
           {/* Chỉ admin vào được */}

@@ -20,6 +20,9 @@ import Introduce from "../components/introduce/Introduce.jsx";
 import NotFoundPage from "./NotFoundPage.jsx";
 import PrivateRoute from "../context/PrivateRoute.jsx";
 import SearchProduct from "../components/product/search/SearchProduct.jsx";
+import NewsDetail from "../service/newpages/NewsDetail.jsx";
+import Policy from "../elements/Policy.jsx";
+import Guide from "../elements/Guide.jsx";
 
 // Hiệu ứng chuyển trang
 const pageVariants = {
@@ -54,7 +57,9 @@ const AnimatedRoutes = () => {
                     <Route path="/orderOffline" element={<OrderOffline />} />
                     <Route path="/introduce" element={<Introduce />} />
                     <Route path="/search" element={<SearchProduct />} />
-
+                    <Route path="/newsdetail" element={<NewsDetail />} />
+                    <Route path="/policy" element={<Policy />} />
+                    <Route path="/guide" element={<Guide />} />
                     {/* ✅ Route yêu cầu đăng nhập */}
                     <Route element={<PrivateRoute />}>
                         <Route path="/my-account/*" element={<MyAccount />} />
