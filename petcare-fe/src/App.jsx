@@ -7,6 +7,7 @@ import SpaPage from "./page/SpaPage.jsx";
 import AppointmentPage from "./page/AppointmentPage.jsx";
 import ChatBot from "./components/ChatBot";
 import PrivateRoute from "./context/PrivateRoute.jsx";
+import AdminSpa from "./page/AdminSpa.jsx";
 
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
 
           <Route path="/spa" element={<SpaPage />} />
           <Route path="/appointment" element={<AppointmentPage />} />
+          <Route path="/admin-spa" element={<AdminSpa />} />
 
           {/* Chỉ admin vào được */}
           <Route element={<PrivateRoute requiredRoles={["ADMIN", "STAFF"]} />}>
