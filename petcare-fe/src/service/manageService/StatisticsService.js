@@ -27,14 +27,12 @@ const StatisticsService = {
     return axios.get(`${API_BASE_URL}/revenue/yesterday`);
   },
 
-  // tổng doanh thu tuần
   getWeeklyRevenue: (startDate, endDate) => {
     return axios.get(`${API_BASE_URL}/revenue/weekly`, {
       params: { startDate, endDate },
     });
   },
 
-  // doanh thu từng ngày trong tháng
   getDailyRevenueCurrentMonth: () => {
     return axios.get(`${API_BASE_URL}/revenue/daily-current-month`);
   },
@@ -47,14 +45,19 @@ const StatisticsService = {
     return axios.get(`${API_BASE_URL}/revenue/year`);
   },
 
-  // Tổng số đơn hàng trong ngày hôm nay
+  // Tổng số đơn hàng trong ngày hôm nay (bao gồm OFFLINE và ORDER ONLINE)
   getTotalOrdersToday: () => {
     return axios.get(`${API_BASE_URL}/orders/today`);
   },
 
-  // Tổng số đơn hàng hôm qua (new method)
+  // Tổng số đơn hàng hôm qua
   getTotalOrdersYesterday: () => {
     return axios.get(`${API_BASE_URL}/orders/yesterday`);
+  },
+
+  // Tổng số đơn hàng offline và online hôm qua
+  getYesterdayOrderStats: () => {
+    return axios.get(`${API_BASE_URL}/yesterday-stats`);
   },
 
   // Tổng số đơn hàng trong tuần này
@@ -62,11 +65,37 @@ const StatisticsService = {
     return axios.get(`${API_BASE_URL}/orders/week`);
   },
 
-  // Tổng số đơn hàng trong tháng này
+  // Tổng số đơn hàng trong tháng này (bao gồm OFFLINE và ORDER ONLINE)
   getTotalOrdersThisMonth: () => {
     return axios.get(`${API_BASE_URL}/orders/month`);
   },
-  
+
+  // Tổng số đơn hàng trong khoảng thời gian (bao gồm OFFLINE và ORDER ONLINE)
+  getOrdersByDateRange: (startDate, endDate) => {
+    return axios.get(`${API_BASE_URL}/orders/range`, {
+      params: { startDate, endDate },
+    });
+  },
+
+  getDailyOrderCountByType: (startDate, endDate) => {
+    return axios.get(`${API_BASE_URL}/orders/daily-by-type`, {
+      params: { startDate, endDate },
+    });
+  },
+
+
+  getWeeklyOrderCountByType: (startDate, endDate) => {
+    return axios.get(`${API_BASE_URL}/orders/weekly-by-type`, {
+      params: { startDate, endDate },
+    });
+  },
+
+  getMonthlyOrderCountByType: (startDate, endDate) => {
+    return axios.get(`${API_BASE_URL}/orders/monthly-by-type`, {
+      params: { startDate, endDate },
+    });
+  },
+
   // Tổng số khách hàng
   getTotalCustomers: () => {
     return axios.get(`${API_BASE_URL}/total-customers`);
@@ -76,6 +105,7 @@ const StatisticsService = {
   getTopFiveCustomers: () => {
     return axios.get(`${API_BASE_URL}/top-customers`);
   },
+
   getTotalStock: () => {
     return axios.get(`${API_BASE_URL}/total-stock`);
   },

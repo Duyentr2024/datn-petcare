@@ -18,11 +18,24 @@ const ManageStatistics = () => {
   const [endDate, setEndDate] = useState("");
   const [viewType, setViewType] = useState("daily");
   const [totalRevenue, setTotalRevenue] = useState(null);
-  const [totalOrdersToday, setTotalOrdersToday] = useState(null);
-  const [totalOrdersYesterday, setTotalOrdersYesterday] = useState(null);
-  const [totalOrdersThisMonth, setTotalOrdersThisMonth] = useState(null);
+  const [totalOrdersToday, setTotalOrdersToday] = useState({
+    totalOrders: null,
+    offlineOrders: null,
+    onlineOrders: null,
+  });
+  const [totalOrdersYesterday, setTotalOrdersYesterday] = useState({
+    totalOrders: null,
+    offlineOrders: null,
+    onlineOrders: null,
+  });
+  const [totalOrdersThisMonth, setTotalOrdersThisMonth] = useState({
+    totalOrders: null,
+    offlineOrders: null,
+    onlineOrders: null,
+  });
   const [totalCustomers, setTotalCustomers] = useState(null);
   const [topFiveCustomers, setTopFiveCustomers] = useState([]);
+  const [ordersByRange, setOrdersByRange] = useState({ offlineOrders: null, onlineOrders: null });
 
   const exportRevenueReport = async () => {
     if (chartData.length === 0) {
@@ -32,24 +45,44 @@ const ManageStatistics = () => {
 
     const totalRevenueSum = chartData.reduce((sum, item) => sum + (Number(item.revenue) || 0), 0);
     const totalOrderCount = chartData.reduce((sum, item) => sum + (Number(item.orderCount) || 0), 0);
+    const totalOnlineOrders = chartData.reduce(
+      (sum, item) => sum + (Number(item.onlineOrders) || 0),
+      0
+    );
+    const totalOfflineOrders = chartData.reduce(
+      (sum, item) => sum + (Number(item.offlineOrders) || 0),
+      0
+    );
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Báo cáo Doanh thu");
 
     const titleRow = worksheet.addRow(["BÁO CÁO DOANH THU PETCARE"]);
     titleRow.getCell(1).alignment = { horizontal: "center" };
-    worksheet.mergeCells("A1:D1");
+    worksheet.mergeCells("A1:F1");
     const dateRow = worksheet.addRow([`Ngày xuất báo cáo: ${new Date().toLocaleDateString("vi-VN")}`]);
     dateRow.getCell(1).alignment = { horizontal: "center" };
-    worksheet.mergeCells("A2:D2");
+    worksheet.mergeCells("A2:F2");
     const periodRow = worksheet.addRow([
-      `Thời gian thống kê: ${startDate && endDate ? `${new Date(startDate).toLocaleDateString("vi-VN")} - ${new Date(endDate).toLocaleDateString("vi-VN")}` : "Tháng hiện tại"}`,
+      `Thời gian thống kê: ${startDate && endDate
+        ? `${new Date(startDate).toLocaleDateString("vi-VN")} - ${new Date(
+          endDate
+        ).toLocaleDateString("vi-VN")}`
+        : "Tháng hiện tại"
+      }`,
     ]);
     periodRow.getCell(1).alignment = { horizontal: "center" };
-    worksheet.mergeCells("A3:D3");
+    worksheet.mergeCells("A3:F3");
     worksheet.addRow([]);
 
-    const headerRow = worksheet.addRow(["STT", "Thời gian", "Doanh thu (VND)", "Số đơn hàng"]);
+    const headerRow = worksheet.addRow([
+      "STT",
+      "Thời gian",
+      "Doanh thu (VND)",
+      "Tổng đơn hàng",
+      "Đơn Online",
+      "Đơn Offline",
+    ]);
     headerRow.font = { bold: true, size: 12, color: { argb: "000000" } };
     headerRow.eachCell((cell) => {
       cell.border = {
@@ -66,7 +99,9 @@ const ManageStatistics = () => {
         index + 1,
         item.date || item.week || item.month || "N/A",
         item.revenue !== undefined ? Number(item.revenue) : 0,
-        item.orderCount || "N/A",
+        item.orderCount || 0,
+        item.onlineOrders || 0,
+        item.offlineOrders || 0,
       ]);
       row.eachCell((cell) => {
         cell.border = {
@@ -78,9 +113,19 @@ const ManageStatistics = () => {
         cell.alignment = { horizontal: "center" };
       });
       row.getCell(3).numFmt = "#,##0";
+      row.getCell(4).numFmt = "#,##0";
+      row.getCell(5).numFmt = "#,##0";
+      row.getCell(6).numFmt = "#,##0";
     });
 
-    const totalRow = worksheet.addRow(["", "Tổng cộng", totalRevenueSum, totalOrderCount]);
+    const totalRow = worksheet.addRow([
+      "",
+      "Tổng cộng",
+      totalRevenueSum,
+      totalOrderCount,
+      totalOnlineOrders,
+      totalOfflineOrders,
+    ]);
     totalRow.font = { bold: true, size: 12 };
     totalRow.eachCell((cell, colNumber) => {
       cell.border = {
@@ -91,12 +136,15 @@ const ManageStatistics = () => {
       };
       cell.alignment = { horizontal: "center" };
       if (colNumber === 3) cell.numFmt = "#,##0";
+      if (colNumber >= 4) cell.numFmt = "#,##0";
     });
 
     worksheet.columns = [
       { width: 6 },
       { width: 22 },
       { width: 20 },
+      { width: 14 },
+      { width: 14 },
       { width: 14 },
     ];
 
@@ -115,16 +163,47 @@ const ManageStatistics = () => {
 
   const fetchDefaultMonthlyRevenue = () => {
     setViewType("daily");
-    StatisticsService.getDailyRevenueCurrentMonth().then((res) => {
-      const data = Object.entries(res.data).map(([date, stats]) => ({
-        date: new Date(date).toLocaleDateString("vi-VN"),
-        revenue: Number(stats.revenue),
-        orderCount: Number(stats.orderCount),
-      }));
-      setChartData(data);
-      const total = data.reduce((sum, item) => sum + item.revenue, 0);
-      setTotalRevenue(total);
-    });
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
+
+    Promise.all([
+      StatisticsService.getDailyRevenueCurrentMonth(),
+      StatisticsService.getDailyOrderCountByType(startOfMonth, endOfMonth),
+    ])
+      .then(([revenueRes, orderCountRes]) => {
+        const revenueData = Object.entries(revenueRes.data).map(([date, stats]) => ({
+          date: new Date(date).toISOString().slice(0, 10), // Chuẩn hóa thành yyyy-mm-dd
+          revenue: Number(stats.revenue),
+          orderCount: Number(stats.orderCount),
+        }));
+
+        const orderCountData = Object.entries(orderCountRes.data).reduce((acc, [date, stats]) => {
+          const normalizedDate = new Date(date).toISOString().slice(0, 10);
+          acc[normalizedDate] = {
+            onlineOrders: Number(stats.onlineOrders),
+            offlineOrders: Number(stats.offlineOrders),
+          };
+          return acc;
+        }, {});
+
+        const combinedData = revenueData.map((item) => ({
+          date: new Date(item.date).toLocaleDateString("vi-VN"), // Hiển thị dạng dd/mm/yyyy
+          revenue: item.revenue,
+          orderCount: item.orderCount,
+          onlineOrders: orderCountData[item.date]?.onlineOrders || 0,
+          offlineOrders: orderCountData[item.date]?.offlineOrders || 0,
+        }));
+
+        setChartData(combinedData);
+        const total = combinedData.reduce((sum, item) => sum + item.revenue, 0);
+        setTotalRevenue(total);
+      })
+      .catch((error) => {
+        console.error("Error fetching default monthly revenue:", error);
+        toast.error("Có lỗi khi lấy dữ liệu tháng hiện tại!");
+      });
   };
 
   useEffect(() => {
@@ -134,7 +213,16 @@ const ManageStatistics = () => {
     StatisticsService.getRevenueThisMonth().then((res) => setMonthlyRevenue(res.data));
     StatisticsService.getTotalStock().then((res) => setTotalStock(res.data));
     StatisticsService.getTotalOrdersToday().then((res) => setTotalOrdersToday(res.data));
-    StatisticsService.getTotalOrdersYesterday().then((res) => setTotalOrdersYesterday(res.data));
+    StatisticsService.getTotalOrdersYesterday().then((res) =>
+      setTotalOrdersYesterday((prev) => ({ ...prev, totalOrders: res.data }))
+    );
+    StatisticsService.getYesterdayOrderStats().then((res) =>
+      setTotalOrdersYesterday((prev) => ({
+        ...prev,
+        offlineOrders: res.data.offlineOrdersYesterday,
+        onlineOrders: res.data.onlineOrdersYesterday,
+      }))
+    );
     StatisticsService.getTotalOrdersThisMonth().then((res) => setTotalOrdersThisMonth(res.data));
     StatisticsService.getTotalCustomers().then((res) => setTotalCustomers(res.data));
     StatisticsService.getTopFiveCustomers().then((res) => setTopFiveCustomers(res.data));
@@ -164,45 +252,159 @@ const ManageStatistics = () => {
 
     if (daysDiff <= 30) {
       setViewType("daily");
-      StatisticsService.getDailyRevenue(startDate, endDate).then((res) => {
-        const data = Object.entries(res.data).map(([date, stats]) => ({
-          date: new Date(date).toLocaleDateString("vi-VN"),
-          revenue: Number(stats.revenue || stats),
-          orderCount: stats.orderCount ? Number(stats.orderCount) : undefined,
-        })).filter((item) => item.revenue !== undefined);
-        setChartData(data);
-        const total = data.reduce((sum, item) => sum + item.revenue, 0);
-        setTotalRevenue(total);
+      Promise.all([
+        StatisticsService.getDailyRevenue(startDate, endDate),
+        StatisticsService.getDailyOrderCountByType(startDate, endDate),
+      ])
+        .then(([revenueRes, orderCountRes]) => {
+          const revenueData = Object.entries(revenueRes.data).map(([date, stats]) => ({
+            date: new Date(date).toISOString().slice(0, 10),
+            revenue: Number(stats.revenue || stats),
+            orderCount: stats.orderCount ? Number(stats.orderCount) : 0,
+          }));
+
+          const orderCountData = Object.entries(orderCountRes.data).reduce((acc, [date, stats]) => {
+            const normalizedDate = new Date(date).toISOString().slice(0, 10);
+            acc[normalizedDate] = {
+              onlineOrders: Number(stats.onlineOrders),
+              offlineOrders: Number(stats.offlineOrders),
+            };
+            return acc;
+          }, {});
+
+          const combinedData = revenueData.map((item) => ({
+            date: new Date(item.date).toLocaleDateString("vi-VN"),
+            revenue: item.revenue,
+            orderCount: item.orderCount,
+            onlineOrders: orderCountData[item.date]?.onlineOrders || 0,
+            offlineOrders: orderCountData[item.date]?.offlineOrders || 0,
+          }));
+
+          const filteredData = combinedData.filter((item) => {
+            const itemDate = new Date(item.date.split("/").reverse().join("-"));
+            return itemDate >= start && itemDate <= end;
+          });
+
+          setChartData(filteredData);
+          const total = filteredData.reduce((sum, item) => sum + item.revenue, 0);
+          setTotalRevenue(total);
+        })
+        .catch((error) => {
+          console.error("Error fetching daily data:", error);
+          toast.error("Có lỗi khi lấy dữ liệu hàng ngày!");
+        });
+      StatisticsService.getOrdersByDateRange(startDate, endDate).then((res) => {
+        setOrdersByRange(res.data);
+        setTotalOrdersByRange({
+          totalOrders: (res.data.offlineOrders || 0) + (res.data.onlineOrders || 0),
+          offlineOrders: res.data.offlineOrders || 0,
+          onlineOrders: res.data.onlineOrders || 0,
+        });
       });
     } else if (daysDiff <= 90) {
       setViewType("weekly");
-      StatisticsService.getWeeklyRevenue(startDate, endDate).then((res) => {
-        const data = Object.entries(res.data).map(([week, revenue]) => ({
-          week,
-          revenue: Number(revenue),
-        }));
-        setChartData(data);
-        const total = data.reduce((sum, item) => sum + item.revenue, 0);
-        setTotalRevenue(total);
+      Promise.all([
+        StatisticsService.getWeeklyRevenue(startDate, endDate),
+        StatisticsService.getWeeklyOrderCountByType(startDate, endDate),
+      ])
+        .then(([revenueRes, orderCountRes]) => {
+          const revenueData = revenueRes.data.map((item) => ({
+            week: item.week,
+            revenue: Number(item.revenue),
+          }));
+
+          const orderCountData = orderCountRes.data.reduce((acc, item) => {
+            acc[item.week] = {
+              orderCount: Number(item.orderCount),
+              onlineOrders: Number(item.onlineOrders),
+              offlineOrders: Number(item.offlineOrders),
+            };
+            return acc;
+          }, {});
+
+          const combinedData = revenueData.map((item) => ({
+            week: item.week,
+            revenue: item.revenue,
+            orderCount: orderCountData[item.week]?.orderCount || 0,
+            onlineOrders: orderCountData[item.week]?.onlineOrders || 0,
+            offlineOrders: orderCountData[item.week]?.offlineOrders || 0,
+          }));
+
+          setChartData(combinedData);
+          const total = combinedData.reduce((sum, item) => sum + item.revenue, 0);
+          setTotalRevenue(total);
+        })
+        .catch((error) => {
+          console.error("Error fetching weekly data:", error);
+          toast.error("Có lỗi khi lấy dữ liệu hàng tuần!");
+        });
+      StatisticsService.getOrdersByDateRange(startDate, endDate).then((res) => {
+        setOrdersByRange(res.data);
+        setTotalOrdersByRange({
+          totalOrders: (res.data.offlineOrders || 0) + (res.data.onlineOrders || 0),
+          offlineOrders: res.data.offlineOrders || 0,
+          onlineOrders: res.data.onlineOrders || 0,
+        });
       });
     } else {
       setViewType("monthly");
-      StatisticsService.getRevenue(startDate, endDate).then((res) => {
-        const data = Object.entries(res.data).map(([month, revenue]) => ({
-          month,
-          revenue: Number(revenue),
-        }));
-        setChartData(data);
-        const total = data.reduce((sum, item) => sum + item.revenue, 0);
-        setTotalRevenue(total);
+      Promise.all([
+        StatisticsService.getRevenue(startDate, endDate),
+        StatisticsService.getMonthlyOrderCountByType(startDate, endDate),
+      ])
+        .then(([revenueRes, orderCountRes]) => {
+          const totalRevenue = Number(revenueRes.data);
+          const orderCountData = orderCountRes.data.map((item) => ({
+            month: item.month, // Định dạng yyyy-MM (e.g., "2025-02")
+            orderCount: Number(item.orderCount),
+            onlineOrders: Number(item.onlineOrders),
+            offlineOrders: Number(item.offlineOrders),
+          }));
+
+          const combinedData = orderCountData.map((item) => {
+            const monthDate = new Date(item.month + "-01"); // Chuyển yyyy-MM thành Date
+            const monthStr = monthDate.toLocaleDateString("vi-VN", {
+              month: "long",
+              year: "numeric",
+            }); // Hiển thị dạng "Tháng 2 2025"
+            return {
+              month: monthStr,
+              revenue:
+                orderCountData.length === 1
+                  ? totalRevenue
+                  : (totalRevenue * item.orderCount) / orderCountData.reduce((sum, i) => sum + i.orderCount, 0),
+              orderCount: item.orderCount,
+              onlineOrders: item.onlineOrders,
+              offlineOrders: item.offlineOrders,
+            };
+          });
+
+          setChartData(combinedData);
+          setTotalRevenue(totalRevenue);
+        })
+        .catch((error) => {
+          console.error("Error fetching monthly data:", error);
+          toast.error("Có lỗi khi lấy dữ liệu hàng tháng! Kiểm tra console để xem chi tiết.");
+        });
+      // Lấy tổng đơn hàng, đơn offline, và đơn online cho khoảng thời gian monthly
+      StatisticsService.getOrdersByDateRange(startDate, endDate).then((res) => {
+        setOrdersByRange(res.data);
+        setTotalOrdersByRange({
+          totalOrders: (res.data.offlineOrders || 0) + (res.data.onlineOrders || 0),
+          offlineOrders: res.data.offlineOrders || 0,
+          onlineOrders: res.data.onlineOrders || 0,
+        });
       });
     }
   };
-
   const formatCurrency = (value) => {
     return value !== null
       ? value.toLocaleString("vi-VN", { style: "currency", currency: "VND" })
       : "Đang tải...";
+  };
+
+  const formatNumber = (value) => {
+    return value !== null ? value.toLocaleString("vi-VN") : "Đang tải...";
   };
 
   return (
@@ -218,10 +420,9 @@ const ManageStatistics = () => {
         draggable
         pauseOnHover
       />
-      <h2 className="text-2xl font-bold text-center mb-3 text-blue-600">📊 Thống kê Doanh thu</h2>
+      <h2 className="text-2xl font-bold text-center mb-2 text-blue-600">📊 Thống kê Doanh thu</h2>
 
-      {/* Thống kê nhanh */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2 mb-3">
         {[
           {
             title: "Thống kê hôm nay",
@@ -270,14 +471,28 @@ const ManageStatistics = () => {
                     Doanh thu: {formatCurrency(item.revenue)}
                   </p>
                   {item.orders !== undefined && (
-                    <p className="text-xs text-gray-900 truncate">
-                      Đơn hàng: {item.orders !== null ? item.orders.toLocaleString("vi-VN") : "Đang tải..."}
-                    </p>
+                    typeof item.orders === "object" && item.orders ? (
+                      <>
+                        <p className="text-xs text-gray-900 truncate">
+                          Tổng đơn: {formatNumber(item.orders.totalOrders)}
+                        </p>
+                        <p className="text-xs text-gray-600 truncate">
+                          Offline: {formatNumber(item.orders.offlineOrders)}
+                        </p>
+                        <p className="text-xs text-gray-600 truncate">
+                          Online: {formatNumber(item.orders.onlineOrders)}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-gray-900 truncate">
+                        Đơn hàng: {formatNumber(item.orders)}
+                      </p>
+                    )
                   )}
                 </>
               ) : (
                 <p className="text-sm font-bold text-gray-900 truncate">
-                  {item.value !== null ? item.value.toLocaleString("vi-VN") : "Đang tải..."}
+                  {formatNumber(item.value)}
                 </p>
               )}
             </div>
@@ -285,7 +500,6 @@ const ManageStatistics = () => {
         ))}
       </div>
 
-      {/* Tìm kiếm doanh thu */}
       <div className="mb-3 bg-white p-4 rounded-md shadow">
         <h3 className="text-md font-semibold flex items-center mb-3 text-gray-800">
           <FaSearch className="mr-2 text-blue-600" /> Tìm kiếm doanh thu theo ngày
@@ -317,6 +531,16 @@ const ManageStatistics = () => {
             </h3>
           </div>
         )}
+        {ordersByRange.offlineOrders !== null && ordersByRange.onlineOrders !== null && (
+          <div className="mt-2">
+            <p className="text-sm text-gray-700">
+              Đơn Offline: <span className="font-bold">{formatNumber(ordersByRange.offlineOrders)}</span>
+            </p>
+            <p className="text-sm text-gray-700">
+              Đơn Online: <span className="font-bold">{formatNumber(ordersByRange.onlineOrders)}</span>
+            </p>
+          </div>
+        )}
         <button
           onClick={exportRevenueReport}
           className="bg-green-600 text-white px-3 py-1.5 rounded shadow hover:bg-green-700 transition mt-4 flex items-center text-sm"
@@ -325,60 +549,52 @@ const ManageStatistics = () => {
         </button>
       </div>
 
-      {/* Biểu đồ doanh thu */}
       {chartData.length > 0 && (
         <div className="mb-4 bg-white p-4 rounded-lg shadow">
           <h3 className="text-md font-semibold mb-2">📈 Biểu đồ doanh thu và đơn hàng</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey={viewType === "daily" ? "date" : viewType === "weekly" ? "week" : "month"}
-              />
+              <XAxis dataKey={viewType === "daily" ? "date" : viewType === "weekly" ? "week" : "month"} />
               <YAxis
                 yAxisId="left"
                 orientation="left"
                 stroke="#3B82F6"
                 tickFormatter={(value) => {
-                  if (value >= 1000000) {
-                    return `${(value / 1000000).toFixed(1)}M`;
-                  } else if (value >= 1000) {
-                    return `${(value / 1000).toFixed(0)}K`;
-                  }
+                  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                  else if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
                   return value;
                 }}
               />
-              {viewType === "daily" && (
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  stroke="#82ca9d"
-                  allowDecimals={false}
-                  tickFormatter={(value) => value}
-                />
-              )}
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                stroke="#82ca9d"
+                allowDecimals={false}
+                tickFormatter={(value) => value}
+              />
               <Tooltip
                 formatter={(value, name) =>
                   name === "revenue" ? formatCurrency(value) : value.toLocaleString("vi-VN")
                 }
               />
               <Bar yAxisId="left" dataKey="revenue" fill="#3B82F6" name="Doanh thu" />
-              {viewType === "daily" && (
-                <Bar yAxisId="right" dataKey="orderCount" fill="#82ca9d" name="Đơn hàng" />
-              )}
+              <Bar yAxisId="right" dataKey="orderCount" fill="#82ca9d" name="Đơn hàng" />
             </BarChart>
           </ResponsiveContainer>
         </div>
       )}
 
-      {/* Sản phẩm bán chạy */}
       <div className="bg-white p-4 rounded-lg shadow mb-4">
         <h3 className="text-lg font-semibold mb-4 flex items-center">
           <FaTrophy className="text-yellow-500 mr-2" /> 5 Sản phẩm bán chạy nhất
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {bestSellingProducts.map((product, index) => (
-            <div key={index} className="border rounded-lg p-3 bg-gray-50 shadow hover:shadow-lg transition">
+            <div
+              key={index}
+              className="border rounded-lg p-3 bg-gray-50 shadow hover:shadow-lg transition"
+            >
               <img
                 src={product.image}
                 alt={product.productName}
@@ -394,7 +610,6 @@ const ManageStatistics = () => {
         </div>
       </div>
 
-      {/* Top 5 khách hàng mua nhiều nhất */}
       <div className="bg-white p-4 rounded-lg shadow">
         <h3 className="text-lg font-semibold mb-4 flex items-center">
           <FaTrophy className="text-yellow-500 mr-2" /> Top 5 Khách hàng thân thiết
@@ -402,7 +617,10 @@ const ManageStatistics = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {topFiveCustomers.length > 0 ? (
             topFiveCustomers.map((customer, index) => (
-              <div key={index} className="border rounded-lg p-3 bg-gray-50 shadow hover:shadow-lg transition">
+              <div
+                key={index}
+                className="border rounded-lg p-3 bg-gray-50 shadow hover:shadow-lg transition"
+              >
                 <h6 className="text-sm font-semibold text-gray-800 truncate">{customer.fullName}</h6>
                 <div className="mt-3 text-sm text-gray-700 space-y-1">
                   <p className="flex items-center gap-2">
