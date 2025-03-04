@@ -19,12 +19,16 @@ import Introduce from "../components/introduce/Introduce.jsx";
 import NotFoundPage from "./NotFoundPage.jsx";
 import PrivateRoute from "../context/PrivateRoute.jsx";
 import SearchProduct from "../components/product/search/SearchProduct.jsx";
+import NewsDetail from "../service/newpages/NewsDetail.jsx";
+import Policy from "../elements/Policy.jsx";
+import Guide from "../elements/Guide.jsx";
 
 // Hiệu ứng chuyển trang
 const pageVariants = {
     hidden: { opacity: 0, y: 30 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
     exit: { opacity: 0, y: -30, transition: { duration: 0.3, ease: "easeInOut" } }
+    
 };
 
 const AnimatedRoutes = () => {
@@ -51,7 +55,9 @@ const AnimatedRoutes = () => {
                     <Route path="/verify-otp" element={<VerifyOTP />} />
                     <Route path="/introduce" element={<Introduce />} />
                     <Route path="/search" element={<SearchProduct />} />
-
+                    <Route path="/newsdetail" element={<NewsDetail />} />
+                    <Route path="/policy" element={<Policy />} />
+                    <Route path="/guide" element={<Guide />} />
                     {/* ✅ Route yêu cầu đăng nhập */}
                     <Route element={<PrivateRoute />}>
                         <Route path="/my-account/*" element={<MyAccount />} />

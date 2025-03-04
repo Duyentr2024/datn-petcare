@@ -27,6 +27,7 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   useEffect(() => {
     setMainImage(product?.productImage); // Cập nhật ảnh mặc định khi product thay đổi
+    window.scrollTo(0, 0);
   }, [product]);
 
   useEffect(() => {

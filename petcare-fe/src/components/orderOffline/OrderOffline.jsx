@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { IoSearchOutline, IoClose, IoCheckmark } from "react-icons/io5";
 import { getAllProductDetails, createOfflineOrder, getPointsByPhone, applyDiscount } from "../../service/orderOfflineService/OfflineService";
+
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-
 // Định nghĩa hàm isPaymentDisabled trước
 const isPaymentDisabled = (currentTab) => {
   // Tính tổng tiền đơn hàng sau khi giảm giá
@@ -18,7 +18,7 @@ const isPaymentDisabled = (currentTab) => {
 
   // Logic cho phương thức thanh toán 'CASH'
   if (paymentMethod === 'CASH') {
-    // Nếu tổng tiền bằng 0 (sau khi giảm giá), kích hoạt nút thanh ytoán
+    // Nếu tổng tiền bằng 0 (sau khi giảm giá), kích hoạt nút thanh toán
     if (totalAmount === 0) {
       return false;
     }
@@ -391,7 +391,6 @@ const OrderOffline = () => {
       return;
     }
   
-    
     const orderData = {
       userId: staffId,
       items: currentTab.products.map((product) => ({
@@ -415,7 +414,7 @@ const OrderOffline = () => {
   
       // Thông báo thanh toán thành công
       toast.success(
-        `Thanh toán thành công!\n Mã đơn:${response.orderId}\nTổng tiền: ${response.totalAmount.toLocaleString()}đ`
+        `Thanh toán thành công!\nMã đơn:${response.orderId}\nTổng tiền: ${response.totalAmount.toLocaleString()}đ`
       );
   
       // Reset tab sau khi thanh toán thành công
@@ -450,6 +449,7 @@ const OrderOffline = () => {
       );
     }
   };
+
   return (
     <div className="flex flex-col h-screen">
       <div className="bg-[#fbb321] p-1 sm:p-2 fixed top-0 left-0 right-0 z-20">
