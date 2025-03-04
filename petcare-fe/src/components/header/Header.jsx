@@ -16,6 +16,7 @@ import { useAuth } from "../../context/AuthContext"; // Import hook useAuth từ
 import logo from "../../assets/images/banner1.png";
 import { motion } from "framer-motion";
 import CartDetailsService from "../../service/CartDetailsService/CartDetailsService.jsx";
+import axios from "axios"; // Thêm axios để gọi API
 
 export default function Header() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -30,10 +31,8 @@ export default function Header() {
   const [fullName, setFullName] = useState("");
   const [userId, setUserId] = useState("");
   const [cookies, setCookie, removeCookie] = useCookies(["accessToken"]);
-  const { user, token, setUser, setToken } = useAuth(); // Lấy setUser từ context
   const navigate = useNavigate();
-  const dropdownRef = useRef(null); // Thêm useRef
-
+  const [cartCount, setCartCount] = useState(0);
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
@@ -42,17 +41,22 @@ export default function Header() {
     role: "",
     totalSpent: "",
   });
-
-  const [notifications, setNotifications] = useState([
-    { id: 1, message: "Bạn có đơn hàng mới!", isRead: false },
-    { id: 2, message: "Sản phẩm của bạn đã được duyệt.", isRead: false },
-    { id: 3, message: "Khách hàng đã gửi tin nhắn.", isRead: false },
-  ]);
+  const [isClickingNotification, setIsClickingNotification] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [isShaking, setIsShaking] = useState(true);
-  const [selectedNotification, setSelectedNotification] = useState(null);
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-
+  const dropdownRef = useRef(null);
+  const {
+    user,
+    notifications,
+    unreadCount,
+    isShaking,
+    logout,
+    markNotificationAsRead, // Sử dụng markNotificationAsRead từ AuthContext
+    handleViewNotification,
+    setNotifications, // Thêm setNotifications từ AuthContext
+    setUnreadCount, // Thêm setUnreadCount từ AuthContext
+    setIsShaking, // Thêm setIsShaking từ AuthContext
+    selectedNotification,
+  } = useAuth();
   // Xử lý tìm kiếm
   const handleSearch = () => {
     if (searchTerm.trim() !== "") {
@@ -63,7 +67,11 @@ export default function Header() {
   // Xử lý đóng menu khi click ra ngoài
   useEffect(() => {
     function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target) &&
+        !isClickingNotification
+      ) {
         setIsOpen(false);
       }
     }
@@ -71,21 +79,48 @@ export default function Header() {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-   
-  }, []);
+  }, [setIsOpen, isClickingNotification]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
+  // Trong Header component, giữ nguyên và tối ưu handleViewNotification
+
+  // Thêm hàm để đánh dấu tất cả đã đọc (sử dụng markNotificationAsRead từ AuthContext)
+  const handleMarkAllAsRead = async () => {
+    try {
+      const unreadNotifications = notifications.filter(
+        (notif) => !notif.isRead
+      );
+
+      await Promise.all(
+        unreadNotifications.map(async (notif) => {
+          await handleViewNotification(notifications.indexOf(notif)); // Sử dụng handleViewNotification từ AuthContext
+        })
+      );
+
+      // Cập nhật local state sau khi đánh dấu tất cả
+      setNotifications(
+        notifications.map((notif) => ({ ...notif, isRead: true }))
+      );
+      setUnreadCount(0);
       setIsShaking(false);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, []);
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      if (error.response) {
+        console.error(
+          "Response status:",
+          error.response.status,
+          "Data:",
+          error.response.data
+        );
+      }
+    }
+  };
 
-  const handleViewNotification = (index) => {
-    setSelectedNotification(notifications[index]);
-    setNotifications((prev) =>
-      prev.map((n, i) => (i === index ? { ...n, isRead: true } : n))
-    );
+  // Hàm xử lý chuyển hướng đến lịch sử đơn hàng và chọn tab
+  const handleNavigateToOrderHistory = (orderId) => {
+    console.log("Navigating to order history for orderId:", orderId);
+    setSelectedNotification(null); // Đóng modal trước khi chuyển hướng
+    // Chuyển hướng đến trang /my-account/history với query param orderId
+    navigate(`/my-account/history?orderId=${orderId}`);
   };
 
   useEffect(() => {
@@ -164,21 +199,6 @@ export default function Header() {
     };
   }, []);
 
-  const [cartCount, setCartCount] = useState(0);
-
-  // Hàm lấy userId từ token
-  const getUserIdFromToken = () => {
-    const accessToken = Cookies.get("accessToken");
-    if (!accessToken) return null;
-    try {
-      const payload = JSON.parse(atob(accessToken.split(".")[1]));
-      return payload.userId;
-    } catch (error) {
-      console.error("Invalid token:", error);
-      return null;
-    }
-  };
-
   useEffect(() => {
     const fetchCartCount = async () => {
       if (!userId) return;
@@ -220,7 +240,7 @@ export default function Header() {
           <div className="items-center w-[1000px]">
             {/* Search Bar */}
             <div className="flex flex-col sm:flex-row items-start justify-center space-x-8 ">
-            <div className="flex sm:w-auto">
+              <div className="flex sm:w-auto">
                 <div className="flex items-center space-x-4 relative w-[900px] max-w-lg hidden sm:block">
                   <input
                     value={searchTerm}
@@ -312,18 +332,24 @@ export default function Header() {
                 </Link>
 
                 {/* Thông báo */}
-
                 <div
                   className="flex items-center space-x-3 cursor-pointer"
-                  ref={dropdownRef}
+                  ref={dropdownRef} // Đảm bảo ref được đặt đúng nếu cần
                   onClick={() => setIsOpen(!isOpen)}
                 >
                   <div className="bg-yellow-100 p-3 rounded-full flex items-center justify-center relative">
                     <motion.div
+                      initial={{ rotate: 0 }} // Định nghĩa trạng thái ban đầu (góc 0°)
                       animate={
-                        isShaking ? { rotate: [-10, 10, -10, 10, 0] } : {}
+                        isShaking
+                          ? { rotate: [-10, 10, -10, 10, 0] } // Hiệu ứng lắc
+                          : { rotate: 0 } // Quay về góc 0° khi isShaking là false
                       }
-                      transition={{ duration: 0.5, repeat: 3 }}
+                      transition={{
+                        duration: 0.5,
+                        repeat: isShaking ? 3 : 0, // Chỉ lặp khi isShaking là true
+                        ease: "easeInOut", // Thêm ease cho chuyển động mượt mà
+                      }}
                     >
                       <FaBell className="text-yellow-500 text-xl" />
                     </motion.div>
@@ -337,77 +363,148 @@ export default function Header() {
 
                 {/* Dropdown thông báo */}
                 {isOpen && (
-                  <div className="absolute top-20 right-[132px] w-72 bg-white shadow-xl rounded-lg p-3 border border-gray-200 z-99">
+                  <div
+                    className="absolute top-20 right-[132px] w-80 bg-white shadow-2xl rounded-xl p-4 border border-gray-200 z-99 animate-slideDown"
+                    ref={dropdownRef}
+                  >
                     <div className="absolute -top-2 right-10 w-4 h-4 bg-white border-l border-t border-gray-200 rotate-45"></div>
-                    <h3 className="font-semibold text-gray-700 mb-2 text-center">
-                      🔔 Thông báo
+                    <h3 className="font-semibold text-gray-800 text-lg mb-3 text-center flex items-center justify-center gap-2">
+                      <FaBell className="text-yellow-500" /> Thông báo
                     </h3>
-                    <div className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                      <ul className="space-y-2">
+                    <div className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 custom-scrollbar">
+                      <ul className="space-y-3">
                         {notifications.length > 0 ? (
-                          notifications.map((notif, index) => (
-                            <li
-                              key={notif.id}
-                              onClick={() => handleViewNotification(index)}
-                              className={`flex items-start space-x-2 p-3 rounded-lg transition-all duration-200 ease-in-out cursor-pointer ${
-                                notif.isRead
-                                  ? "bg-gray-100"
-                                  : "bg-yellow-50 hover:bg-yellow-100"
-                              }`}
-                            >
-                              <div className="w-8 h-8 flex items-center justify-center text-white rounded-full">
-                                🔔
-                              </div>
-                              <div className="text-gray-800 text-sm leading-relaxed">
-                                {notif.message}
-                              </div>
-                            </li>
-                          ))
+                          [...notifications]
+                            .sort((a, b) => a.isRead - b.isRead)
+                            .map((notif, index) => (
+                              <li
+                                key={notif.id}
+                                onClick={(e) => {
+                                  console.log(
+                                    "Click event triggered on notification, event:",
+                                    e
+                                  );
+                                  console.log(
+                                    "Clicked notification in Header, index:",
+                                    index,
+                                    "Notification:",
+                                    notif
+                                  );
+                                  handleViewNotification(index);
+                                  e.stopPropagation(); // Ngăn sự kiện bubbling lên parent
+                                }}
+                                className={`flex items-start space-x-3 p-4 rounded-lg transition-all duration-200 ease-in-out cursor-pointer hover:shadow-md ${
+                                  notif.isRead
+                                    ? "bg-gray-100 text-gray-600"
+                                    : "bg-yellow-50 hover:bg-yellow-100 text-gray-800"
+                                }`}
+                              >
+                                <div className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow">
+                                  <FaBell
+                                    className={
+                                      notif.isRead
+                                        ? "text-gray-400"
+                                        : "text-yellow-500"
+                                    }
+                                  />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="font-medium text-sm line-clamp-2">
+                                    {notif.message}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {new Date(
+                                      notif.timestamp || notif.id
+                                    ).toLocaleString()}
+                                  </p>
+                                </div>
+                              </li>
+                            ))
                         ) : (
-                          <li className="text-gray-500 p-3 text-center">
+                          <li className="text-gray-500 p-4 text-center">
                             Không có thông báo nào
                           </li>
                         )}
                       </ul>
                     </div>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={(e) => {
+                          console.log("Mark all as read clicked, event:", e);
+                          handleMarkAllAsRead();
+                          e.stopPropagation(); // Ngăn sự kiện bubbling lên parent
+                        }}
+                        className="mt-3 w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 text-sm font-medium"
+                      >
+                        Đánh dấu tất cả đã đọc
+                      </button>
+                    )}
                   </div>
                 )}
 
                 {/* Modal xem chi tiết thông báo */}
                 {selectedNotification && (
-                  <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 transition-opacity duration-300 ease-in-out">
-                    <div className="bg-white p-6 rounded-lg shadow-2xl w-96 transform scale-95 animate-fadeIn">
-                      {/* Header */}
-                      <div className="flex justify-between items-center border-b pb-2">
-                        <h2 className="text-lg font-bold text-gray-800">
-                          Chi tiết thông báo
+                  <motion.div
+                    initial={{ opacity: 0, y: 50, scale: 0.9 }} // Trạng thái ban đầu: ẩn, trượt xuống, nhỏ hơn
+                    animate={{ opacity: 1, y: 0, scale: 1 }} // Trạng thái khi mở: hiện rõ, trượt lên, kích thước ban đầu
+                    exit={{ opacity: 0, y: 50, scale: 0.9 }} // Trạng thái khi đóng: ẩn, trượt xuống, nhỏ lại
+                    transition={{ duration: 0.3, ease: "easeInOut" }} // Chuyển động mượt mà
+                    className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
+                    onClick={(e) => {
+                      if (e.target === e.currentTarget) {
+                        setSelectedNotification(null); // Đóng modal khi nhấp vào background
+                        e.stopPropagation();
+                      }
+                    }
+                    
+                  }
+                  >
+                    <motion.div
+                      initial={{ scale: 0.9 }} // Trạng thái ban đầu: nhỏ hơn
+                      animate={{ scale: 1 }} // Trạng thái khi mở: kích thước ban đầu
+                      exit={{ scale: 0.9 }} // Trạng thái khi đóng: nhỏ lại
+                      transition={{ duration: 0.3, ease: "easeInOut" }} // Chuyển động mượt mà
+                      className="bg-white p-6 rounded-2xl shadow-2xl w-[28rem] max-w-full max-h-[80vh] overflow-y-auto"
+                    >
+                      <div className="flex justify-between items-center border-b border-gray-200 pb-3 mb-4">
+                        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                          <FaBell className="text-yellow-500" /> Chi tiết thông
+                          báo
                         </h2>
                         <button
                           onClick={() => setSelectedNotification(null)}
-                          className="text-gray-500 hover:text-red-500 transition duration-200"
+                          className="text-gray-500 hover:text-red-500 transition duration-200 text-xl"
                         >
                           ✖
                         </button>
                       </div>
-
-                      {/* Nội dung thông báo */}
-                      <p className="text-gray-700 mt-3 leading-relaxed">
-                        {selectedNotification.message}
-                      </p>
-
-                      {/* Footer */}
-                      <div className="mt-4 flex justify-end">
-                        <button
-                          onClick={() => setSelectedNotification(null)}
-                          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-all duration-200"
-                        >
-                          Đóng
-                        </button>
+                      <div className="space-y-4">
+                        <p className="text-gray-700 text-base leading-relaxed line-clamp-4">
+                          {selectedNotification.message}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Thời gian:{" "}
+                          {new Date(
+                            selectedNotification.timestamp ||
+                              selectedNotification.id
+                          ).toLocaleString()}
+                        </p>
+                        {selectedNotification.orderId && ( // Thêm điều kiện để hiển thị nút nếu có orderId
+                          <button
+                            onClick={() =>
+                              handleNavigateToOrderHistory(
+                                selectedNotification.orderId
+                              )
+                            }
+                            className="mt-4 w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 text-sm font-medium"
+                          >
+                            Xem chi tiết đơn hàng
+                          </button>
+                        )}
                       </div>
-                    </div>
-                  </div>
+                    </motion.div>
+                  </motion.div>
                 )}
-
                 {/* Mobile Menu Toggle */}
                 <div className="lg:hidden flex items-center">
                   <button onClick={toggleMobileMenu}>
