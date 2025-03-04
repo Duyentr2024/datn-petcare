@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react"; // Giữ useRef và useEffe
 import full from "../../assets/images/full.png";
 import CountUp from "react-countup";
 import { useInView } from "react-intersection-observer";
-
+import vechungtoi from "../../assets/images/vechungtoi.jpg";
 const commitments = [
   {
     id: 1,
@@ -222,12 +222,11 @@ const Introduce = () => {
               <img
                 width="900"
                 height="693"
-                src="https://nongsan.monamedia.net/wp-content/uploads/2023/11/ab-eight-img-11.jpg"
+                src={vechungtoi}
                 className="attachment-full size-full object-cover w-full max-w-[600px] h-auto rounded-xl shadow-md"
                 alt="Hình ảnh nhóm"
                 decoding="async"
                 loading="lazy"
-                srcSet="https://nongsan.monamedia.net/wp-content/uploads/2023/11/ab-eight-img-11.jpg 900w, https://nongsan.monamedia.net/wp-content/uploads/2023/11/ab-eight-img-11-300x231.jpg 300w, https://nongsan.monamedia.net/wp-content/uploads/2023/11/ab-eight-img-11-768x591.jpg 768w, https://nongsan.monamedia.net/wp-content/uploads/2023/11/ab-eight-img-11-400x308.jpg 400w, https://nongsan.monamedia.net/wp-content/uploads/2023/11/ab-eight-img-11-600x462.jpg 600w, https://nongsan.monamedia.net/wp-content/uploads/2023/11/ab-eight-img-11-519x400.jpg 519w"
                 sizes="(max-width: 900px) 100vw, 900px"
               />
             </div>

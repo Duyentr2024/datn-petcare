@@ -56,6 +56,7 @@ export default function Header() {
     setUnreadCount, // Thêm setUnreadCount từ AuthContext
     setIsShaking, // Thêm setIsShaking từ AuthContext
     selectedNotification,
+    setSelectedNotification, // Đảm bảo destructuring setSelectedNotification
   } = useAuth();
   // Xử lý tìm kiếm
   const handleSearch = () => {
@@ -63,6 +64,14 @@ export default function Header() {
       navigate(`/search?query=${encodeURIComponent(searchTerm)}`);
     }
   };
+
+  // Thêm log để debug selectedNotification
+  useEffect(() => {
+    console.log(
+      "Selected notification updated in Header:",
+      selectedNotification
+    );
+  }, [selectedNotification]);
 
   // Xử lý đóng menu khi click ra ngoài
   useEffect(() => {
@@ -80,8 +89,6 @@ export default function Header() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [setIsOpen, isClickingNotification]);
-
-  // Trong Header component, giữ nguyên và tối ưu handleViewNotification
 
   // Thêm hàm để đánh dấu tất cả đã đọc (sử dụng markNotificationAsRead từ AuthContext)
   const handleMarkAllAsRead = async () => {
@@ -117,10 +124,21 @@ export default function Header() {
 
   // Hàm xử lý chuyển hướng đến lịch sử đơn hàng và chọn tab
   const handleNavigateToOrderHistory = (orderId) => {
-    console.log("Navigating to order history for orderId:", orderId);
+    if (!orderId || isNaN(orderId)) {
+      console.error("Invalid Order ID:", orderId);
+      alert("Không thể tìm thấy đơn hàng. Vui lòng kiểm tra lại thông báo!");
+      return;
+    }
+    console.log("Navigating to order history for orderId - CLICKED:", orderId);
     setSelectedNotification(null); // Đóng modal trước khi chuyển hướng
-    // Chuyển hướng đến trang /my-account/history với query param orderId
     navigate(`/my-account/history?orderId=${orderId}`);
+  };
+
+  // Hàm trích xuất orderId từ message nếu orderId không có trong selectedNotification
+  const extractOrderIdFromMessage = (message) => {
+    const match = message.match(/Đơn hàng #(\d+)/);
+    console.log("Extracting orderId from message:", message, "Result:", match);
+    return match ? parseInt(match[1], 10) : null;
   };
 
   useEffect(() => {
@@ -434,7 +452,7 @@ export default function Header() {
                           handleMarkAllAsRead();
                           e.stopPropagation(); // Ngăn sự kiện bubbling lên parent
                         }}
-                        className="mt-3 w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 text-sm font-medium"
+                        className="mt-3 w-full py-2 bg-[#fbb321] text-white rounded-lg hover:bg-[#fbb321] transition-all duration-200 text-sm font-medium"
                       >
                         Đánh dấu tất cả đã đọc
                       </button>
@@ -445,25 +463,23 @@ export default function Header() {
                 {/* Modal xem chi tiết thông báo */}
                 {selectedNotification && (
                   <motion.div
-                    initial={{ opacity: 0, y: 50, scale: 0.9 }} // Trạng thái ban đầu: ẩn, trượt xuống, nhỏ hơn
-                    animate={{ opacity: 1, y: 0, scale: 1 }} // Trạng thái khi mở: hiện rõ, trượt lên, kích thước ban đầu
-                    exit={{ opacity: 0, y: 50, scale: 0.9 }} // Trạng thái khi đóng: ẩn, trượt xuống, nhỏ lại
-                    transition={{ duration: 0.3, ease: "easeInOut" }} // Chuyển động mượt mà
+                    initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 50, scale: 0.9 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
                     className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
                     onClick={(e) => {
+                      console.log("Clicked modal background, target:", e.target, "currentTarget:", e.currentTarget);
                       if (e.target === e.currentTarget) {
-                        setSelectedNotification(null); // Đóng modal khi nhấp vào background
-                        e.stopPropagation();
+                        setSelectedNotification(null);
                       }
-                    }
-                    
-                  }
+                    }}
                   >
                     <motion.div
-                      initial={{ scale: 0.9 }} // Trạng thái ban đầu: nhỏ hơn
-                      animate={{ scale: 1 }} // Trạng thái khi mở: kích thước ban đầu
-                      exit={{ scale: 0.9 }} // Trạng thái khi đóng: nhỏ lại
-                      transition={{ duration: 0.3, ease: "easeInOut" }} // Chuyển động mượt mà
+                      initial={{ scale: 0.9 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0.9 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
                       className="bg-white p-6 rounded-2xl shadow-2xl w-[28rem] max-w-full max-h-[80vh] overflow-y-auto"
                     >
                       <div className="flex justify-between items-center border-b border-gray-200 pb-3 mb-4">
@@ -472,7 +488,10 @@ export default function Header() {
                           báo
                         </h2>
                         <button
-                          onClick={() => setSelectedNotification(null)}
+                          onClick={() => {
+                            console.log("Closing modal via close button");
+                            setSelectedNotification(null);
+                          }}
                           className="text-gray-500 hover:text-red-500 transition duration-200 text-xl"
                         >
                           ✖
@@ -489,17 +508,18 @@ export default function Header() {
                               selectedNotification.id
                           ).toLocaleString()}
                         </p>
-                        {selectedNotification.orderId && ( // Thêm điều kiện để hiển thị nút nếu có orderId
+                        {selectedNotification.orderId ? (
                           <button
-                            onClick={() =>
-                              handleNavigateToOrderHistory(
-                                selectedNotification.orderId
-                              )
-                            }
+                            onClick={() => {
+                              console.log("Clicked 'Xem chi tiết đơn hàng' button, orderId:", selectedNotification.orderId);
+                              handleNavigateToOrderHistory(selectedNotification.orderId);
+                            }}
                             className="mt-4 w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 text-sm font-medium"
                           >
                             Xem chi tiết đơn hàng
                           </button>
+                        ) : (
+                          <p className="text-red-500">Không tìm thấy ID đơn hàng trong thông báo.</p>
                         )}
                       </div>
                     </motion.div>

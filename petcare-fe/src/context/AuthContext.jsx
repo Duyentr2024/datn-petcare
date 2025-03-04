@@ -14,7 +14,7 @@ export const AuthProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isShaking, setIsShaking] = useState(false);
-
+  const [selectedNotification, setSelectedNotification] = useState(null); // Thêm state để lưu thông báo được chọn
   // Lắng nghe sự thay đổi của cookies và cập nhật token
   useEffect(() => {
     if (cookies.accessToken && cookies.accessToken !== token) {
@@ -165,6 +165,7 @@ export const AuthProvider = ({ children }) => {
     removeCookie("accessToken");
     setToken(null);
     setUser(null);
+    
   };
 
   // Cập nhật trạng thái đã đọc trên BE
@@ -229,6 +230,7 @@ export const AuthProvider = ({ children }) => {
         const rollbackNotifications = [...notifications];
         rollbackNotifications[index].isRead = false;
         setNotifications(rollbackNotifications);
+        setNotifications(notifications.map((notif) => ({ ...notif, isRead: true })));
         setUnreadCount((prev) => prev + 1);
       }
     }
@@ -245,6 +247,7 @@ export const AuthProvider = ({ children }) => {
     notifications,
     unreadCount,
     isShaking,
+    setSelectedNotification, // Đảm bảo setSelectedNotification được cung cấp
     handleViewNotification, // Đảm bảo khai báo handleViewNotification
     markNotificationAsRead, // Thêm để cập nhật trạng thái đã đọc
     setNotifications, // Đảm bảo setNotifications được cung cấp
