@@ -15,7 +15,6 @@ import Register from "../components/account/Register.jsx";
 import ForgotPassword from "../components/account/ForgotPassword.jsx";
 import MyAccount from "../components/account/MyAccount.jsx";
 import VerifyOTP from "../components/account/VerifyOTP.jsx";
-import OrderOffline from "../components/orderOffline/OrderOffline.jsx";
 import Introduce from "../components/introduce/Introduce.jsx";
 import NotFoundPage from "./NotFoundPage.jsx";
 import PrivateRoute from "../context/PrivateRoute.jsx";
@@ -50,7 +49,6 @@ const AnimatedRoutes = () => {
                     <Route path="/register" element={<Register />} />
                     <Route path="/forgotPassword" element={<ForgotPassword />} />
                     <Route path="/verify-otp" element={<VerifyOTP />} />
-                    <Route path="/orderOffline" element={<OrderOffline />} />
                     <Route path="/introduce" element={<Introduce />} />
                     <Route path="/search" element={<SearchProduct />} />
 
