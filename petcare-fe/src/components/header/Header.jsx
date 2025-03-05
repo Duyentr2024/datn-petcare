@@ -32,7 +32,7 @@ export default function Header() {
   const [userId, setUserId] = useState("");
   const [cookies, setCookie, removeCookie] = useCookies(["accessToken"]);
   const navigate = useNavigate();
-  const [cartCount, setCartCount] = useState(0);
+
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
@@ -57,6 +57,7 @@ export default function Header() {
     setIsShaking, // Thêm setIsShaking từ AuthContext
     selectedNotification,
     setSelectedNotification, // Đảm bảo destructuring setSelectedNotification
+    cartCount,
   } = useAuth();
   // Xử lý tìm kiếm
   const handleSearch = () => {
@@ -90,27 +91,37 @@ export default function Header() {
     };
   }, [setIsOpen, isClickingNotification]);
 
-  // Thêm hàm để đánh dấu tất cả đã đọc (sử dụng markNotificationAsRead từ AuthContext)
+  // Hàm đánh dấu tất cả thông báo là đã đọc
   const handleMarkAllAsRead = async () => {
     try {
+      // Lọc ra danh sách các thông báo chưa đọc
       const unreadNotifications = notifications.filter(
         (notif) => !notif.isRead
       );
 
+      // Gửi yêu cầu đánh dấu tất cả thông báo chưa đọc thông qua API (handleViewNotification)
       await Promise.all(
         unreadNotifications.map(async (notif) => {
-          await handleViewNotification(notifications.indexOf(notif)); // Sử dụng handleViewNotification từ AuthContext
+          await handleViewNotification(notifications.indexOf(notif));
+          // Tìm vị trí của thông báo trong mảng và đánh dấu đã đọc
         })
       );
 
-      // Cập nhật local state sau khi đánh dấu tất cả
+      // Cập nhật trạng thái local: Đánh dấu tất cả thông báo là đã đọc
       setNotifications(
         notifications.map((notif) => ({ ...notif, isRead: true }))
       );
+
+      // Đặt số lượng thông báo chưa đọc về 0
       setUnreadCount(0);
+
+      // Tắt hiệu ứng rung (nếu có)
       setIsShaking(false);
     } catch (error) {
+      // Xử lý lỗi nếu có vấn đề xảy ra trong quá trình đánh dấu thông báo
       console.error("Error marking all notifications as read:", error);
+
+      // Nếu có phản hồi lỗi từ server, log thêm thông tin chi tiết
       if (error.response) {
         console.error(
           "Response status:",
@@ -122,42 +133,65 @@ export default function Header() {
     }
   };
 
+  // Hàm đánh dấu một thông báo cụ thể là đã đọc
+  const handleMarkSingleAsRead = async (notificationId) => {
+    try {
+      console.log("Đánh dấu thông báo đã đọc:", notificationId);
+      await markNotificationAsRead(notificationId);
+  
+      // Cập nhật state ngay lập tức
+      setNotifications((prevNotifications) =>
+        prevNotifications.map((notif) =>
+          notif.id === notificationId ? { ...notif, isRead: true } : notif
+        )
+      );
+  
+      console.log("Thông báo đã được đánh dấu là đã đọc:", notificationId);
+    } catch (error) {
+      console.error("Lỗi khi đánh dấu thông báo là đã đọc:", error);
+    }
+  };
+  
+
   // Hàm xử lý chuyển hướng đến lịch sử đơn hàng và chọn tab
- // Hàm trích xuất ID đơn hàng từ nội dung thông báo
-const extractOrderIdFromMessage = (message) => {
-  // Tìm pattern "Đơn hàng #" và số ngay sau nó
-  const orderIdMatch = message.match(/Đơn hàng #(\d+)/);
-  
-  if (orderIdMatch && orderIdMatch[1]) {
-    const orderId = parseInt(orderIdMatch[1], 10);
-    console.log("Trích xuất ID đơn hàng từ thông báo:", orderId);
-    return orderId;
-  }
-  
-  console.warn("Không tìm thấy ID đơn hàng trong thông báo:", message);
-  return null;
-};
+  const extractOrderIdFromMessage = (message) => {
+    // Tìm pattern "Đơn hàng #" và số ngay sau nó
+    const orderIdMatch = message.match(/Đơn hàng #(\d+)/);
 
-// Cập nhật hàm điều hướng
-const handleNavigateToOrderHistory = (notificationId) => {
-  const notification = notifications.find((notif) => notif.id === notificationId);
+    if (orderIdMatch && orderIdMatch[1]) {
+      const orderId = parseInt(orderIdMatch[1], 10);
+      console.log("Trích xuất ID đơn hàng từ thông báo:", orderId);
+      return orderId;
+    }
 
-  if (!notification) {
-    console.error("Không tìm thấy thông báo:", notificationId);
-    return;
-  }
+    console.warn("Không tìm thấy ID đơn hàng trong thông báo:", message);
+    return null;
+  };
 
-  const orderId = extractOrderIdFromMessage(notification.message);
+  // Cập nhật hàm điều hướng
+  const handleNavigateToOrderHistory = (notificationId) => {
+    const notification = notifications.find(
+      (notif) => notif.id === notificationId
+    );
 
-  if (!orderId) {
-    console.error("Không thể trích xuất ID đơn hàng từ thông báo:", notification.message);
-    return;
-  }
+    if (!notification) {
+      console.error("Không tìm thấy thông báo:", notificationId);
+      return;
+    }
 
-  // Điều hướng đến trang OrderHistory với orderId trong URL
-  navigate(`/my-account/history?orderId=${orderId}`);
-};
+    const orderId = extractOrderIdFromMessage(notification.message);
 
+    if (!orderId) {
+      console.error(
+        "Không thể trích xuất ID đơn hàng từ thông báo:",
+        notification.message
+      );
+      return;
+    }
+
+    // Điều hướng đến trang OrderHistory với orderId trong URL
+    navigate(`/my-account/history?orderId=${orderId}`);
+  };
 
   useEffect(() => {
     if (user) {
@@ -234,24 +268,6 @@ const handleNavigateToOrderHistory = (notificationId) => {
       });
     };
   }, []);
-
-  useEffect(() => {
-    const fetchCartCount = async () => {
-      if (!userId) return;
-
-      try {
-        const cartItems = await CartDetailsService.getCartDetailsByUserId(
-          userId
-        );
-        const totalItems = cartItems.length; // Chỉ đếm số mặt hàng khác nhau
-        setCartCount(totalItems);
-      } catch (error) {
-        console.error("Error fetching cart count:", error);
-      }
-    };
-
-    fetchCartCount();
-  }, [userId]);
 
   return (
     <>
@@ -352,11 +368,6 @@ const handleNavigateToOrderHistory = (notificationId) => {
                 >
                   <div className="bg-green-100 p-3 rounded-full flex items-center justify-center relative">
                     <FaShoppingCart className="text-green-700 text-xl" />
-                    {/* {cartCount > 0 && (
-                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                        {cartCount}
-                    </span>
-                    )} */}
                   </div>
                   <div className="hidden sm:block">
                     <span className="text-sm text-gray-700">Giỏ hàng</span>
@@ -415,31 +426,28 @@ const handleNavigateToOrderHistory = (notificationId) => {
                             .sort((a, b) => a.isRead - b.isRead) // Thông báo chưa đọc (false) lên đầu
                             .map((notif, index) => (
                               <li
-                              key={notif.id}
-                              onClick={(e) => {
-                                const orderId = notif.orderId || extractOrderIdFromMessage(notif.message);
-                                handleMarkAllAsRead();
-                                if (orderId) {
-                                  // Gọi hàm điều hướng với ID thông báo
-                                  handleNavigateToOrderHistory(notif.id);
-                                  // Đánh dấu thông báo này là đã đọc
-                                  handleViewNotification(index);
-                                } else {
-                                  // Nếu không có orderId, chỉ đánh dấu đã đọc và hiển thị chi tiết thông báo
-                                  handleViewNotification(index);
-                                  setSelectedNotification(notif);
-                                }
-                            
-                                // Đóng dropdown
-                                setIsOpen(false);
-                                e.stopPropagation();
-                              }}
-                              className={`flex items-start space-x-3 p-4 rounded-lg transition-all duration-200 ease-in-out cursor-pointer hover:shadow-md ${
-                                notif.isRead
-                                  ? "bg-gray-100 text-gray-600"
-                                  : "bg-yellow-50 hover:bg-yellow-100 text-gray-800"
-                              }`}
-                            >
+                                key={notif.id}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  console.log("Click vào thông báo:", notif.id);
+
+                                  await handleMarkSingleAsRead(notif.id); // Gửi ID thay vì index
+
+                                  const orderId =
+                                    notif.orderId ||
+                                    extractOrderIdFromMessage(notif.message);
+                                  if (orderId) {
+                                    handleNavigateToOrderHistory(orderId);
+                                  }
+
+                                  setIsOpen(false); // Đóng dropdown
+                                }}
+                                className={`flex items-start space-x-3 p-4 rounded-lg transition-all duration-200 ease-in-out cursor-pointer hover:shadow-md ${
+                                  notif.isRead
+                                    ? "bg-gray-100 text-gray-600"
+                                    : "bg-yellow-50 hover:bg-yellow-100 text-gray-800"
+                                }`}
+                              >
                                 <div className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow">
                                   <FaBell
                                     className={
