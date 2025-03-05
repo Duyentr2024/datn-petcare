@@ -6,7 +6,7 @@ import { decodeToken } from "../utils/jwt";
 import { useCookies } from "react-cookie";
 import Swal from "sweetalert2";
 import { FaEye, FaTimes, FaStar } from "react-icons/fa";
-
+import { useLocation } from "react-router-dom";
 const TABS = ["Chờ xác nhận", "Đang vận chuyển", "Chờ giao hàng", "Hoàn thành", "Đã hủy", "Trả hàng"];
 
 const ITEMS_PER_PAGE = 5; // Số đơn hàng mỗi trang
@@ -18,7 +18,7 @@ const OrderHistory = () => {
   const [selectedOrderReview, setselectedOrderReview] = useState(null);
   const [activeTab, setActiveTab] = useState("Chờ xác nhận");
   const [currentPage, setCurrentPage] = useState(1); // Trang hiện tại
-
+  const location = useLocation(); // Thêm để đọc URL
   const [cookies] = useCookies(["accessToken"]);
   const { setUser, setToken } = useAuth();
   // State để lưu sản phẩm nào đang hiển thị đầy đủ tên
@@ -53,13 +53,26 @@ const OrderHistory = () => {
           (a, b) => new Date(b.orderDate) - new Date(a.orderDate) // Sắp xếp theo ngày giờ giảm dần
         );
         setOrders(sortedOrders);
+        // Xử lý orderId từ URL
+        const params = new URLSearchParams(location.search);
+        const orderId = params.get("orderId");
+        if (orderId) {
+          const order = sortedOrders.find((o) => o.orderId === parseInt(orderId, 10));
+          if (order) {
+            setActiveTab(order.statusName); // Chọn tab theo trạng thái
+            setSelectedOrder(order); // Mở modal chi tiết đơn hàng
+            setCurrentPage(1); // Reset về trang đầu
+          } else {
+            console.warn("Không tìm thấy đơn hàng với ID:", orderId);
+          }
+        }
       } catch (error) {
         console.error("Lỗi khi lấy đơn hàng:", error);
       }
     };
 
     fetchOrders();
-  }, [userId]);
+  }, [userId, location.search]);
 
   const handleCancelOrder = async (orderId) => {
     const confirmResult = await Swal.fire({

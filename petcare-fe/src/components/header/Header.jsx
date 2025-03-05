@@ -123,23 +123,41 @@ export default function Header() {
   };
 
   // Hàm xử lý chuyển hướng đến lịch sử đơn hàng và chọn tab
-  const handleNavigateToOrderHistory = (orderId) => {
-    if (!orderId || isNaN(orderId)) {
-      console.error("Invalid Order ID:", orderId);
-      alert("Không thể tìm thấy đơn hàng. Vui lòng kiểm tra lại thông báo!");
-      return;
-    }
-    console.log("Navigating to order history for orderId - CLICKED:", orderId);
-    setSelectedNotification(null); // Đóng modal trước khi chuyển hướng
-    navigate(`/my-account/history?orderId=${orderId}`);
-  };
+ // Hàm trích xuất ID đơn hàng từ nội dung thông báo
+const extractOrderIdFromMessage = (message) => {
+  // Tìm pattern "Đơn hàng #" và số ngay sau nó
+  const orderIdMatch = message.match(/Đơn hàng #(\d+)/);
+  
+  if (orderIdMatch && orderIdMatch[1]) {
+    const orderId = parseInt(orderIdMatch[1], 10);
+    console.log("Trích xuất ID đơn hàng từ thông báo:", orderId);
+    return orderId;
+  }
+  
+  console.warn("Không tìm thấy ID đơn hàng trong thông báo:", message);
+  return null;
+};
 
-  // Hàm trích xuất orderId từ message nếu orderId không có trong selectedNotification
-  const extractOrderIdFromMessage = (message) => {
-    const match = message.match(/Đơn hàng #(\d+)/);
-    console.log("Extracting orderId from message:", message, "Result:", match);
-    return match ? parseInt(match[1], 10) : null;
-  };
+// Cập nhật hàm điều hướng
+const handleNavigateToOrderHistory = (notificationId) => {
+  const notification = notifications.find((notif) => notif.id === notificationId);
+
+  if (!notification) {
+    console.error("Không tìm thấy thông báo:", notificationId);
+    return;
+  }
+
+  const orderId = extractOrderIdFromMessage(notification.message);
+
+  if (!orderId) {
+    console.error("Không thể trích xuất ID đơn hàng từ thông báo:", notification.message);
+    return;
+  }
+
+  // Điều hướng đến trang OrderHistory với orderId trong URL
+  navigate(`/my-account/history?orderId=${orderId}`);
+};
+
 
   useEffect(() => {
     if (user) {
@@ -392,31 +410,36 @@ export default function Header() {
                     <div className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 custom-scrollbar">
                       <ul className="space-y-3">
                         {notifications.length > 0 ? (
+                          // Sắp xếp thông báo: thông báo mới (isRead: false) lên đầu
                           [...notifications]
-                            .sort((a, b) => a.isRead - b.isRead)
+                            .sort((a, b) => a.isRead - b.isRead) // Thông báo chưa đọc (false) lên đầu
                             .map((notif, index) => (
                               <li
-                                key={notif.id}
-                                onClick={(e) => {
-                                  console.log(
-                                    "Click event triggered on notification, event:",
-                                    e
-                                  );
-                                  console.log(
-                                    "Clicked notification in Header, index:",
-                                    index,
-                                    "Notification:",
-                                    notif
-                                  );
+                              key={notif.id}
+                              onClick={(e) => {
+                                const orderId = notif.orderId || extractOrderIdFromMessage(notif.message);
+                                handleMarkAllAsRead();
+                                if (orderId) {
+                                  // Gọi hàm điều hướng với ID thông báo
+                                  handleNavigateToOrderHistory(notif.id);
+                                  // Đánh dấu thông báo này là đã đọc
                                   handleViewNotification(index);
-                                  e.stopPropagation(); // Ngăn sự kiện bubbling lên parent
-                                }}
-                                className={`flex items-start space-x-3 p-4 rounded-lg transition-all duration-200 ease-in-out cursor-pointer hover:shadow-md ${
-                                  notif.isRead
-                                    ? "bg-gray-100 text-gray-600"
-                                    : "bg-yellow-50 hover:bg-yellow-100 text-gray-800"
-                                }`}
-                              >
+                                } else {
+                                  // Nếu không có orderId, chỉ đánh dấu đã đọc và hiển thị chi tiết thông báo
+                                  handleViewNotification(index);
+                                  setSelectedNotification(notif);
+                                }
+                            
+                                // Đóng dropdown
+                                setIsOpen(false);
+                                e.stopPropagation();
+                              }}
+                              className={`flex items-start space-x-3 p-4 rounded-lg transition-all duration-200 ease-in-out cursor-pointer hover:shadow-md ${
+                                notif.isRead
+                                  ? "bg-gray-100 text-gray-600"
+                                  : "bg-yellow-50 hover:bg-yellow-100 text-gray-800"
+                              }`}
+                            >
                                 <div className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow">
                                   <FaBell
                                     className={
@@ -450,9 +473,10 @@ export default function Header() {
                         onClick={(e) => {
                           console.log("Mark all as read clicked, event:", e);
                           handleMarkAllAsRead();
+                          setIsOpen(false); // Đóng dropdown khi đánh dấu tất cả đã đọc
                           e.stopPropagation(); // Ngăn sự kiện bubbling lên parent
                         }}
-                        className="mt-3 w-full py-2 bg-[#fbb321] text-white rounded-lg hover:bg-[#fbb321] transition-all duration-200 text-sm font-medium"
+                        className="mt-3 w-full py-2 bg-[#fbb321] text-white rounded-lg hover:bg-blue-600 transition-all duration-200 text-sm font-medium"
                       >
                         Đánh dấu tất cả đã đọc
                       </button>
@@ -460,71 +484,6 @@ export default function Header() {
                   </div>
                 )}
 
-                {/* Modal xem chi tiết thông báo */}
-                {selectedNotification && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 50, scale: 0.9 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 50, scale: 0.9 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                    className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
-                    onClick={(e) => {
-                      console.log("Clicked modal background, target:", e.target, "currentTarget:", e.currentTarget);
-                      if (e.target === e.currentTarget) {
-                        setSelectedNotification(null);
-                      }
-                    }}
-                  >
-                    <motion.div
-                      initial={{ scale: 0.9 }}
-                      animate={{ scale: 1 }}
-                      exit={{ scale: 0.9 }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
-                      className="bg-white p-6 rounded-2xl shadow-2xl w-[28rem] max-w-full max-h-[80vh] overflow-y-auto"
-                    >
-                      <div className="flex justify-between items-center border-b border-gray-200 pb-3 mb-4">
-                        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                          <FaBell className="text-yellow-500" /> Chi tiết thông
-                          báo
-                        </h2>
-                        <button
-                          onClick={() => {
-                            console.log("Closing modal via close button");
-                            setSelectedNotification(null);
-                          }}
-                          className="text-gray-500 hover:text-red-500 transition duration-200 text-xl"
-                        >
-                          ✖
-                        </button>
-                      </div>
-                      <div className="space-y-4">
-                        <p className="text-gray-700 text-base leading-relaxed line-clamp-4">
-                          {selectedNotification.message}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Thời gian:{" "}
-                          {new Date(
-                            selectedNotification.timestamp ||
-                              selectedNotification.id
-                          ).toLocaleString()}
-                        </p>
-                        {selectedNotification.orderId ? (
-                          <button
-                            onClick={() => {
-                              console.log("Clicked 'Xem chi tiết đơn hàng' button, orderId:", selectedNotification.orderId);
-                              handleNavigateToOrderHistory(selectedNotification.orderId);
-                            }}
-                            className="mt-4 w-full py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 text-sm font-medium"
-                          >
-                            Xem chi tiết đơn hàng
-                          </button>
-                        ) : (
-                          <p className="text-red-500">Không tìm thấy ID đơn hàng trong thông báo.</p>
-                        )}
-                      </div>
-                    </motion.div>
-                  </motion.div>
-                )}
                 {/* Mobile Menu Toggle */}
                 <div className="lg:hidden flex items-center">
                   <button onClick={toggleMobileMenu}>
