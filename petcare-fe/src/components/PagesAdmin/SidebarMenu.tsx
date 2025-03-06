@@ -8,6 +8,7 @@ import {
     FiBox,
     FiPackage,
     FiArchive,
+    FiFileText,
 
 } from "react-icons/fi";
 import { FaGift } from "react-icons/fa";
@@ -61,6 +62,15 @@ const SidebarMenu = () => {
                         >
                             <FiHome className="w-5 h-5 mr-3" />
                             <span>Trang tổng quan</span>
+                        </Link>
+                    </li>
+                    <li>
+                        <Link
+                            to="/admin/invoice-management"
+                            className="flex items-center p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition duration-300"
+                        >
+                            <FiFileText className="w-5 h-5 mr-3" />
+                            <span>Hóa đơn</span>
                         </Link>
                     </li>
                     <li>

@@ -7,7 +7,8 @@ import ProductComments from "./ProductComments.jsx";
 import RelatedProducts from "./RelatedProducts.jsx";
 import { useAuth } from "../../context/AuthContext";
 import Cookies from "js-cookie";
-import Swal from "sweetalert2";
+import { ToastContainer, toast } from "react-toastify"; // Thêm react-toastify
+import "react-toastify/dist/ReactToastify.css"; // Import CSS của react-toastify
 const ProductDetail = () => {
   const { productId } = useParams();
   const [product, setProduct] = useState(null);
@@ -27,6 +28,7 @@ const ProductDetail = () => {
   const navigate = useNavigate();
   useEffect(() => {
     setMainImage(product?.productImage); // Cập nhật ảnh mặc định khi product thay đổi
+    window.scrollTo(0, 0);
   }, [product]);
 
   useEffect(() => {
@@ -112,30 +114,29 @@ const ProductDetail = () => {
   };
 
   const handleAddToCart = async () => {
-    // Lấy userId từ cookies (hoặc từ context nếu đã được xử lý)
     const userId = getUserIdFromToken();
 
     if (!userId) {
-      Swal.fire({
-        title: "Bạn chưa đăng nhập!",
-        text: "Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Đăng nhập",
-        cancelButtonText: "Hủy",
-      }).then((result) => {
-        if (result.isConfirmed) {
-          navigate("/login"); // Điều hướng đến trang đăng nhập
-        }
+      toast.warn("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        onClose: () => navigate("/login"), // Điều hướng sau khi đóng toast
       });
       return;
     }
 
     if (!selectedSize || !selectedColor || !selectedWeight) {
-      Swal.fire({
-        title: "Thiếu thông tin!",
-        text: "Vui lòng chọn kích thước, màu sắc và trọng lượng trước khi thêm vào giỏ hàng.",
-        icon: "warning",
+      toast.warn("Vui lòng chọn kích thước, màu sắc và trọng lượng trước khi thêm vào giỏ hàng.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
       });
       return;
     }
@@ -148,15 +149,17 @@ const ProductDetail = () => {
     );
 
     if (!selectedVariant) {
-      Swal.fire({
-        title: "Lỗi!",
-        text: "Phiên bản sản phẩm này không có sẵn.",
-        icon: "error",
+      toast.error("Phiên bản sản phẩm này không có sẵn.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
       });
       return;
     }
 
-    // Log thông tin trước khi gọi API
     console.log("Adding to cart:", {
       userId,
       productDetailId: selectedVariant.productDetailId,
@@ -170,28 +173,29 @@ const ProductDetail = () => {
         quantity
       );
 
-      Swal.fire({
-        title: "Thành công!",
-        text: "Sản phẩm đã được thêm vào giỏ hàng.",
-        icon: "success",
+      toast.success("Sản phẩm đã được thêm vào giỏ hàng.", {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
       });
     } catch (error) {
       console.error("Error adding to cart:", error);
 
-      // Kiểm tra nếu BE trả về thông báo lỗi
       let errorMessage = "Thêm vào giỏ hàng thất bại. Vui lòng thử lại.";
-      if (
-        error.response &&
-        error.response.data &&
-        error.response.data.message
-      ) {
+      if (error.response && error.response.data && error.response.data.message) {
         errorMessage = error.response.data.message;
       }
 
-      Swal.fire({
-        title: "Lỗi!",
-        text: errorMessage,
-        icon: "error",
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
       });
     }
   };
@@ -498,6 +502,11 @@ const ProductDetail = () => {
             </button>
           </div>
         </div>
+         <ToastContainer
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+              />
       </div>
 
       {/* Bình luận và sản phẩm liên quan */}

@@ -13,7 +13,10 @@ import StockPage from "../components/Manage/StockPage"
 import ManageVoucher from "../components/Manage/ManageVoucher";
 import CreateVoucher from "../components/Manage/createManage/createManageVoucher/CreateVoucher";
 import OrderManage from "../components/Manage/OrderManage";
+import Invoice from "../components/Manage/ManageInvoice";
+
 import ManageEmployee from "../components/Manage/ManageEmployee";
+
 
 function Admin() {
   return (
@@ -29,6 +32,7 @@ function Admin() {
 
             <Route path="/" element={<ManageStatistics/>} />
             <Route path="/warehouse" element={<StockPage />} />
+            <Route path="/invoice-management" element={<Invoice />} />
             <Route path="/" element={<h1>Admin Dashboard</h1>} />
             <Route path="/employee" element={<ManageEmployee />} />
             <Route path="/product-color" element={<ManageProductColor />} />
