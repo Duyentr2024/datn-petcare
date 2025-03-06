@@ -506,7 +506,15 @@ const Checkout = () => {
     const selected = vouchers.find(
       (v) => v.voucherId.toString() === selectedVoucher
     );
-    if (selected) {
+    const today = new Date();
+    if (
+      selected &&
+      (selected.quantity <= 0 || new Date(selected.endDate) < today)
+    ) {
+      setSelectedVoucher(""); // Reset nếu voucher không còn hợp lệ
+      setDiscount(0);
+      setCondition(0);
+    } else if (selected) {
       setDiscount(selected.percents);
       setCondition(selected.condition);
     } else {
@@ -606,6 +614,14 @@ const Checkout = () => {
         }
       );
 
+      // Nếu có voucher được áp dụng, giảm số lượng voucher
+      if (selectedVoucher) {
+        console.log(
+          `[FE] Decrementing voucher quantity for voucherId: ${selectedVoucher} in COD`
+        );
+        await VoucherService.decrementVoucherQuantity(selectedVoucher);
+      }
+
       Swal.fire({
         title: "Thành công!",
         text: "Đặt hàng thành công!",
@@ -614,10 +630,10 @@ const Checkout = () => {
         navigate("/my-account/history");
       });
     } catch (error) {
+      console.error("Error in handlePayment:", error);
       throw error;
     }
   };
-
   const clearCart = async () => {
     try {
       await CartDetailsService.clearCartDetailsByUserId(userId);
@@ -727,7 +743,7 @@ const Checkout = () => {
         Swal.fire(
           "Lỗi!",
           "Không thể xử lý kết quả thanh toán: " +
-            (error.response?.data?.message || error.message),
+          (error.response?.data?.message || error.message),
           "error"
         );
       }
@@ -802,8 +818,8 @@ const Checkout = () => {
                       field.name === "fullName"
                         ? userInfo?.fullName || ""
                         : field.name === "phone"
-                        ? userInfo?.phone || ""
-                        : selectedAddress[field.name] || ""
+                          ? userInfo?.phone || ""
+                          : selectedAddress[field.name] || ""
                     }
                     onChange={handleInputChange}
                     className="mt-1 block w-full md:w-2/3 border border-gray-300 rounded-md shadow-sm p-2"
@@ -887,7 +903,15 @@ const Checkout = () => {
                     🎟 Chọn mã giảm giá
                   </option>
                   {vouchers
-                    .filter((voucher) => subtotal >= voucher.condition) // Chỉ hiển thị voucher nếu subtotal >= condition
+                    .filter((voucher) => {
+                      const today = new Date();
+                      const expiryDate = new Date(voucher.endDate);
+                      return (
+                        subtotal >= voucher.condition && // Điều kiện tối thiểu
+                        voucher.quantity > 0 && // Còn số lượng
+                        expiryDate >= today // Chưa hết hạn
+                      );
+                    })
                     .map((voucher) => (
                       <option
                         key={voucher.voucherId}
@@ -898,10 +922,7 @@ const Checkout = () => {
                         <span className="text-green-500">
                           Số lượng: {voucher.quantity}
                         </span>{" "}
-                        | ⏳{" "}
-                        <span className="text-red-500">
-                          {getDaysUntilExpiry(voucher.endDate)}
-                        </span>
+                        | ⏳ <span className="text-red-500">{getDaysUntilExpiry(voucher.endDate)}</span>
                       </option>
                     ))}
                 </select>
@@ -939,11 +960,10 @@ const Checkout = () => {
                 ].map((method, index) => (
                   <label
                     key={index}
-                    className={`flex flex-col items-center justify-center border w-40 h-40 px-3 py-2 rounded-lg cursor-pointer ${
-                      paymentMethod === method.value
-                        ? "border-yellow-500"
-                        : "border-gray-300"
-                    }`}
+                    className={`flex flex-col items-center justify-center border w-40 h-40 px-3 py-2 rounded-lg cursor-pointer ${paymentMethod === method.value
+                      ? "border-yellow-500"
+                      : "border-gray-300"
+                      }`}
                   >
                     <input
                       type="radio"
