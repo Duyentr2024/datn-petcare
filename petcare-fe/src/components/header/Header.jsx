@@ -511,7 +511,7 @@ export default function Header() {
                   to="/"
                   className="menu-item font-bold flex items-center space-x-1 relative"
                 >
-                  Trang chủ <i className="fas fa-home text-yellow-500"></i>
+                  Trang chủ 
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
                 </Link>
                 <Link
@@ -519,7 +519,7 @@ export default function Header() {
                   className="menu-item font-bold flex items-center space-x-1 relative"
                 >
                   <span className="menu-item font-bold relative">
-                    Giới thiệu<i className="fas fa-home text-yellow-500"></i>
+                    Giới thiệu
                     <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
                   </span>
                 </Link>
