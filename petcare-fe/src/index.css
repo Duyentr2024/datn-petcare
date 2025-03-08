@@ -61,4 +61,65 @@ body {
   .animate-fadeIn {
     animation: fadeIn 0.3s ease-in-out;
   }
+/* Tùy chỉnh thanh cuộn cho class custom-scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px; /* Giảm độ dày thanh cuộn để trông nhẹ nhàng hơn */
+}
 
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent; /* Ẩn track, chỉ để lại thumb */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #fef0d3; /* Màu vàng nhạt cho thumb */
+  border-radius: 12px; /* Bo tròn mạnh hơn để tự nhiên */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #fbb321; /* Màu vàng đậm khi hover */
+}
+
+/* Hỗ trợ Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin; /* Thanh cuộn mỏng */
+  scrollbar-color: #fef0d3 transparent; /* Thumb vàng nhạt, track trong suốt */
+}
+/* NewsDetail.css */
+.slide-in-from-left {
+  opacity: 0;
+}
+
+.slide-in-from-left.visible {
+  animation: slideInFromLeft 0.5s ease-out forwards;
+}
+
+@keyframes slideInFromLeft {
+  0% {
+    transform: translateX(-50px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Các section khác */
+.animate-section {
+  opacity: 0;
+}
+
+.animate-section.visible {
+  animation: slideInFromBottom 0.5s ease-out forwards;
+}
+
+@keyframes slideInFromBottom {
+  0% {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

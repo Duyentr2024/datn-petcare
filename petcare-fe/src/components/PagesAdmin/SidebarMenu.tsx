@@ -7,6 +7,9 @@ import {
     FiUser,
     FiBox,
     FiPackage,
+    FiArchive,
+    FiFileText,
+
 } from "react-icons/fi";
 import { FaGift } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
@@ -61,7 +64,24 @@ const SidebarMenu = () => {
                             <span>Trang tổng quan</span>
                         </Link>
                     </li>
-
+                    <li>
+                        <Link
+                            to="/admin/invoice-management"
+                            className="flex items-center p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition duration-300"
+                        >
+                            <FiFileText className="w-5 h-5 mr-3" />
+                            <span>Hóa đơn</span>
+                        </Link>
+                    </li>
+                    <li>
+                        <Link
+                            to="/admin/warehouse"
+                            className="flex items-center p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition duration-300"
+                        >
+                            <FiArchive className="w-5 h-5 mr-3" />
+                            <span>Kho hàng</span>
+                        </Link>
+                    </li>
                     {/* User Management Dropdown */}
                     <li>
                         <div
