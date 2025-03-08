@@ -1,6 +1,6 @@
 class PostService {
     // URL cơ sở của Firebase Realtime Database
-    static BASE_URL = 'https://fir-eed33-default-rtdb.asia-southeast1.firebasedatabase.app';
+    static BASE_URL = 'https://fir-eed33-default-rtdb.asia-southeast1.firebasedatabase.app/';
   
     /**
      * Lấy toàn bộ danh sách bài viết từ Firebase

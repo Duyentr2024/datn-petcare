@@ -9,6 +9,7 @@ import {
     FiPackage,
     FiArchive,
     FiFileText,
+    FiEdit
 
 } from "react-icons/fi";
 import { FaGift } from "react-icons/fa";
@@ -60,7 +61,7 @@ const SidebarMenu = () => {
                             to="/admin"
                             className="flex items-center p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition duration-300"
                         >
-                            <FiHome className="w-5 h-5 mr-3" />
+                            <FiHome className="w-5 h-5 mr-3"/>
                             <span>Trang tổng quan</span>
                         </Link>
                     </li>
@@ -69,7 +70,7 @@ const SidebarMenu = () => {
                             to="/admin/invoice-management"
                             className="flex items-center p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition duration-300"
                         >
-                            <FiFileText className="w-5 h-5 mr-3" />
+                            <FiFileText className="w-5 h-5 mr-3"/>
                             <span>Hóa đơn</span>
                         </Link>
                     </li>
@@ -78,7 +79,7 @@ const SidebarMenu = () => {
                             to="/admin/warehouse"
                             className="flex items-center p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition duration-300"
                         >
-                            <FiArchive className="w-5 h-5 mr-3" />
+                            <FiArchive className="w-5 h-5 mr-3"/>
                             <span>Kho hàng</span>
                         </Link>
                     </li>
@@ -89,13 +90,13 @@ const SidebarMenu = () => {
                             onClick={toggleUserDropdown}
                         >
                             <div className="flex items-center">
-                                <FiUser className="w-5 h-5 mr-3" />
+                                <FiUser className="w-5 h-5 mr-3"/>
                                 <span>Quản lý tài khoản</span>
                             </div>
                             {isUserDropdownOpen ? (
-                                <FiChevronUp className="w-4 h-4" />
+                                <FiChevronUp className="w-4 h-4"/>
                             ) : (
-                                <FiChevronDown className="w-4 h-4" />
+                                <FiChevronDown className="w-4 h-4"/>
                             )}
                         </div>
                         <AnimatePresence>
@@ -135,13 +136,13 @@ const SidebarMenu = () => {
                             onClick={toggleProductDropdown}
                         >
                             <div className="flex items-center">
-                                <FiBox className="w-5 h-5 mr-3" />
+                                <FiBox className="w-5 h-5 mr-3"/>
                                 <span>Quản lý sản phẩm</span>
                             </div>
                             {isProductDropdownOpen ? (
-                                <FiChevronUp className="w-4 h-4" />
+                                <FiChevronUp className="w-4 h-4"/>
                             ) : (
-                                <FiChevronDown className="w-4 h-4" />
+                                <FiChevronDown className="w-4 h-4"/>
                             )}
                         </div>
                         <AnimatePresence>
@@ -214,7 +215,7 @@ const SidebarMenu = () => {
                             to="/admin/product-inventory"
                             className="flex items-center p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition duration-300"
                         >
-                            <FiPackage className="w-5 h-5 mr-3" />
+                            <FiPackage className="w-5 h-5 mr-3"/>
                             <span>Quản lý đơn hàng</span>
                         </Link>
                     </li>
@@ -225,8 +226,17 @@ const SidebarMenu = () => {
                             to="/admin/voucher-management"
                             className="flex items-center p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition duration-300"
                         >
-                            <FaGift className="w-5 h-5 mr-3" />
+                            <FaGift className="w-5 h-5 mr-3"/>
                             <span>Quản lý Voucher</span>
+                        </Link>
+                    </li>
+                    <li>
+                        <Link
+                            to="/admin/post-management"
+                            className="flex items-center p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition duration-300"
+                        >
+                            <FiEdit className="w-5 h-5 mr-3" />
+                            <span>Quản lý bài viết</span>
                         </Link>
                     </li>
                 </ul>

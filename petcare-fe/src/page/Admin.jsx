@@ -16,6 +16,9 @@ import OrderManage from "../components/Manage/OrderManage";
 import Invoice from "../components/Manage/ManageInvoice";
 
 import ManageEmployee from "../components/Manage/ManageEmployee";
+import PostManage from "../components/Manage/managePost/PostManage.jsx";
+import PostForm from "../components/Manage/managePost/PostForm.jsx";
+import PostDetail from "../components/Manage/managePost/PostDetail.jsx";
 
 
 function Admin() {
@@ -37,6 +40,9 @@ function Admin() {
             <Route path="/employee" element={<ManageEmployee />} />
             <Route path="/product-color" element={<ManageProductColor />} />
             <Route path="/product-size" element={<ManageProductSize />} />
+            <Route path="/post-management" element={<PostManage />} />
+            <Route path="/post-management/postform" element={<PostForm />} />
+            <Route path="/post-management/detail/:id" element={<PostDetail />} />
             <Route path="/product-weights" element={<ManageProductWeights />} />
             <Route path="/product-brands" element={<ManageProductBrand />} />
             <Route path="/product-categories" element={<ManageProductCategories />} />
