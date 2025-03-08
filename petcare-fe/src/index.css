@@ -84,3 +84,42 @@ body {
   scrollbar-width: thin; /* Thanh cuộn mỏng */
   scrollbar-color: #fef0d3 transparent; /* Thumb vàng nhạt, track trong suốt */
 }
+/* NewsDetail.css */
+.slide-in-from-left {
+  opacity: 0;
+}
+
+.slide-in-from-left.visible {
+  animation: slideInFromLeft 0.5s ease-out forwards;
+}
+
+@keyframes slideInFromLeft {
+  0% {
+    transform: translateX(-50px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Các section khác */
+.animate-section {
+  opacity: 0;
+}
+
+.animate-section.visible {
+  animation: slideInFromBottom 0.5s ease-out forwards;
+}
+
+@keyframes slideInFromBottom {
+  0% {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
