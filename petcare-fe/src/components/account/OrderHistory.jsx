@@ -8,8 +8,7 @@ import Swal from "sweetalert2";
 import { FaEye, FaTimes, FaStar } from "react-icons/fa";
 
 const TABS = ["Chờ xác nhận", "Đang vận chuyển", "Chờ giao hàng", "Hoàn thành", "Đã hủy", "Trả hàng"];
-
-const ITEMS_PER_PAGE = 5; // Số đơn hàng mỗi trang
+const ITEMS_PER_PAGE = 5;
 
 const OrderHistory = () => {
   const [orders, setOrders] = useState([]);
@@ -17,23 +16,16 @@ const OrderHistory = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedOrderReview, setselectedOrderReview] = useState(null);
   const [activeTab, setActiveTab] = useState("Chờ xác nhận");
-  const [currentPage, setCurrentPage] = useState(1); // Trang hiện tại
-
+  const [currentPage, setCurrentPage] = useState(1);
   const [cookies] = useCookies(["accessToken"]);
-  const { setUser, setToken } = useAuth();
-  // State để lưu sản phẩm nào đang hiển thị đầy đủ tên
+  const { setUser, setToken, user } = useAuth();
   const [expandedProducts, setExpandedProducts] = useState({});
-
-
   const [selectedProductReview, setSelectedProductReview] = useState(null);
   const [rating, setRating] = useState(0);
   const [comment, setReviewText] = useState("");
 
-  const { user } = useAuth();
-
   useEffect(() => {
     if (userId) return;
-
     const token = cookies.accessToken;
     if (token) {
       const decoded = decodeToken(token);
@@ -45,57 +37,77 @@ const OrderHistory = () => {
 
   useEffect(() => {
     if (!userId) return;
-
     const fetchOrders = async () => {
       try {
         const data = await OrderHistoryService.getOrdersByUserId(userId);
-        const sortedOrders = data.sort(
-          (a, b) => new Date(b.orderDate) - new Date(a.orderDate) // Sắp xếp theo ngày giờ giảm dần
-        );
+        // Sắp xếp tất cả đơn hàng theo orderDate ban đầu
+        const sortedOrders = data.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
         setOrders(sortedOrders);
       } catch (error) {
         console.error("Lỗi khi lấy đơn hàng:", error);
       }
     };
-
     fetchOrders();
   }, [userId]);
 
   const handleCancelOrder = async (orderId) => {
-    const confirmResult = await Swal.fire({
-      title: "Bạn có chắc chắn?",
-      text: "Sau khi hủy, bạn không thể khôi phục đơn hàng này!",
+    const { value: reason, dismiss } = await Swal.fire({
+      title: "Bạn có chắc chắn muốn hủy đơn hàng?",
+      text: "Vui lòng chọn lý do hủy đơn hàng:",
       icon: "warning",
+      input: "select",
+      inputOptions: {
+        "Không muốn mua nữa": "Không muốn mua nữa",
+        "Đổi ý đặt hàng khác": "Đổi ý đặt hàng khác",
+        "Sản phẩm không còn nhu cầu": "Sản phẩm không còn nhu cầu",
+        "Lý do khác": "Lý do khác",
+      },
+      inputPlaceholder: "Chọn lý do",
       showCancelButton: true,
       confirmButtonColor: "#d33",
       cancelButtonColor: "#3085d6",
-      confirmButtonText: "Vâng, hủy đơn!",
-      cancelButtonText: "Không, giữ lại",
+      confirmButtonText: "Xác nhận hủy",
+      cancelButtonText: "Giữ lại",
+      inputValidator: (value) => {
+        if (!value) {
+          return "Bạn phải chọn một lý do!";
+        }
+      },
     });
 
-    if (confirmResult.isConfirmed) {
-      try {
-        const result = await OrderHistoryService.cancelOrder(orderId);
+    if (dismiss === Swal.DismissReason.cancel || !reason) {
+      return;
+    }
 
-        const updatedOrders = orders.map(order =>
-          order.orderId === orderId ? { ...order, statusName: result.status } : order
-        );
-        const sortedOrders = updatedOrders.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate)); // Sắp xếp theo thời gian giảm dần
-        setOrders(sortedOrders);
+    try {
+      const result = await OrderHistoryService.cancelOrder(orderId, reason);
+      const updatedOrders = orders.map(order =>
+        order.orderId === orderId
+          ? { ...order, statusName: result.status, cancelDate: new Date().toISOString() } // Thêm cancelDate
+          : order
+      );
+      const sortedOrders = updatedOrders.sort((a, b) => {
+        if (a.statusName === "Đã hủy" && b.statusName === "Đã hủy") {
+          // Sắp xếp đơn hàng "Đã hủy" theo cancelDate (nếu có) hoặc orderDate
+          return new Date(b.cancelDate || b.orderDate) - new Date(a.cancelDate || a.orderDate);
+        }
+        return new Date(b.orderDate) - new Date(a.orderDate); // Các trạng thái khác theo orderDate
+      });
+      setOrders(sortedOrders);
 
-        Swal.fire({
-          title: "Đã hủy!",
-          text: result.message,
-          icon: "success",
-        });
-
-      } catch (error) {
-        Swal.fire({
-          title: "Lỗi!",
-          text: "Không thể hủy đơn hàng. Vui lòng thử lại.",
-          icon: "error",
-        });
-      }
+      Swal.fire({
+        title: "Đã hủy!",
+        text: "Đơn hàng đã được hủy thành công.",
+        icon: "success",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      Swal.fire({
+        title: "Lỗi!",
+        text: error.message,
+        icon: "error",
+      });
     }
   };
 
@@ -111,13 +123,10 @@ const OrderHistory = () => {
     currentPage * ITEMS_PER_PAGE
   );
 
-  // Hàm định dạng số tiền theo VNĐ
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(amount);
+    return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
   };
+
   const displayedProducts = selectedOrder?.orderDetails || [];
   const displayedProductsReview = selectedOrderReview?.orderDetails || [];
 
@@ -125,14 +134,12 @@ const OrderHistory = () => {
     setselectedOrderReview(order);
   };
 
-  // Hàm toggle mở rộng tên sản phẩm
   const toggleProductName = (id) => {
     setExpandedProducts((prev) => ({
       ...prev,
-      [id]: !prev[id], // Đảo trạng thái giữa true/false
+      [id]: !prev[id],
     }));
   };
-
 
   const handleProductReview = (product) => {
     setSelectedProductReview(product);
@@ -159,24 +166,19 @@ const OrderHistory = () => {
         orderDetails: { orderDetailsId },
       };
 
-      const result = await ReviewService.addReview(reviewData);
-
-      // Hiển thị thông báo thành công
+      await ReviewService.addReview(reviewData);
       Swal.fire({
         icon: "success",
         title: "Cảm ơn bạn!",
         text: "Đánh giá của bạn đã được gửi thành công.",
         confirmButtonColor: "#3085d6",
         timer: 1000,
-        showConfirmButton: false
+        showConfirmButton: false,
       }).then(() => {
-        setSelectedProductReview(null); // Tắt modal sau khi người dùng đóng thông báo
+        setSelectedProductReview(null);
       });
-
     } catch (error) {
       console.error("Gửi đánh giá thất bại:", error);
-
-      // Hiển thị thông báo lỗi
       Swal.fire({
         icon: "error",
         title: "Gửi đánh giá thất bại",
@@ -186,10 +188,8 @@ const OrderHistory = () => {
     }
   };
 
-
   return (
     <div className="p-6 bg-white rounded-lg shadow-md">
-
       <div className="flex border-b mb-4">
         {TABS.map(tab => (
           <button
@@ -197,7 +197,7 @@ const OrderHistory = () => {
             className={`px-4 py-2 ${activeTab === tab ? "border-b-2 border-orange-500 text-orange-500" : "text-gray-600"}`}
             onClick={() => {
               setActiveTab(tab);
-              setCurrentPage(1); // Reset về trang đầu tiên khi đổi tab
+              setCurrentPage(1);
             }}
           >
             {tab}
@@ -208,7 +208,6 @@ const OrderHistory = () => {
       <table className="w-full border-collapse border border-gray-200">
         <thead>
           <tr className="bg-gray-100 text-left">
-            {/* <th className="p-3 border border-gray-200">Mã đơn hàng</th> */}
             <th className="p-3 border border-gray-200">Ngày đặt hàng</th>
             <th className="p-3 border border-gray-200">Tổng tiền</th>
             <th className="p-3 border border-gray-200">Trạng thái</th>
@@ -231,7 +230,6 @@ const OrderHistory = () => {
           ) : (
             displayedOrders.map((order) => (
               <tr key={order.orderId} className="border border-gray-200">
-                {/* <td className="p-3 border border-gray-200">#{order.orderId}</td> */}
                 <td className="p-3 border border-gray-200">
                   {new Date(order.orderDate).toLocaleString("vi-VN", {
                     year: "numeric",
@@ -240,14 +238,9 @@ const OrderHistory = () => {
                   })}
                 </td>
                 <td className="p-3 border border-gray-200 text-red-500">{formatCurrency(order.totalAmount)}</td>
-                <td className="p-3 border border-gray-200 text-orange-500 font-semibold">
-                  {order.statusName}
-                </td>
+                <td className="p-3 border border-gray-200 text-orange-500 font-semibold">{order.statusName}</td>
                 <td className="p-3 border border-gray-200 text-center">
-                  <button
-                    className="text-blue-500 hover:text-blue-700"
-                    onClick={() => setSelectedOrder(order)}
-                  >
+                  <button className="text-blue-500 hover:text-blue-700" onClick={() => setSelectedOrder(order)}>
                     <FaEye className="text-xl" />
                   </button>
                 </td>
@@ -277,7 +270,6 @@ const OrderHistory = () => {
         </tbody>
       </table>
 
-      {/* Phân trang */}
       {totalPages > 1 && (
         <div className="flex justify-center mt-4">
           <button
@@ -298,24 +290,18 @@ const OrderHistory = () => {
         </div>
       )}
 
-      {/* Modal chi tiết đơn hàng */}
       {selectedOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center px-4">
           <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative">
-            {/* Nút đóng modal */}
             <button
               className="absolute top-4 right-4 text-gray-600 hover:text-red-500 text-2xl"
               onClick={() => setSelectedOrder(null)}
             >
               ✖
             </button>
-
-            {/* Tiêu đề */}
             <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
               🛒 Chi tiết đơn hàng #{selectedOrder.orderId}
             </h2>
-
-            {/* Thông tin đơn hàng */}
             <div className="mb-6 space-y-2 text-gray-700">
               <p>
                 <strong className="text-gray-800">📅 Ngày đặt hàng:</strong>{" "}
@@ -326,7 +312,7 @@ const OrderHistory = () => {
                   year: "numeric",
                   month: "2-digit",
                   day: "2-digit",
-                  timeZone: "Asia/Ho_Chi_Minh", // Chỉ định múi giờ Việt Nam (UTC+7)
+                  timeZone: "Asia/Ho_Chi_Minh",
                 })}
               </p>
               <p>
@@ -338,60 +324,30 @@ const OrderHistory = () => {
                 <span className="font-medium">{selectedOrder.statusName}</span>
               </p>
             </div>
-
-            {/* Danh sách sản phẩm */}
             <h3 className="text-xl font-semibold mb-4 text-gray-800">🛍️ Danh sách sản phẩm:</h3>
             <div className="overflow-x-auto pr-2">
-              {/* Thanh cuộn ngang nếu có nhiều sản phẩm */}
               <ul className="flex gap-6">
                 {displayedProducts.map((item) => {
-                  const isExpanded = expandedProducts[item.orderDetailId]; // Kiểm tra sản phẩm có đang mở rộng không
-                  const truncatedName =
-                    item.productName.length > 15
-                      ? item.productName.substring(0, 15) + "..."
-                      : item.productName;
-
+                  const isExpanded = expandedProducts[item.orderDetailId];
+                  const truncatedName = item.productName.length > 15 ? item.productName.substring(0, 15) + "..." : item.productName;
                   return (
-                    <li
-                      key={item.orderDetailId}
-                      className="flex-shrink-0 w-[280px] p-4 bg-gray-50 rounded-lg shadow-lg"
-                    >
+                    <li key={item.orderDetailId} className="flex-shrink-0 w-[280px] p-4 bg-gray-50 rounded-lg shadow-lg">
                       <div className="flex items-center gap-6">
-                        {/* Hình ảnh sản phẩm nằm bên trái */}
-                        <img
-                          src={item.imageUrl}
-                          alt={item.productName}
-                          className="w-24 h-24 object-cover rounded-lg border"
-                        />
-                        {/* Thông tin sản phẩm nằm bên phải */}
+                        <img src={item.imageUrl} alt={item.productName} className="w-24 h-24 object-cover rounded-lg border" />
                         <div className="flex-1 text-left">
                           <p className="font-semibold text-gray-900 text-lg">
                             {isExpanded ? item.productName : truncatedName}
                             {item.productName.length > 15 && (
-                              <button
-                                onClick={() => toggleProductName(item.orderDetailId)}
-                                className="text-blue-500 text-sm ml-2"
-                              >
+                              <button onClick={() => toggleProductName(item.orderDetailId)} className="text-blue-500 text-sm ml-2">
                                 {isExpanded ? "Ẩn bớt" : "Xem thêm"}
                               </button>
                             )}
                           </p>
                           <p>Số lượng: {item.quantity}</p>
-                          <p className="text-red-500 font-bold">
-                            Giá: {formatCurrency(item.price)}
-                          </p>
-                          <p>
-                            <strong className="text-gray-800">Kích thước:</strong>{" "}
-                            {item.sizeValue || "N/A"}
-                          </p>
-                          <p>
-                            <strong className="text-gray-800">Trọng lượng:</strong>{" "}
-                            {item.weightValue ? item.weightValue : "N/A"}
-                          </p>
-                          <p>
-                            <strong className="text-gray-800">Màu sắc:</strong>{" "}
-                            {item.colorValue || "N/A"}
-                          </p>
+                          <p className="text-red-500 font-bold">Giá: {formatCurrency(item.price)}</p>
+                          <p><strong className="text-gray-800">Kích thước:</strong> {item.sizeValue || "N/A"}</p>
+                          <p><strong className="text-gray-800">Trọng lượng:</strong> {item.weightValue || "N/A"}</p>
+                          <p><strong className="text-gray-800">Màu sắc:</strong> {item.colorValue || "N/A"}</p>
                         </div>
                       </div>
                     </li>
@@ -403,32 +359,22 @@ const OrderHistory = () => {
         </div>
       )}
 
-      {/* Modal đánh giá đơn hàng */}
       {selectedOrderReview && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center px-4">
           <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative">
-            {/* Nút đóng modal */}
             <button
               className="absolute top-4 right-4 text-gray-600 hover:text-red-500 text-2xl"
               onClick={() => setselectedOrderReview(null)}
             >
               ✖
             </button>
-
-            {/* Danh sách sản phẩm */}
             <h3 className="text-xl mb-4 text-center font-bold text-gray-800">🛍️ DANH SÁCH SẢN PHẨM ĐÃ MUA</h3>
             <div className="overflow-y-auto max-h-[70vh]">
               <ul className="flex flex-col gap-6">
                 {displayedProductsReview.map((item) => (
                   <li key={item.orderDetailId} className="flex flex-col p-4 bg-gray-50 rounded-lg shadow-lg">
                     <div className="flex items-start gap-6">
-                      {/* Hình ảnh sản phẩm nằm bên trái */}
-                      <img
-                        src={item.imageUrl}
-                        alt={item.productName}
-                        className="w-24 h-24 object-cover rounded-lg border"
-                      />
-                      {/* Thông tin sản phẩm nằm bên phải (sắp xếp ngang) */}
+                      <img src={item.imageUrl} alt={item.productName} className="w-24 h-24 object-cover rounded-lg border" />
                       <div className="flex flex-col gap-2 flex-1 text-left">
                         <p className="font-semibold text-gray-900 text-lg">{item.productName}</p>
                         <p className="inline-flex gap-x-4">
@@ -436,12 +382,10 @@ const OrderHistory = () => {
                           <span className="text-red-500 font-bold"><strong>Giá:</strong> {formatCurrency(item.price)}</span>
                         </p>
                         <div className="flex gap-x-4">
-                          <span><strong className="text-gray-800">Kích thước:</strong> {item.sizeValue || 'N/A'}</span>
-                          <span><strong className="text-gray-800">Trọng lượng:</strong> {item.weightValue || 'N/A'}</span>
-                          <span><strong className="text-gray-800">Màu sắc:</strong> {item.colorValue || 'N/A'}</span>
+                          <span><strong className="text-gray-800">Kích thước:</strong> {item.sizeValue || "N/A"}</span>
+                          <span><strong className="text-gray-800">Trọng lượng:</strong> {item.weightValue || "N/A"}</span>
+                          <span><strong className="text-gray-800">Màu sắc:</strong> {item.colorValue || "N/A"}</span>
                         </div>
-
-                        {/* Nút đánh giá sản phẩm */}
                         <button
                           onClick={() => handleProductReview(item)}
                           className="mt-4 bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600"
@@ -458,35 +402,23 @@ const OrderHistory = () => {
         </div>
       )}
 
-      {/* Modal đánh giá sản phẩm */}
       {selectedProductReview && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center px-4">
           <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md relative">
-            {/* Nút đóng modal */}
             <button
               className="absolute top-4 right-4 text-gray-600 hover:text-red-500 text-2xl"
               onClick={() => setSelectedProductReview(null)}
             >
               ✖
             </button>
-
-            {/* Tiêu đề */}
             <h3 className="text-xl font-semibold text-gray-800 text-center mb-4">
               ⭐ Đánh giá sản phẩm
             </h3>
-
-            {/* Thông tin sản phẩm */}
             <div className="flex items-center gap-4 mb-4">
-              <img
-                src={selectedProductReview.imageUrl}
-                alt={selectedProductReview.productName}
-                className="w-16 h-16 object-cover rounded-lg border"
-              />
+              <img src={selectedProductReview.imageUrl} alt={selectedProductReview.productName} className="w-16 h-16 object-cover rounded-lg border" />
               <p className="font-semibold text-gray-900">{selectedProductReview.productName}</p>
               <p className="font-semibold text-gray-900">{selectedProductReview.orderDetailId}</p>
             </div>
-
-            {/* Chọn số sao */}
             <div className="flex justify-center mb-4">
               {[1, 2, 3, 4, 5].map((star) => (
                 <span
@@ -498,8 +430,6 @@ const OrderHistory = () => {
                 </span>
               ))}
             </div>
-
-            {/* Nhập đánh giá */}
             <textarea
               className="w-full p-2 border rounded-lg focus:ring focus:ring-yellow-300"
               rows="3"
@@ -507,19 +437,15 @@ const OrderHistory = () => {
               value={comment}
               onChange={(e) => setReviewText(e.target.value)}
             />
-
-            {/* Nút gửi đánh giá */}
             <button
               onClick={() => submitReview(selectedProductReview.orderDetailId, rating, comment)}
               className="mt-4 w-full bg-yellow-500 text-white py-2 rounded-md hover:bg-yellow-600"
             >
               Gửi đánh giá
             </button>
-
           </div>
         </div>
       )}
-
     </div>
   );
 };

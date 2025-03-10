@@ -16,6 +16,10 @@ import OrderManage from "../components/Manage/OrderManage";
 import Invoice from "../components/Manage/ManageInvoice";
 
 import ManageEmployee from "../components/Manage/ManageEmployee";
+import PostManage from "../components/Manage/managePost/PostManage.jsx";
+import PostForm from "../components/Manage/managePost/PostForm.jsx";
+import PostDetail from "../components/Manage/managePost/PostDetail.jsx";
+import HeaderAdmin from "../components/header/HeaderAdmin.jsx";
 
 
 function Admin() {
@@ -27,7 +31,8 @@ function Admin() {
         </aside>
 
 
-        <main className="flex-1 p-6 bg-gray-50 overflow-auto">
+        <main className="flex-1  bg-gray-50 overflow-auto">
+          <HeaderAdmin />
           <Routes>
 
             <Route path="/" element={<ManageStatistics/>} />
@@ -37,6 +42,10 @@ function Admin() {
             <Route path="/employee" element={<ManageEmployee />} />
             <Route path="/product-color" element={<ManageProductColor />} />
             <Route path="/product-size" element={<ManageProductSize />} />
+            <Route path="/post-management" element={<PostManage />} />
+            <Route path="/post-management/postform" element={<PostForm />} />
+            <Route path="/post-management/postform/:postId" element={<PostForm />} />
+            <Route path="/post-management/detail/:id" element={<PostDetail />} />
             <Route path="/product-weights" element={<ManageProductWeights />} />
             <Route path="/product-brands" element={<ManageProductBrand />} />
             <Route path="/product-categories" element={<ManageProductCategories />} />
