@@ -19,6 +19,7 @@ import ManageEmployee from "../components/Manage/ManageEmployee";
 import PostManage from "../components/Manage/managePost/PostManage.jsx";
 import PostForm from "../components/Manage/managePost/PostForm.jsx";
 import PostDetail from "../components/Manage/managePost/PostDetail.jsx";
+import HeaderAdmin from "../components/header/HeaderAdmin.jsx";
 
 
 function Admin() {
@@ -30,7 +31,8 @@ function Admin() {
         </aside>
 
 
-        <main className="flex-1 p-6 bg-gray-50 overflow-auto">
+        <main className="flex-1  bg-gray-50 overflow-auto">
+          <HeaderAdmin />
           <Routes>
 
             <Route path="/" element={<ManageStatistics/>} />
