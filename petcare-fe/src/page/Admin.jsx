@@ -42,6 +42,7 @@ function Admin() {
             <Route path="/product-size" element={<ManageProductSize />} />
             <Route path="/post-management" element={<PostManage />} />
             <Route path="/post-management/postform" element={<PostForm />} />
+            <Route path="/post-management/postform/:postId" element={<PostForm />} />
             <Route path="/post-management/detail/:id" element={<PostDetail />} />
             <Route path="/product-weights" element={<ManageProductWeights />} />
             <Route path="/product-brands" element={<ManageProductBrand />} />

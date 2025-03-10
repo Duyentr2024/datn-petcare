@@ -53,7 +53,14 @@ const SidebarMenu = () => {
 
 
             {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto px-4 py-6">
+            <nav className="flex-1 overflow-y-auto px-4 py-2">
+                <div className="flex items-center space-x-4 w-[200px] ">
+                    <img
+                        src="http://localhost:5173/src/assets/images/banner1.png"
+                        alt="Honey The Mona logo"
+                        className="h-[200-px] w-[200px] cursor-pointer"
+                    />
+                </div>
                 <ul className="space-y-2">
                     {/* Dashboard */}
                     <li>
@@ -235,7 +242,7 @@ const SidebarMenu = () => {
                             to="/admin/post-management"
                             className="flex items-center p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition duration-300"
                         >
-                            <FiEdit className="w-5 h-5 mr-3" />
+                            <FiEdit className="w-5 h-5 mr-3"/>
                             <span>Quản lý bài viết</span>
                         </Link>
                     </li>
