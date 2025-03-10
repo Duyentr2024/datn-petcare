@@ -3,6 +3,7 @@ import OrderManageService from "../../service/orderManageService/OrderManageServ
 import VoucherService from "../../service/voucherService/VoucherService.jsx";
 import { FaEye } from "react-icons/fa";
 import Swal from "sweetalert2";
+
 const TABS = [
   { key: "all", label: "Tất cả" },
   { key: "pending", label: "Chờ xác nhận" },
@@ -13,7 +14,7 @@ const TABS = [
   { key: "returned", label: "Trả hàng" },
 ];
 
-const ITEMS_PER_PAGE = 10; // Số đơn hàng trên mỗi trang
+const ITEMS_PER_PAGE = 10;
 
 const OrderManage = () => {
   const [orders, setOrders] = useState([]);
@@ -22,7 +23,6 @@ const OrderManage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [currentTab, setCurrentTab] = useState("all"); // Giá trị mặc định là "all"
   const [vouchers, setVouchers] = useState([]);
 
   useEffect(() => {
@@ -30,7 +30,7 @@ const OrderManage = () => {
   }, []);
 
   useEffect(() => {
-    setCurrentPage(1); // Reset về trang đầu tiên khi đổi tab
+    setCurrentPage(1);
   }, [activeTab, searchTerm, filterStatus]);
 
   useEffect(() => {
@@ -45,23 +45,6 @@ const OrderManage = () => {
     fetchVouchers();
   }, []);
 
-  const fetchVouchers = async () => {
-    try {
-      const data = await VoucherService.getAllVouchers();
-      setVouchers(data);
-    } catch (error) {
-      console.error("Failed to fetch vouchers", error);
-      setVouchers([]);
-    }
-  };
-  // Hàm lấy phần trăm giảm giá dựa trên voucherId
-  const getVoucherPercents = (voucherId) => {
-    const voucher = vouchers.find((v) => v.voucherId === voucherId);
-    return voucher ? voucher.percents : 0; // Trả về 0 nếu không có voucher
-  };
-
-  // Trong modal, tìm voucher tương ứng
-
   const fetchOrders = async () => {
     try {
       const data = await OrderManageService.getAllOrders();
@@ -73,6 +56,12 @@ const OrderManage = () => {
       console.error("Failed to fetch orders", error);
       setOrders([]);
     }
+  };
+
+  // Hàm lấy phần trăm giảm giá từ voucherId
+  const getVoucherPercents = (voucherId) => {
+    const voucher = vouchers.find((v) => v.voucherId === voucherId);
+    return voucher ? voucher.percents : 0;
   };
 
   const statusMap = {
@@ -88,14 +77,12 @@ const OrderManage = () => {
     const order = orders.find((o) => o.orderId === orderId);
     if (!order) return;
 
-    // Danh sách các trạng thái không thể thay đổi (Hoàn thành, Đã hủy, Trả hàng)
     const finalStatuses = [
       statusMap["completed"],
       statusMap["cancelled"],
       statusMap["returned"],
     ];
 
-    // Kiểm tra nếu trạng thái hiện tại nằm trong danh sách không thể thay đổi
     if (finalStatuses.includes(order.statusId)) {
       Swal.fire({
         icon: "warning",
@@ -106,7 +93,6 @@ const OrderManage = () => {
       return;
     }
 
-    // Kiểm tra nếu hủy đơn thì chỉ được khi trạng thái là "Chờ xác nhận"
     if (
       newStatus == statusMap["cancelled"] &&
       order.statusId !== statusMap["pending"]
@@ -121,7 +107,6 @@ const OrderManage = () => {
     }
 
     try {
-      // Hiển thị hộp thoại xác nhận
       const result = await Swal.fire({
         title: "Xác nhận thay đổi?",
         text: "Bạn có chắc chắn muốn cập nhật trạng thái đơn hàng?",
@@ -135,8 +120,6 @@ const OrderManage = () => {
 
       if (result.isConfirmed) {
         await OrderManageService.updateOrderStatus(orderId, newStatus);
-
-        // Cập nhật danh sách đơn hàng sau khi thay đổi trạng thái
         setOrders((prevOrders) =>
           prevOrders.map((order) =>
             order.orderId === orderId
@@ -146,13 +129,11 @@ const OrderManage = () => {
                   paymentStatus:
                     parseInt(newStatus) === statusMap["completed"]
                       ? "Đã thanh toán"
-                      : order.paymentStatus, // Cập nhật paymentStatus nếu trạng thái là "Hoàn thành"
+                      : order.paymentStatus,
                 }
               : order
           )
         );
-
-        // Hiển thị thông báo thành công
         Swal.fire({
           icon: "success",
           title: "Cập nhật thành công!",
@@ -161,7 +142,6 @@ const OrderManage = () => {
       }
     } catch (error) {
       console.error("Cập nhật trạng thái thất bại", error);
-
       Swal.fire({
         icon: "error",
         title: "Lỗi!",
@@ -178,7 +158,6 @@ const OrderManage = () => {
     );
   });
 
-  // Tính toán phân trang
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
   const paginatedOrders = filteredOrders.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
@@ -198,7 +177,6 @@ const OrderManage = () => {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="p-2 border rounded w-1/3"
         />
-
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value)}
@@ -339,73 +317,96 @@ const OrderManage = () => {
               Chi tiết đơn hàng
             </h2>
 
-            {/* Chia thành 2 cột ngang */}
-            <div className="flex flex-col md:flex-row gap-6 mb-4">
-              {/* Cột trái */}
-              <div className="flex-1 border-b pb-4">
-                <p className="text-lg">
-                  <strong>Mã đơn hàng:</strong>{" "}
-                  {selectedOrder.orderId || "Không có"}
-                </p>
-                <p className="text-lg">
-                  <strong>Khách hàng:</strong>{" "}
-                  {selectedOrder.userName || "Không có"}
-                </p>
-                <p className="text-lg">
-                  <strong>Số điện thoại:</strong>{" "}
-                  {selectedOrder.phone || "Không có"}
-                </p>
-                <p className="text-lg">
-                  <strong>Ngày đặt hàng:</strong>{" "}
-                  {selectedOrder.orderDate
-                    ? new Date(selectedOrder.orderDate).toLocaleString(
-                        "vi-VN",
-                        {
-                          timeZone: "Asia/Ho_Chi_Minh",
-                          year: "numeric",
-                          month: "2-digit",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          second: "2-digit",
-                        }
-                      )
-                    : "Không có"}
-                </p>
-              </div>
+            {/* Tính tổng tiền sản phẩm chưa tính phí ship và voucher */}
+            {(() => {
+              const subtotalProducts =
+                selectedOrder.orderDetails?.reduce(
+                  (sum, item) => sum + (item.price || 0) * (item.quantity || 0),
+                  0
+                ) || 0;
 
-              {/* Cột phải */}
-              <div className="flex-1 border-b pb-4">
-                <p className="text-lg">
-                  <strong>Địa chỉ:</strong>{" "}
-                  {selectedOrder.shippingAddress || "Không có"}
-                </p>
-                <p className="text-lg">
-                  <strong>Phí ship:</strong>{" "}
-                  {selectedOrder.shippingCost !== undefined
-                    ? selectedOrder.shippingCost.toLocaleString()
-                    : "0"}{" "}
-                  VNĐ
-                </p>
-                <p className="text-lg">
-                  <strong>Voucher áp dụng:</strong>{" "}
-                  {selectedOrder.voucherId
-                    ? `Giảm ${getVoucherPercents(
-                        selectedOrder.voucherId
-                      )}% từ voucher`
-                    : "Không có"}
-                </p>
-                <p className="text-lg text-red-600 font-normal">
-                  <strong>Tổng tiền:</strong>{" "}
-                  {selectedOrder.totalAmount !== undefined
-                    ? selectedOrder.totalAmount.toLocaleString()
-                    : "0"}{" "}
-                  VNĐ
-                </p>
-              </div>
-            </div>
+              return (
+                <div className="flex flex-col md:flex-row gap-6 mb-4">
+                  {/* Cột trái */}
+                  <div className="flex-1 border-b pb-4">
+                    <p className="text-lg">
+                      <strong>Mã đơn hàng:</strong>{" "}
+                      {selectedOrder.orderId || "Không có"}
+                    </p>
+                    <p className="text-lg">
+                      <strong>Khách hàng:</strong>{" "}
+                      {selectedOrder.userName || "Không có"}
+                    </p>
+                    <p className="text-lg">
+                      <strong>Số điện thoại:</strong>{" "}
+                      {selectedOrder.phone || "Không có"}
+                    </p>
+                    <p className="text-lg">
+                      <strong>Ngày đặt hàng:</strong>{" "}
+                      {selectedOrder.orderDate
+                        ? new Date(selectedOrder.orderDate).toLocaleString(
+                            "vi-VN",
+                            {
+                              timeZone: "Asia/Ho_Chi_Minh",
+                              year: "numeric",
+                              month: "2-digit",
+                              day: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              second: "2-digit",
+                            }
+                          )
+                        : "Không có"}
+                    </p>
+                    <p className="text-lg">
+                      <strong>Địa chỉ:</strong>{" "}
+                      {selectedOrder.shippingAddress || "Không có"}
+                    </p>
+                  </div>
 
-            {/* Danh sách sản phẩm với chiều cao cố định và thanh cuộn */}
+                  {/* Cột phải */}
+                  <div className="flex-1 border-b pb-4">
+                    <p className="text-lg pb-4">
+                      <strong>Phí vận chuyển:</strong>
+                      <span className="text-red-400">
+                        {" "}
+                        {selectedOrder.shippingCost !== undefined
+                          ? selectedOrder.shippingCost.toLocaleString()
+                          : "0"}{" "}
+                        VNĐ
+                      </span>
+                    </p>
+                    <p className="text-lg pb-4">
+                      <strong>Voucher áp dụng:</strong>{" "}
+                      <span className="text-green-600">
+                        {selectedOrder.voucherId
+                          ? `Giảm ${getVoucherPercents(
+                              selectedOrder.voucherId
+                            )}% từ voucher`
+                          : "Không có"}
+                      </span>
+                    </p>
+                    <p className="text-lg pb-4">
+                      <strong>Tổng tiền sản phẩm:</strong>{" "}
+                      <span className="text-red-400 font-normal">
+                        {subtotalProducts.toLocaleString()} VNĐ
+                      </span>
+                    </p>
+                    <p className="text-lg">
+                      <strong>Thành tiền:</strong>
+                      <span className="text-red-600 font-bold">
+                        {" "}
+                        {selectedOrder.totalAmount !== undefined
+                          ? selectedOrder.totalAmount.toLocaleString()
+                          : "0"}{" "}
+                        VNĐ
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
             <h3 className="text-xl font-semibold mb-2 text-gray-700">
               Sản phẩm:
             </h3>
