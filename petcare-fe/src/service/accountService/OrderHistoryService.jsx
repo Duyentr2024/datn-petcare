@@ -14,17 +14,21 @@ const OrderHistoryService = {
     }
   },
 
-  cancelOrder: async (orderId) => {
+  cancelOrder: async (orderId, reason) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/orders/cancel/${orderId}`, {
-        method: "PUT",
+      const url = `${API_BASE_URL}/api/orders/${orderId}/cancel`;
+      console.log("Canceling order:", url, "with reason:", reason); // Debug
+      const response = await fetch(url, {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ reason }),
       });
 
       if (!response.ok) {
-        throw new Error("Không thể hủy đơn hàng");
+        const errorText = await response.text();
+        throw new Error(`Không thể hủy đơn hàng: ${errorText}`);
       }
 
       return await response.json();
@@ -35,7 +39,6 @@ const OrderHistoryService = {
   },
 
 
-  
 };
 
 export default OrderHistoryService;
