@@ -10,8 +10,6 @@ import PrivateRoute from "./context/PrivateRoute.jsx";
 import OrderOffline from "./components/orderOffline/OrderOffline.jsx"
 import AdminSpa from "./components/spaGrooming/admin/AdminAppointment.jsx";
 
-import OrderOffline from "./components/orderOffline/OrderOffline.jsx";
-
 
 function App() {
   return (
