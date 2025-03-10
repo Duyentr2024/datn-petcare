@@ -37,6 +37,16 @@ const ManageStatistics = () => {
   const [topFiveCustomers, setTopFiveCustomers] = useState([]);
   const [ordersByRange, setOrdersByRange] = useState({ offlineOrders: null, onlineOrders: null });
 
+  // Hàm định dạng ngày từ BE sang dd/mm/yyyy
+  const formatDateFromBE = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
   const exportRevenueReport = async () => {
     if (chartData.length === 0) {
       toast.error("Không có dữ liệu để xuất.");
@@ -65,9 +75,7 @@ const ManageStatistics = () => {
     worksheet.mergeCells("A2:F2");
     const periodRow = worksheet.addRow([
       `Thời gian thống kê: ${startDate && endDate
-        ? `${new Date(startDate).toLocaleDateString("vi-VN")} - ${new Date(
-          endDate
-        ).toLocaleDateString("vi-VN")}`
+        ? `${new Date(startDate).toLocaleDateString("vi-VN")} - ${new Date(endDate).toLocaleDateString("vi-VN")}`
         : "Tháng hiện tại"
       }`,
     ]);
@@ -174,13 +182,13 @@ const ManageStatistics = () => {
     ])
       .then(([revenueRes, orderCountRes]) => {
         const revenueData = Object.entries(revenueRes.data).map(([date, stats]) => ({
-          date: new Date(date).toISOString().slice(0, 10), // Chuẩn hóa thành yyyy-mm-dd
+          date: formatDateFromBE(date), // Định dạng ngay từ BE thành dd/mm/yyyy
           revenue: Number(stats.revenue),
           orderCount: Number(stats.orderCount),
         }));
 
         const orderCountData = Object.entries(orderCountRes.data).reduce((acc, [date, stats]) => {
-          const normalizedDate = new Date(date).toISOString().slice(0, 10);
+          const normalizedDate = formatDateFromBE(date); // Chuẩn hóa ngày từ orderCount
           acc[normalizedDate] = {
             onlineOrders: Number(stats.onlineOrders),
             offlineOrders: Number(stats.offlineOrders),
@@ -189,7 +197,7 @@ const ManageStatistics = () => {
         }, {});
 
         const combinedData = revenueData.map((item) => ({
-          date: new Date(item.date).toLocaleDateString("vi-VN"), // Hiển thị dạng dd/mm/yyyy
+          date: item.date, // Sử dụng định dạng dd/mm/yyyy
           revenue: item.revenue,
           orderCount: item.orderCount,
           onlineOrders: orderCountData[item.date]?.onlineOrders || 0,
@@ -258,13 +266,13 @@ const ManageStatistics = () => {
       ])
         .then(([revenueRes, orderCountRes]) => {
           const revenueData = Object.entries(revenueRes.data).map(([date, stats]) => ({
-            date: new Date(date).toISOString().slice(0, 10),
+            date: formatDateFromBE(date), // Chuẩn hóa ngày từ BE thành dd/mm/yyyy
             revenue: Number(stats.revenue || stats),
             orderCount: stats.orderCount ? Number(stats.orderCount) : 0,
           }));
 
           const orderCountData = Object.entries(orderCountRes.data).reduce((acc, [date, stats]) => {
-            const normalizedDate = new Date(date).toISOString().slice(0, 10);
+            const normalizedDate = formatDateFromBE(date); // Chuẩn hóa ngày từ orderCount
             acc[normalizedDate] = {
               onlineOrders: Number(stats.onlineOrders),
               offlineOrders: Number(stats.offlineOrders),
@@ -273,20 +281,15 @@ const ManageStatistics = () => {
           }, {});
 
           const combinedData = revenueData.map((item) => ({
-            date: new Date(item.date).toLocaleDateString("vi-VN"),
+            date: item.date, // Sử dụng định dạng dd/mm/yyyy
             revenue: item.revenue,
             orderCount: item.orderCount,
             onlineOrders: orderCountData[item.date]?.onlineOrders || 0,
             offlineOrders: orderCountData[item.date]?.offlineOrders || 0,
           }));
 
-          const filteredData = combinedData.filter((item) => {
-            const itemDate = new Date(item.date.split("/").reverse().join("-"));
-            return itemDate >= start && itemDate <= end;
-          });
-
-          setChartData(filteredData);
-          const total = filteredData.reduce((sum, item) => sum + item.revenue, 0);
+          setChartData(combinedData);
+          const total = combinedData.reduce((sum, item) => sum + item.revenue, 0);
           setTotalRevenue(total);
         })
         .catch((error) => {
@@ -295,11 +298,6 @@ const ManageStatistics = () => {
         });
       StatisticsService.getOrdersByDateRange(startDate, endDate).then((res) => {
         setOrdersByRange(res.data);
-        setTotalOrdersByRange({
-          totalOrders: (res.data.offlineOrders || 0) + (res.data.onlineOrders || 0),
-          offlineOrders: res.data.offlineOrders || 0,
-          onlineOrders: res.data.onlineOrders || 0,
-        });
       });
     } else if (daysDiff <= 90) {
       setViewType("weekly");
@@ -340,11 +338,6 @@ const ManageStatistics = () => {
         });
       StatisticsService.getOrdersByDateRange(startDate, endDate).then((res) => {
         setOrdersByRange(res.data);
-        setTotalOrdersByRange({
-          totalOrders: (res.data.offlineOrders || 0) + (res.data.onlineOrders || 0),
-          offlineOrders: res.data.offlineOrders || 0,
-          onlineOrders: res.data.onlineOrders || 0,
-        });
       });
     } else {
       setViewType("monthly");
@@ -355,18 +348,18 @@ const ManageStatistics = () => {
         .then(([revenueRes, orderCountRes]) => {
           const totalRevenue = Number(revenueRes.data);
           const orderCountData = orderCountRes.data.map((item) => ({
-            month: item.month, // Định dạng yyyy-MM (e.g., "2025-02")
+            month: item.month,
             orderCount: Number(item.orderCount),
             onlineOrders: Number(item.onlineOrders),
             offlineOrders: Number(item.offlineOrders),
           }));
 
           const combinedData = orderCountData.map((item) => {
-            const monthDate = new Date(item.month + "-01"); // Chuyển yyyy-MM thành Date
+            const monthDate = new Date(item.month + "-01");
             const monthStr = monthDate.toLocaleDateString("vi-VN", {
               month: "long",
               year: "numeric",
-            }); // Hiển thị dạng "Tháng 2 2025"
+            });
             return {
               month: monthStr,
               revenue:
@@ -384,19 +377,14 @@ const ManageStatistics = () => {
         })
         .catch((error) => {
           console.error("Error fetching monthly data:", error);
-          toast.error("Có lỗi khi lấy dữ liệu hàng tháng! Kiểm tra console để xem chi tiết.");
+          toast.error("Có lỗi khi lấy dữ liệu hàng tháng!");
         });
-      // Lấy tổng đơn hàng, đơn offline, và đơn online cho khoảng thời gian monthly
       StatisticsService.getOrdersByDateRange(startDate, endDate).then((res) => {
         setOrdersByRange(res.data);
-        setTotalOrdersByRange({
-          totalOrders: (res.data.offlineOrders || 0) + (res.data.onlineOrders || 0),
-          offlineOrders: res.data.offlineOrders || 0,
-          onlineOrders: res.data.onlineOrders || 0,
-        });
       });
     }
   };
+
   const formatCurrency = (value) => {
     return value !== null
       ? value.toLocaleString("vi-VN", { style: "currency", currency: "VND" })
@@ -555,7 +543,10 @@ const ManageStatistics = () => {
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey={viewType === "daily" ? "date" : viewType === "weekly" ? "week" : "month"} />
+              <XAxis
+                dataKey={viewType === "daily" ? "date" : viewType === "weekly" ? "week" : "month"}
+                tickFormatter={(value) => value} // Hiển thị giá trị đã định dạng từ chartData
+              />
               <YAxis
                 yAxisId="left"
                 orientation="left"
@@ -577,6 +568,7 @@ const ManageStatistics = () => {
                 formatter={(value, name) =>
                   name === "revenue" ? formatCurrency(value) : value.toLocaleString("vi-VN")
                 }
+                labelFormatter={(label) => label} // Giữ nguyên nhãn đã định dạng
               />
               <Bar yAxisId="left" dataKey="revenue" fill="#3B82F6" name="Doanh thu" />
               <Bar yAxisId="right" dataKey="orderCount" fill="#82ca9d" name="Đơn hàng" />

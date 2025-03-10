@@ -1,33 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { IoSearchOutline, IoClose, IoCheckmark } from "react-icons/io5";
-import { getAllProductDetails, createOfflineOrder, getPointsByPhone, applyDiscount } from "../../service/orderOfflineService/OfflineService";
-
+import { getAllProductDetails, createOfflineOrder, getPointsByPhone, applyDiscount, addProductToOfflineCart, removeProductFromOfflineCart, getOfflineCartDetails } from "../../service/orderOfflineService/OfflineService";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-// Định nghĩa hàm isPaymentDisabled trước
+import Cookies from "js-cookie";
+import { useCookies } from "react-cookie";
+import { decodeToken } from "../utils/jwt";
+import { useNavigate } from "react-router-dom";
+
 const isPaymentDisabled = (currentTab) => {
-  // Tính tổng tiền đơn hàng sau khi giảm giá
   const totalAmount = Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 10 * 30000));
-  // Lấy phương thức thanh toán hiện tại, mặc định là 'CASH' nếu không có lựa chọn nào
-  const paymentMethod = document.querySelector('input[name="payment"]:checked')?.value || 'CASH';
 
-  // Nếu không có sản phẩm trong giỏ hàng, vô hiệu hóa nút thanh toán
   if (currentTab.products.length === 0) {
-    return true;
+    return true; // Vô hiệu hóa nếu không có sản phẩm
   }
 
-  // Logic cho phương thức thanh toán 'CASH'
-  if (paymentMethod === 'CASH') {
-    // Nếu tổng tiền bằng 0 (sau khi giảm giá), kích hoạt nút thanh toán
+  if (currentTab.paymentMethod === 'TRANSFER') {
+    return false; // Luôn cho phép thanh toán nếu là chuyển khoản
+  }
+
+  if (currentTab.paymentMethod === 'CASH') {
     if (totalAmount === 0) {
-      return false;
+      return false; // Cho phép thanh toán nếu tổng tiền là 0
     }
-    // Nếu tổng tiền > 0, kiểm tra xem số tiền khách đưa có đủ hay không
-    return currentTab.customerPayment < totalAmount;
+    return currentTab.customerPayment < totalAmount; // Kiểm tra số tiền nếu là tiền mặt
   }
 
-  // Đối với các phương thức thanh toán khác, chỉ cần có sản phẩm là kích hoạt nút thanh toán
-  return false;
+  return true; // Mặc định vô hiệu hóa nếu không có phương thức
 };
 
 const OrderOffline = () => {
@@ -39,6 +38,7 @@ const OrderOffline = () => {
       customerPayment: 0,
       inputPayment: '',
       change: 0,
+      paymentMethod: 'CASH', 
       error: '',
       customerPhone: '',
       customerName: 'Khách vãng lai',
@@ -50,10 +50,32 @@ const OrderOffline = () => {
   const [activeTab, setActiveTab] = useState(1);
   const [productsFromApi, setProductsFromApi] = useState([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [staffId, setStaffId] = useState(2);
-  const [currentPage, setCurrentPage] = useState(1); // Nâng currentPage lên OrderOffline
-  const staffName = localStorage.getItem('staffName') || 'Nhân viên';
+  const [staffId, setStaffId] = useState(null);
+  const [staffName, setStaffName] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [cookies] = useCookies(["accessToken"]);
+  const navigate = useNavigate();
 
+  // Khi component mount, xác thực nhân viên và lấy giỏ hàng offline
+  useEffect(() => {
+    const token = cookies.accessToken;
+    if (token) {
+      const decoded = decodeToken(token);
+      if (decoded) {
+        setStaffId(decoded.userId);
+        setStaffName(decoded.fullName || "Nhân viên");
+        setIsAuthenticated(true);
+        fetchOfflineCartDetails(decoded.userId); // Lấy giỏ hàng offline
+      } else {
+        navigate("/login");
+      }
+    } else {
+      navigate("/login");
+    }
+  }, [cookies.accessToken, navigate]);
+
+  // Lấy danh sách sản phẩm từ API
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -66,6 +88,28 @@ const OrderOffline = () => {
     fetchProducts();
   }, []);
 
+  // Hàm lấy chi tiết giỏ hàng offline từ backend
+  const fetchOfflineCartDetails = async (userId) => {
+    try {
+      const cartDetails = await getOfflineCartDetails(userId);
+      const cartProducts = cartDetails.map(cart => ({
+        id: cart.productDetails.productDetailId,
+        name: cart.productDetails.products.productName,
+        variant: `${cart.productDetails.productSizes?.sizeValue || 'N/A'} | ${cart.productDetails.weights?.weightValue || 'N/A'}kg | ${cart.productDetails.productColors?.colorValue || 'N/A'}`,
+        quantity: cart.quantityItem,
+        price: cart.productDetails.price,
+        total: cart.quantityItem * cart.productDetails.price,
+        image: cart.productDetails.products?.image || '/images/default-image.jpg'
+      }));
+      setTabs(tabs.map(tab =>
+        tab.id === activeTab ? { ...tab, products: cartProducts } : tab
+      ));
+    } catch (error) {
+      toast.error('Không thể lấy giỏ hàng offline');
+    }
+  };
+
+  // Component ProductLists (giữ nguyên từ code của bạn, chỉ thêm logic chọn sản phẩm)
   const ProductLists = ({ products, handleAddProduct, selectedProducts, currentPage, setCurrentPage }) => {
     const [localSearchTerm, setLocalSearchTerm] = useState("");
     const productsPerPage = 10;
@@ -108,8 +152,7 @@ const OrderOffline = () => {
               {currentProducts.map((product, index) => (
                 <tr
                   key={product.productDetailId}
-                  className={`border-b hover:bg-gray-100 cursor-pointer ${selectedProducts.some(p => p.id === product.productDetailId) ? 'bg-green-50' : ''
-                    }`}
+                  className={`border-b hover:bg-gray-100 cursor-pointer ${selectedProducts.some(p => p.id === product.productDetailId) ? 'bg-green-50' : ''}`}
                   onClick={() => handleAddProduct(product)}
                 >
                   <td className="p-1 text-xs">{indexOfFirstProduct + index + 1}</td>
@@ -122,8 +165,7 @@ const OrderOffline = () => {
                   </td>
                   <td className="p-1 text-xs">{product.products?.productName || 'N/A'}</td>
                   <td className="p-1 text-xs">
-                    {`${product.productSizes?.sizeValue || 'N/A'} | ${product.weights?.weightValue || 'N/A'
-                      }kg | ${product.productColors?.colorValue || 'N/A'}`}
+                    {`${product.productSizes?.sizeValue || 'N/A'} | ${product.weights?.weightValue || 'N/A'}kg | ${product.productColors?.colorValue || 'N/A'}`}
                   </td>
                   <td className="p-1 text-right text-xs">{product.price?.toLocaleString() || '0'}đ</td>
                   <td className="p-1 text-right text-xs">{product.quantity || 0}</td>
@@ -158,6 +200,129 @@ const OrderOffline = () => {
     );
   };
 
+  // Xử lý thêm/xóa sản phẩm vào giỏ hàng offline
+  const handleAddProduct = async (product) => {
+    const userId = staffId;
+    const productDetailId = product.productDetailId;
+    const currentTab = tabs.find(tab => tab.id === activeTab);
+    const existingProduct = currentTab.products.find(p => p.id === productDetailId);
+
+    try {
+      if (existingProduct) {
+        // Xóa sản phẩm khỏi giỏ hàng offline
+        await removeProductFromOfflineCart(userId, productDetailId);
+        setTabs(tabs.map(tab =>
+          tab.id === activeTab
+            ? { ...tab, products: tab.products.filter(p => p.id !== productDetailId) }
+            : tab
+        ));
+        // toast.success(`Đã xóa ${product.products.productName} khỏi giỏ hàng offline`); // Xóa dòng này
+      } else {
+        // Thêm sản phẩm vào giỏ hàng offline
+        if (product.quantity < 1) {
+          toast.error(`Sản phẩm "${product.products.productName}" đã hết hàng!`);
+          return;
+        }
+        await addProductToOfflineCart(userId, productDetailId, 1);
+        setTabs(tabs.map(tab =>
+          tab.id === activeTab
+            ? {
+              ...tab,
+              products: [...tab.products, {
+                id: product.productDetailId,
+                name: product.products.productName,
+                variant: `${product.productSizes?.sizeValue || 'N/A'} | ${product.weights?.weightValue || 'N/A'}kg | ${product.productColors?.colorValue || 'N/A'}`,
+                quantity: 1,
+                price: product.price,
+                total: product.price,
+                image: product.products?.image || '/images/default-image.jpg'
+              }]
+            }
+            : tab
+        ));
+        // toast.success(`Đã thêm ${product.products.productName} vào giỏ hàng offline`); // Xóa dòng này
+      }
+    } catch (error) {
+      toast.error('Không thể cập nhật giỏ hàng offline');
+    }
+  };
+
+  const handlePaymentMethodChange = (method) => {
+    setTabs(tabs.map(tab =>
+      tab.id === activeTab ? { ...tab, paymentMethod: method } : tab
+    ));
+  };
+
+  // Xử lý thanh toán
+  const handlePayment = async () => {
+    const totalAmount = Math.max(
+      0,
+      currentTab.products.reduce((sum, p) => sum + p.total, 0) -
+      (currentTab.pointsToUse / 10) * 30000
+    );
+
+    if (currentTab.paymentMethod === 'CASH' && currentTab.customerPayment < totalAmount) {
+      toast.warn('Số tiền khách đưa không đủ để thanh toán!');
+      return;
+    }
+
+    const orderData = {
+      userId: staffId,
+      items: currentTab.products.map((product) => ({
+        productDetailId: product.id,
+        quantity: product.quantity,
+      })),
+      paymentMethod: currentTab.paymentMethod,
+      customerPhone: currentTab.customerPhone || null,
+      customerName: currentTab.customerName || 'Khách vãng lai',
+      accumulatePoints: !!currentTab.customerPhone,
+      pointsToUse: currentTab.pointsToUse,
+    };
+
+    try {
+      let response;
+      if (currentTab.pointsToUse > 0) {
+        response = await applyDiscount(orderData);
+      } else {
+        response = await createOfflineOrder(orderData);
+      }
+
+      toast.success(
+        `Thanh toán thành công!\nMã đơn:${response.orderId}\nTổng tiền: ${response.totalAmount.toLocaleString()}đ`
+      );
+
+      setTabs(
+        tabs.map((tab) =>
+          tab.id === activeTab
+            ? {
+              ...tab,
+              products: [],
+              customerPayment: 0,
+              inputPayment: '',
+              change: 0,
+              error: '',
+              customerPhone: '',
+              customerName: 'Khách vãng lai',
+              totalPoints: 0,
+              pointsToUse: 0,
+              paymentMethod: 'CASH' // Đặt lại về mặc định sau khi thanh toán
+            }
+            : tab
+        )
+      );
+
+      const updatedProducts = await getAllProductDetails();
+      setProductsFromApi(updatedProducts);
+    } catch (error) {
+      console.error('Lỗi thanh toán:', error.response ? error.response.data : error.message);
+      toast.error(
+        'Thanh toán thất bại: ' +
+        (error.response?.data?.message || error.message || 'Lỗi không xác định')
+      );
+    }
+  };
+
+  // Các hàm khác (giữ nguyên từ code của bạn)
   const handlePointsToUseChange = (value) => {
     const points = parseInt(value) || 0;
     setTabs(tabs.map(tab => {
@@ -206,7 +371,15 @@ const OrderOffline = () => {
       if (tab.id === activeTab) {
         const updatedProducts = tab.products.map(product => {
           if (product.id === productId) {
+            const productInStock = productsFromApi.find(p => p.productDetailId === productId);
+            const stockQuantity = productInStock?.quantity || 0;
             const newQuantity = product.quantity + 1;
+
+            if (newQuantity > stockQuantity) {
+              toast.error(`Số lượng vượt quá tồn kho (${stockQuantity})!`);
+              return product;
+            }
+
             return { ...product, quantity: newQuantity, total: product.price * newQuantity };
           }
           return product;
@@ -234,12 +407,7 @@ const OrderOffline = () => {
   };
 
   const handleDelete = (productId) => {
-    setTabs(tabs.map(tab => {
-      if (tab.id === activeTab) {
-        return { ...tab, products: tab.products.filter(product => product.id !== productId) };
-      }
-      return tab;
-    }));
+    handleAddProduct(productsFromApi.find(p => p.productDetailId === productId));
   };
 
   const handleQuickAmount = (amount) => {
@@ -347,112 +515,9 @@ const OrderOffline = () => {
     }));
   };
 
-  const handleAddProduct = (product) => {
-    setTabs(tabs.map(tab => {
-      if (tab.id === activeTab) {
-        const existingProduct = tab.products.find(p => p.id === product.productDetailId);
-        if (existingProduct) {
-          return {
-            ...tab,
-            products: tab.products.filter(p => p.id !== product.productDetailId)
-          };
-        } else {
-          return {
-            ...tab,
-            products: [...tab.products, {
-              id: product.productDetailId,
-              code: product.productDetailId,
-              name: product.products?.productName || 'N/A',
-              variant: `${product.productSizes?.sizeValue || 'N/A'} | ${product.weights?.weightValue || 'N/A'}kg | ${product.productColors?.colorValue || 'N/A'}`,
-              variants: [`${product.productSizes?.sizeValue || 'N/A'} | ${product.weights?.weightValue || 'N/A'}kg | ${product.productColors?.colorValue || 'N/A'}`],
-              quantity: 1,
-              price: product.price || 0,
-              total: product.price || 0,
-              image: product.imageUrl || product.products?.image || '/images/default-image.jpg'
-            }]
-          };
-        }
-      }
-      return tab;
-    }));
-  };
-  const handlePayment = async () => {
-    const totalAmount = Math.max(
-      0,
-      currentTab.products.reduce((sum, p) => sum + p.total, 0) -
-        (currentTab.pointsToUse / 10) * 30000
-    );
-    const paymentMethod =
-      document.querySelector('input[name="payment"]:checked')?.value || 'CASH';
-  
-    // Kiểm tra số tiền khách đưa nếu dùng tiền mặt
-    if (paymentMethod === 'CASH' && currentTab.customerPayment < totalAmount) {
-      toast.warn('Số tiền khách đưa không đủ để thanh toán!');
-      return;
-    }
-  
-    const orderData = {
-      userId: staffId,
-      items: currentTab.products.map((product) => ({
-        productDetailId: product.id,
-        quantity: product.quantity,
-      })),
-      paymentMethod: paymentMethod,
-      customerPhone: currentTab.customerPhone || null,
-      customerName: currentTab.customerName || 'Khách vãng lai',
-      accumulatePoints: !!currentTab.customerPhone,
-      pointsToUse: currentTab.pointsToUse,
-    };
-  
-    try {
-      let response;
-      if (currentTab.pointsToUse > 0) {
-        response = await applyDiscount(orderData);
-      } else {
-        response = await createOfflineOrder(orderData);
-      }
-  
-      // Thông báo thanh toán thành công
-      toast.success(
-        `Thanh toán thành công!\nMã đơn:${response.orderId}\nTổng tiền: ${response.totalAmount.toLocaleString()}đ`
-      );
-  
-      // Reset tab sau khi thanh toán thành công
-      setTabs(
-        tabs.map((tab) =>
-          tab.id === activeTab
-            ? {
-                ...tab,
-                products: [],
-                customerPayment: 0,
-                inputPayment: '',
-                change: 0,
-                error: '',
-                customerPhone: '',
-                customerName: 'Khách vãng lai',
-                totalPoints: 0,
-                pointsToUse: 0,
-              }
-            : tab
-        )
-      );
-  
-      // Cập nhật danh sách sản phẩm
-      const updatedProducts = await getAllProductDetails();
-      setProductsFromApi(updatedProducts);
-    } catch (error) {
-      console.error('Lỗi thanh toán:', error.response ? error.response.data : error.message);
-      // Thông báo lỗi khi thanh toán thất bại
-      toast.error(
-        'Thanh toán thất bại: ' +
-          (error.response?.data?.message || error.message || 'Lỗi không xác định')
-      );
-    }
-  };
-
   return (
     <div className="flex flex-col h-screen">
-      <div className="bg-[#fbb321] p-1 sm:p-2 fixed top-0 left-0 right-0 z-20">
+      <header className="bg-[#fbb321] p-1 sm:p-2 fixed top-0 left-0 right-0 z-20 flex justify-between items-center">
         <div className="flex items-center gap-1 sm:gap-2">
           <div className="flex overflow-x-auto hide-scrollbar">
             {tabs.map(tab => (
@@ -471,7 +536,7 @@ const OrderOffline = () => {
               </div>
             ))}
           </div>
-          <div className="flex gap-1 ml-auto">
+          <div className="flex gap-1 ml-2">
             <button className="bg-[#e59f1e] text-white rounded p-1 text-sm sm:text-base">
               <span>◀</span>
             </button>
@@ -483,19 +548,24 @@ const OrderOffline = () => {
             </button>
           </div>
         </div>
-      </div>
+        {isAuthenticated && (
+          <div className="text-white text-sm mr-4">
+            <span>Nhân viên: {staffName}</span>
+          </div>
+        )}
+      </header>
 
       {currentTab && (
         <div className="flex flex-1 min-h-0 pt-12">
           <div className="w-2/3 p-2 sm:p-4 border-r overflow-auto flex flex-col relative">
             <div className="mb-4">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-sm font-medium">Giỏ hàng</h3>
+                <h3 className="text-sm font-medium">Giỏ hàng offline</h3>
                 <button
                   className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600"
                   onClick={() => setIsDrawerOpen(true)}
                 >
-                  Thêm
+                  Thêm sản phẩm
                 </button>
               </div>
               <table className="w-full">
@@ -585,21 +655,22 @@ const OrderOffline = () => {
             </div>
           </div>
 
-          <div className="w-1/3 p-3 bg-gray-50 flex flex-col h-full">
+          <div className="w-1/3 p-2 bg-gray-50 flex flex-col h-full">
             {/* Thông tin khách hàng */}
-            <div className="bg-white rounded-lg shadow p-3 mb-3 flex flex-col">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold text-sm text-gray-800">Thông tin khách hàng</span>
+            <div className="bg-white rounded-lg shadow p-2 mb-2 flex flex-col">
+              <div className="flex justify-between items-center mb-1">
+                <span className="font-semibold text-xs text-gray-800">Thông tin khách hàng</span>
                 <span className="text-xs text-gray-500">{new Date().toLocaleString('vi-VN')}</span>
               </div>
-              <div className="relative mb-2">
+
+              <div className="relative mb-1">
                 <input
                   type="tel"
                   inputMode="numeric"
                   value={currentTab.customerPhone}
                   onChange={handlePhoneChange}
-                  placeholder="Số điện thoại khách hàng"
-                  className="w-full px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="Số ĐT khách hàng"
+                  className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
                   maxLength="10"
                 />
                 {currentTab.customerPhone && (
@@ -607,32 +678,31 @@ const OrderOffline = () => {
                     onClick={() => setTabs(tabs.map(tab => tab.id === activeTab ? { ...tab, customerPhone: '', totalPoints: 0, pointsToUse: 0 } : tab))}
                     className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    <IoClose />
+                    <IoClose size={14} />
                   </button>
                 )}
               </div>
-              <div className="relative mb-2">
+
+              <div className="relative mb-1">
                 <input
                   type="text"
                   value={currentTab.customerName}
                   onChange={handleNameChange}
                   placeholder="Tên khách hàng"
-                  className="w-full px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
                 />
               </div>
+
               {currentTab.customerPhone && currentTab.totalPoints >= 10 && (
-                <div className="mb-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Sử dụng điểm tích lũy</label>
+                <div className="mb-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-0.5">Dùng điểm tích lũy</label>
                   <select
                     value={currentTab.pointsToUse}
                     onChange={(e) => handlePointsToUseChange(e.target.value)}
-                    className="w-full px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
                   >
                     <option value={0}>Không sử dụng</option>
-                    {Array.from(
-                      { length: Math.floor(currentTab.totalPoints / 10) },
-                      (_, i) => (i + 1) * 10
-                    ).map(points => (
+                    {Array.from({ length: Math.floor(currentTab.totalPoints / 10) }, (_, i) => (i + 1) * 10).map(points => (
                       <option key={points} value={points}>
                         {points} điểm (-{(points / 10 * 30000).toLocaleString()}đ)
                       </option>
@@ -640,15 +710,16 @@ const OrderOffline = () => {
                   </select>
                 </div>
               )}
+
               {currentTab.customerPhone && (
-                <div className="text-sm text-green-600">Điểm tích lũy: {currentTab.totalPoints}</div>
+                <div className="text-xs text-green-600">Điểm tích lũy: {currentTab.totalPoints}</div>
               )}
             </div>
 
             {/* Tóm tắt đơn hàng */}
-            <div className="bg-white rounded-lg shadow p-3 mb-3 flex flex-col">
-              <h3 className="text-sm font-semibold mb-2 text-gray-800">Tóm tắt đơn hàng</h3>
-              <div className="space-y-1 text-sm">
+            <div className="bg-white rounded-lg shadow p-2 mb-2 flex flex-col">
+              <h3 className="text-xs font-semibold mb-1 text-gray-800">Tóm tắt đơn hàng</h3>
+              <div className="space-y-0.5 text-xs">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Tổng tiền hàng</span>
                   <span>{currentTab.products.reduce((sum, p) => sum + p.total, 0).toLocaleString()}đ</span>
@@ -657,7 +728,7 @@ const OrderOffline = () => {
                   <span className="text-gray-600">Giảm giá</span>
                   <span>{(currentTab.pointsToUse / 10 * 30000).toLocaleString()}đ</span>
                 </div>
-                <div className="flex justify-between font-semibold text-green-600 border-t pt-1">
+                <div className="flex justify-between font-semibold text-green-600 border-t pt-0.5">
                   <span>Khách cần trả</span>
                   <span>{Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 10 * 30000)).toLocaleString()}đ</span>
                 </div>
@@ -665,88 +736,75 @@ const OrderOffline = () => {
             </div>
 
             {/* Thanh toán */}
-            <div className="bg-white rounded-lg shadow p-3 flex flex-col flex-grow">
-              <h3 className="text-sm font-semibold mb-2 text-gray-800">Thanh toán</h3>
+            <div className="bg-white rounded-lg shadow p-3 flex-grow flex flex-col">
+              <h3 className="text-sm font-bold mb-2 text-gray-800">Thanh toán</h3>
               <div className="mb-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phương thức thanh toán</label>
-                <div className="flex flex-wrap gap-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Phương thức thanh toán</label>
+                <div className="flex gap-1">
                   {[
                     { value: "CASH", label: "Tiền mặt" },
                     { value: "TRANSFER", label: "Chuyển khoản" },
-                    { value: "CARD", label: "Thẻ" },
-                    { value: "WALLET", label: "Ví" }
                   ].map(method => (
-                    <label key={method.value} className="flex items-center cursor-pointer">
-                      <input
-                        type="radio"
-                        name="payment"
-                        value={method.value}
-                        className="mr-1 accent-green-600"
-                        defaultChecked={method.value === "CASH"}
-                      />
-                      <span className="text-sm text-gray-700">{method.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div className="mb-2">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm text-gray-700">Tổng tiền cần trả:</span>
-                  <span className="text-sm font-semibold text-green-600">
-                    {Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 10 * 30000)).toLocaleString()}đ
-                  </span>
-                </div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Số tiền khách đưa</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={currentTab.inputPayment}
-                    onChange={handleInputChange}
-                    placeholder="Nhập số tiền"
-                    className={`w-full px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${currentTab.error ? 'border-red-500' : ''}`}
-                  />
-                  {currentTab.inputPayment && (
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">
-                      {parseInt(currentTab.inputPayment).toLocaleString()}đ
-                    </span>
-                  )}
-                </div>
-                {currentTab.error && (
-                  <p className="text-red-500 text-xs mt-1">{currentTab.error}</p>
-                )}
-              </div>
-              <div className="mb-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Chọn nhanh</label>
-                <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
-                  {[50000, 100000, 200000, 500000].map((amount) => (
                     <button
-                      key={amount}
-                      className={`py-1 border rounded-md text-sm transition-colors
-              ${currentTab.customerPayment === amount
-                          ? currentTab.error
-                            ? 'bg-red-100 border-red-500 text-red-700'
-                            : 'bg-blue-100 border-blue-500 text-blue-700'
-                          : 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-gray-700'
-                        }`}
-                      onClick={() => handleQuickAmount(amount)}
+                      key={method.value}
+                      className={`px-2 py-1 rounded text-xs ${currentTab.paymentMethod === method.value ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                      onClick={() => handlePaymentMethodChange(method.value)}
                     >
-                      {amount.toLocaleString()}
+                      {method.label}
                     </button>
                   ))}
                 </div>
               </div>
+
+              {currentTab.paymentMethod === 'CASH' && (
+                <>
+                  <div className="mb-2">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs text-gray-700">Tổng tiền cần trả:</span>
+                      <span className="text-xs font-bold text-green-600">
+                        {Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 10 * 30000)).toLocaleString()}đ
+                      </span>
+                    </div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">Số tiền khách đưa</label>
+                    <input
+                      type="text"
+                      value={currentTab.inputPayment}
+                      onChange={handleInputChange}
+                      placeholder="Nhập số tiền"
+                      className={`w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs ${currentTab.error ? 'border-red-500' : ''}`}
+                    />
+                    {currentTab.error && <p className="text-red-500 text-xs mt-1">{currentTab.error}</p>}
+                  </div>
+
+                  <div className="mb-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">Chọn nhanh</label>
+                    <div className="grid grid-cols-4 gap-1">
+                      {[50000, 100000, 200000, 500000, 1000000].map(amount => (
+                        <button
+                          key={amount}
+                          className={`py-1 border rounded text-xs transition-colors ${currentTab.customerPayment === amount ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-blue-600 hover:text-white'}`}
+                          onClick={() => handleQuickAmount(amount)}
+                        >
+                          {amount.toLocaleString()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
               <div className="flex flex-col justify-end flex-grow">
-                {currentTab.change > 0 && (
-                  <div className="mb-2 bg-blue-50 p-1 rounded-md">
-                    <div className="flex justify-between text-sm">
+                {currentTab.paymentMethod === 'CASH' && currentTab.change > 0 && (
+                  <div className="mb-2 bg-blue-50 p-1 rounded">
+                    <div className="flex justify-between text-xs">
                       <span className="text-blue-700 font-medium">Tiền thối</span>
-                      <span className="text-blue-700 font-semibold">{currentTab.change.toLocaleString()}đ</span>
+                      <span className="text-blue-700 font-bold">{currentTab.change.toLocaleString()}đ</span>
                     </div>
                   </div>
                 )}
+
                 <button
-                  className={`w-full py-2 rounded-md text-base font-semibold text-white transition-colors
-          ${isPaymentDisabled(currentTab) ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
+                  className={`w-full py-1.5 rounded text-sm font-semibold text-white ${isPaymentDisabled(currentTab) ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
                   disabled={isPaymentDisabled(currentTab)}
                   onClick={handlePayment}
                 >
@@ -755,6 +813,7 @@ const OrderOffline = () => {
               </div>
             </div>
           </div>
+
         </div>
       )}
       <ToastContainer />
