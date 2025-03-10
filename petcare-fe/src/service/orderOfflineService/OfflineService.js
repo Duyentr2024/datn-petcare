@@ -38,7 +38,6 @@ export const applyDiscount = async (orderData) => {
   }
 };
 
-
 export const addProductToOfflineCart = async (userId, productDetailId, quantity = 1) => {
   try {
     const response = await axios.post(`${BASE_URL}/cart/add-product`, null, {
@@ -68,3 +67,4 @@ export const getOfflineCartDetails = async (userId) => {
     throw error;
   }
 };
+

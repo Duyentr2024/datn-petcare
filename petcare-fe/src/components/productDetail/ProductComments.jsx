@@ -3,6 +3,7 @@ import ReviewService from "../../service/reviewService/ReviewService";
 import ProductDetailsService from "../../service/serviceProduct/ProductsService";
 import { useParams } from "react-router-dom";
 import banner from "../../assets/images/BANNER1-03.png";
+
 const ProductComments = () => {
   const { productId } = useParams();
   const [view, setView] = useState("info");
@@ -12,7 +13,7 @@ const ProductComments = () => {
   const [loading, setLoading] = useState(true);
 
   const productDetailId = localStorage.getItem("ProductDetailId");
-console.log(productDetailId);
+  console.log(productDetailId);
 
   useEffect(() => {
     if (productId) {
@@ -22,7 +23,7 @@ console.log(productDetailId);
     }
   }, [productId]);
 
-   useEffect(() => {
+  useEffect(() => {
     if (productDetailId) {
       setLoading(true);
       fetchReviews(productDetailId);
@@ -33,17 +34,19 @@ console.log(productDetailId);
     try {
       const reviews = await ReviewService.getReviewsByProductDetail(productDetailId);
       if (Array.isArray(reviews)) {
-        setComments(
-          reviews.sort(
-            (a, b) => new Date(b.reviewDate) - new Date(a.reviewDate)
-          )
+        // Sắp xếp đánh giá theo thời gian giảm dần (mới nhất lên đầu)
+        const sortedReviews = reviews.sort(
+          (a, b) => new Date(b.reviewDate) - new Date(a.reviewDate)
         );
+        setComments(sortedReviews);
       } else {
         setComments([]);
       }
     } catch (error) {
       console.error("Lỗi khi tải đánh giá:", error);
       setComments([]);
+    } finally {
+      setLoading(false); // Đảm bảo loading được tắt sau khi fetch
     }
   };
 
@@ -71,37 +74,45 @@ console.log(productDetailId);
     }, 300);
   };
 
+  // Hàm định dạng ngày theo giờ Việt Nam (chỉ ngày, tháng, năm)
+  const formatDateTimeVN = (dateString) => {
+    if (!dateString) return "Không có ngày";
+    return new Date(dateString).toLocaleDateString("vi-VN", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  };
+
   return (
     <div className="p-6 bg-gray-50 rounded-lg shadow-lg">
       {/* Navigation Buttons */}
       <div className="flex space-x-4 mb-6">
         <button
-          className={`px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${
-            view === "info"
-              ? "text-white bg-yellow-500 shadow-lg"
-              : "text-yellow-500 bg-white border border-yellow-500"
-          }`}
+          className={`px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${view === "info"
+            ? "text-white bg-yellow-500 shadow-lg"
+            : "text-yellow-500 bg-white border border-yellow-500"
+            }`}
           onClick={() => handleViewChange("info")}
         >
           Thông tin sản phẩm
         </button>
         <button
-          className={`px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${
-            view === "comments"
-              ? "text-white bg-yellow-500 shadow-lg"
-              : "text-yellow-500 bg-white border border-yellow-500"
-          }`}
+          className={`px-4 py-2 rounded-lg transition-all duration-300 transform hover:scale-105 ${view === "comments"
+            ? "text-white bg-yellow-500 shadow-lg"
+            : "text-yellow-500 bg-white border border-yellow-500"
+            }`}
           onClick={() => handleViewChange("comments")}
         >
-          Bình luận về sản phẩm
+          Các đánh giá về sản phẩm
         </button>
       </div>
 
       {/* Content with Transition */}
       <div
-        className={`transition-all duration-300 ${
-          isTransitioning ? "opacity-0" : "opacity-100"
-        }`}
+        className={`transition-all duration-300 ${isTransitioning ? "opacity-0" : "opacity-100"
+          }`}
       >
         {view === "info" ? (
           <div>
@@ -141,8 +152,10 @@ console.log(productDetailId);
           </div>
         ) : (
           <div>
-            <h2 className="text-xl font-bold mb-4">Bình luận về sản phẩm</h2>
-            {comments.length > 0 ? (
+            <h2 className="text-xl font-bold mb-4">Các đánh giá về sản phẩm</h2>
+            {loading ? (
+              <p className="text-gray-500">Đang tải đánh giá...</p>
+            ) : comments.length > 0 ? (
               comments.map((comment) => (
                 <div
                   key={comment.reviewId}
@@ -161,11 +174,7 @@ console.log(productDetailId);
                       {comment.comment || "Không có bình luận"}
                     </p>
                     <p className="text-sm text-gray-400">
-                      {comment.reviewDate
-                        ? new Date(comment.reviewDate).toLocaleDateString(
-                            "vi-VN"
-                          )
-                        : "Không có ngày"}
+                      {formatDateTimeVN(comment.reviewDate)}
                     </p>
                   </div>
                 </div>

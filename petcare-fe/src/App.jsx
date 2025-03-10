@@ -8,8 +8,11 @@ import AppointmentPage from "./page/AppointmentPage.jsx";
 import ChatBot from "./components/ChatBot";
 import PrivateRoute from "./context/PrivateRoute.jsx";
 import OrderOffline from "./components/orderOffline/OrderOffline.jsx"
+import AdminSpa from "./components/spaGrooming/admin/AdminAppointment.jsx";
 
-// import AdminSpa from "./page/AdminSpa.jsx";
+import OrderOffline from "./components/orderOffline/OrderOffline.jsx";
+
+
 function App() {
   return (
     <AuthProvider>
@@ -20,15 +23,15 @@ function App() {
 
           <Route path="/spa" element={<SpaPage />} />
           <Route path="/appointment" element={<AppointmentPage />} />
-          
-            {/* <Route path="/adspa" element={<AdminSpa/>}/> */}
+          <Route path="/admin-spa" element={<AdminSpa />} />
 
           {/* Chỉ admin vào được */}
           <Route element={<PrivateRoute requiredRoles={["ADMIN", "STAFF"]} />}>
+            <Route path="/orderOffline" element={<OrderOffline />} />
             <Route path="/admin/*" element={<Admin />} />
           </Route>
-      
-          <Route path="/orderOffline" element={<OrderOffline />} />
+     
+
 
 
         </Routes>

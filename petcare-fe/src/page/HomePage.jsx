@@ -55,7 +55,7 @@ const AnimatedRoutes = () => {
                     <Route path="/verify-otp" element={<VerifyOTP />} />
                     <Route path="/introduce" element={<Introduce />} />
                     <Route path="/search" element={<SearchProduct />} />
-                    <Route path="/newsdetail" element={<NewsDetail />} />
+                    <Route path="/newsdetail/:id" element={<NewsDetail />} />
                     <Route path="/policy" element={<Policy />} />
                     <Route path="/guide" element={<Guide />} />
                     {/* ✅ Route yêu cầu đăng nhập */}
