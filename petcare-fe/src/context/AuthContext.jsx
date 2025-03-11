@@ -154,7 +154,6 @@ export const AuthProvider = ({ children }) => {
     try {
       const notificationData = JSON.parse(messageBody);
       console.log("Received WebSocket message:", messageBody);
-      
       const newNotification = {
         id: notificationData.id,
         message: notificationData.message,
@@ -162,16 +161,14 @@ export const AuthProvider = ({ children }) => {
         orderId: notificationData.orderId || null,
         timestamp: new Date().toISOString(),
       };
-  
       setNotifications((prev) => {
         const updatedNotifications = [newNotification, ...prev];
         return updatedNotifications;
       });
-  
       setUnreadCount((prev) => prev + 1);
       setIsShaking(true);
       setTimeout(() => setIsShaking(false), 1500);
-  
+
       // Delay việc fetch dữ liệu để đảm bảo backend đã cập nhật
       setTimeout(() => {
         fetchNotifications();
@@ -180,7 +177,6 @@ export const AuthProvider = ({ children }) => {
       console.error("Error parsing WebSocket message:", error);
     }
   };
-  
 
   // Hàm đăng xuất
   const logout = () => {
@@ -238,7 +234,6 @@ export const AuthProvider = ({ children }) => {
       console.error("Vị trí thông báo không hợp lệ:", index);
       return;
     }
-  
     const notification = notifications[index];
     console.log(
       "Thông báo được nhấn:",
@@ -246,7 +241,6 @@ export const AuthProvider = ({ children }) => {
       "trạng thái đã đọc:",
       notification.isRead
     );
-  
     try {
       console.log("Đánh dấu thông báo đã đọc, ID:", notification.id);
       await markNotificationAsRead(notification.id); // Gọi API PUT bất kể isRead
@@ -265,8 +259,6 @@ export const AuthProvider = ({ children }) => {
       }
     }
   };
-  
-
   // Hàm lấy số lượng giỏ hàng ban đầu từ backend
   const fetchCartCount = async () => {
     if (!user?.userId || !token) return;

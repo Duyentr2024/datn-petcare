@@ -138,20 +138,18 @@ export default function Header() {
     try {
       console.log("Đánh dấu thông báo đã đọc:", notificationId);
       await markNotificationAsRead(notificationId);
-  
       // Cập nhật state ngay lập tức
       setNotifications((prevNotifications) =>
         prevNotifications.map((notif) =>
           notif.id === notificationId ? { ...notif, isRead: true } : notif
         )
       );
-  
+
       console.log("Thông báo đã được đánh dấu là đã đọc:", notificationId);
     } catch (error) {
       console.error("Lỗi khi đánh dấu thông báo là đã đọc:", error);
     }
   };
-  
 
   // Hàm xử lý chuyển hướng đến lịch sử đơn hàng và chọn tab
   const extractOrderIdFromMessage = (message) => {

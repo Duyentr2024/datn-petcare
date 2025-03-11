@@ -38,3 +38,33 @@ export const applyDiscount = async (orderData) => {
   }
 };
 
+export const addProductToOfflineCart = async (userId, productDetailId, quantity = 1) => {
+  try {
+    const response = await axios.post(`${BASE_URL}/cart/add-product`, null, {
+      params: { userId, productDetailId, quantity },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const removeProductFromOfflineCart = async (userId, productDetailId) => {
+  try {
+    await axios.delete(`${BASE_URL}/cart/remove-product`, {
+      params: { userId, productDetailId },
+    });
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getOfflineCartDetails = async (userId) => {
+  try {
+    const response = await axios.get(`${BASE_URL}/cart`, { params: { userId } });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
