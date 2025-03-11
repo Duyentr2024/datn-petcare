@@ -64,7 +64,26 @@ const OrderManageService = {
             console.error("Lỗi khi hủy đơn hàng:", error);
             throw error;
         }
-    }
+    },
+
+    // Thêm phương thức mới để lấy đơn hàng theo voucherId
+    getOrdersByVoucherId: async (voucherId) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/orders/by-voucher/${voucherId}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            });
+            if (!response.ok) {
+                throw new Error("Failed to fetch orders by voucherId");
+            }
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching orders by voucherId:", error);
+            throw error;
+        }
+    },
 
 
 };
