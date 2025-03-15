@@ -14,14 +14,13 @@ import ManageVoucher from "../components/Manage/ManageVoucher";
 import CreateVoucher from "../components/Manage/createManage/createManageVoucher/CreateVoucher";
 import OrderManage from "../components/Manage/OrderManage";
 import Invoice from "../components/Manage/ManageInvoice";
-
 import ManageEmployee from "../components/Manage/ManageEmployee";
 import PostManage from "../components/Manage/managePost/PostManage.jsx";
 import PostForm from "../components/Manage/managePost/PostForm.jsx";
 import PostDetail from "../components/Manage/managePost/PostDetail.jsx";
 import HeaderAdmin from "../components/header/HeaderAdmin.jsx";
 
-
+import ManageClient from "../components/Manage/ManageClient";
 
 function Admin() {
   return (
@@ -35,12 +34,12 @@ function Admin() {
         <main className="flex-1  bg-gray-50 overflow-auto">
           <HeaderAdmin />
           <Routes>
-
             <Route path="/" element={<ManageStatistics/>} />
             <Route path="/warehouse" element={<StockPage />} />
             <Route path="/invoice-management" element={<Invoice />} />
             <Route path="/" element={<h1>Admin Dashboard</h1>} />
             <Route path="/employee" element={<ManageEmployee />} />
+            <Route path="/client" element={<ManageClient />} />
             <Route path="/product-color" element={<ManageProductColor />} />
             <Route path="/product-size" element={<ManageProductSize />} />
             <Route path="/post-management" element={<PostManage />} />
