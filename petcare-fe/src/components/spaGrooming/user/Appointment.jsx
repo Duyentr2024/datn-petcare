@@ -1,113 +1,8 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
 import { FaBath, FaCalendarAlt, FaClock, FaSpa } from 'react-icons/fa';
+import TimeSlotService from '../../../service/spaService/TimeSlotService';
 
-// Component CustomerModal tách riêng
-const CustomerModal = memo(
-  ({ isCustomerModalOpen, setIsCustomerModalOpen, customerInfo, setCustomerInfo, errors, setErrors, handleCustomerInfoChange, fullNameRef, phoneRef }) => (
-    <div className={`fixed inset-0 z-50 ${isCustomerModalOpen ? 'block' : 'hidden'}`}>
-      <div className="fixed inset-0 bg-black opacity-50"></div>
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="bg-white rounded-lg max-w-3xl w-full mx-4 p-6">
-          <h2 className="text-lg font-semibold mb-4">Thông tin khách hàng</h2>
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Họ và tên <span className="text-red-500">*</span>
-                </label>
-                <input
-                  ref={fullNameRef}
-                  type="text"
-                  name="fullName"
-                  value={customerInfo.fullName}
-                  onChange={handleCustomerInfoChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                    errors.fullName ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Nhập họ và tên"
-                />
-                {errors.fullName && <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Số điện thoại <span className="text-red-500">*</span>
-                </label>
-                <input
-                  ref={phoneRef}
-                  type="tel"
-                  name="phone"
-                  value={customerInfo.phone}
-                  onChange={handleCustomerInfoChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                    errors.phone ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Nhập số điện thoại"
-                />
-                {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  name="acceptTerms"
-                  id="acceptTerms"
-                  checked={customerInfo.acceptTerms}
-                  onChange={handleCustomerInfoChange}
-                  className="rounded text-blue-600 focus:ring-blue-500"
-                />
-                <label htmlFor="acceptTerms" className="text-sm text-gray-600">
-                  Tôi đồng ý với các điều khoản dịch vụ
-                </label>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-md font-medium text-gray-700 mb-3">ĐIỀU KHOẢN LƯU Ý</h3>
-              <div className="space-y-2 text-sm text-gray-600">
-                <p>
-                  Quý khách vui lòng đến đúng giờ đã đặt. Trong trường hợp đến trễ quá 15 phút, chúng tôi
-                  có quyền hủy lịch đặt để phục vụ khách hàng tiếp theo.
-                </p>
-                <p>
-                  Vui lòng cung cấp đầy đủ thông tin về tình trạng sức khỏe của thú cưng để chúng tôi có thể
-                  phục vụ tốt nhất.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="mt-6 flex justify-end gap-4">
-            <button
-              onClick={() => setIsCustomerModalOpen(false)}
-              className="px-6 py-2.5 bg-gray-500 text-white rounded-md hover:bg-gray-600"
-            >
-              Hủy
-            </button>
-            <button
-              className={`px-6 py-2.5 bg-blue-600 text-white rounded-md ${
-                !customerInfo.acceptTerms ||
-                errors.fullName ||
-                errors.phone ||
-                !customerInfo.fullName ||
-                !customerInfo.phone
-                  ? 'opacity-50 cursor-not-allowed'
-                  : 'hover:bg-blue-700'
-              }`}
-              disabled={
-                !customerInfo.acceptTerms ||
-                errors.fullName ||
-                errors.phone ||
-                !customerInfo.fullName ||
-                !customerInfo.phone
-              }
-            >
-              Thanh toán
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-);
-
-// Component ServiceModal tách riêng
+// Component ServiceModal (khôi phục từ code gốc của bạn)
 const ServiceModal = memo(
   ({ isServiceModalOpen, setIsServiceModalOpen, selectedSlots, pets, setPets, serviceErrors, setServiceErrors, serviceOptions, weightOptions, handlePetChange, handleServiceConfirm, addNewPet, removePet }) => (
     <div className={`fixed inset-0 z-50 ${isServiceModalOpen ? 'block' : 'hidden'}`}>
@@ -262,6 +157,112 @@ const ServiceModal = memo(
   )
 );
 
+// Component CustomerModal (khôi phục từ code gốc của bạn)
+const CustomerModal = memo(
+  ({ isCustomerModalOpen, setIsCustomerModalOpen, customerInfo, setCustomerInfo, errors, setErrors, handleCustomerInfoChange, fullNameRef, phoneRef }) => (
+    <div className={`fixed inset-0 z-50 ${isCustomerModalOpen ? 'block' : 'hidden'}`}>
+      <div className="fixed inset-0 bg-black opacity-50"></div>
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="bg-white rounded-lg max-w-3xl w-full mx-4 p-6">
+          <h2 className="text-lg font-semibold mb-4">Thông tin khách hàng</h2>
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Họ và tên <span className="text-red-500">*</span>
+                </label>
+                <input
+                  ref={fullNameRef}
+                  type="text"
+                  name="fullName"
+                  value={customerInfo.fullName}
+                  onChange={handleCustomerInfoChange}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                    errors.fullName ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="Nhập họ và tên"
+                />
+                {errors.fullName && <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Số điện thoại <span className="text-red-500">*</span>
+                </label>
+                <input
+                  ref={phoneRef}
+                  type="tel"
+                  name="phone"
+                  value={customerInfo.phone}
+                  onChange={handleCustomerInfoChange}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                    errors.phone ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="Nhập số điện thoại"
+                />
+                {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  name="acceptTerms"
+                  id="acceptTerms"
+                  checked={customerInfo.acceptTerms}
+                  onChange={handleCustomerInfoChange}
+                  className="rounded text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="acceptTerms" className="text-sm text-gray-600">
+                  Tôi đồng ý với các điều khoản dịch vụ
+                </label>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-md font-medium text-gray-700 mb-3">ĐIỀU KHOẢN LƯU Ý</h3>
+              <div className="space-y-2 text-sm text-gray-600">
+                <p>
+                  Quý khách vui lòng đến đúng giờ đã đặt. Trong trường hợp đến trễ quá 15 phút, chúng tôi
+                  có quyền hủy lịch đặt để phục vụ khách hàng tiếp theo.
+                </p>
+                <p>
+                  Vui lòng cung cấp đầy đủ thông tin về tình trạng sức khỏe của thú cưng để chúng tôi có thể
+                  phục vụ tốt nhất.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 flex justify-end gap-4">
+            <button
+              onClick={() => setIsCustomerModalOpen(false)}
+              className="px-6 py-2.5 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+            >
+              Hủy
+            </button>
+            <button
+              className={`px-6 py-2.5 bg-blue-600 text-white rounded-md ${
+                !customerInfo.acceptTerms ||
+                errors.fullName ||
+                errors.phone ||
+                !customerInfo.fullName ||
+                !customerInfo.phone
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'hover:bg-blue-700'
+              }`}
+              disabled={
+                !customerInfo.acceptTerms ||
+                errors.fullName ||
+                errors.phone ||
+                !customerInfo.fullName ||
+                !customerInfo.phone
+              }
+            >
+              Thanh toán
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+);
+
 // Component chính Appointment
 const Appointment = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -295,6 +296,11 @@ const Appointment = () => {
     petInfo: false,
   });
 
+  // State cho API booking (loại bỏ các state không cần thiết)
+  const [timeSlots, setTimeSlots] = useState({ morning: [], afternoon: [] });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
   // Refs để giữ focus cho input
   const fullNameRef = useRef(null);
   const phoneRef = useRef(null);
@@ -314,23 +320,42 @@ const Appointment = () => {
     generateWeekDates();
   }, []);
 
-  const timeSlots = {
-    morning: [
-      { hour: '09:00', slots: [1, 2, 3, 4] },
-      { hour: '10:00', slots: [1, 2, 3, 4] },
-      { hour: '11:00', slots: [1, 2, 3, 4] },
-      { hour: '12:00', slots: [1, 2, 3, 4] },
-      { hour: '13:00', slots: [1, 2, 3, 4] },
-    ],
-    afternoon: [
-      { hour: '14:00', slots: [1, 2, 3, 4] },
-      { hour: '15:00', slots: [1, 2, 3, 4] },
-      { hour: '16:00', slots: [1, 2, 3, 4] },
-      { hour: '17:00', slots: [1, 2, 3, 4] },
-      { hour: '18:00', slots: [1, 2, 3, 4] },
-      { hour: '19:00', slots: [1, 2, 3, 4] },
-    ],
-  };
+  // Gọi API từ TimeSlotService
+  useEffect(() => {
+    const fetchTimeSlots = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        console.log('Fetching time slots for date:', selectedDate.toISOString().split('T')[0]);
+        const data = await TimeSlotService.getTimeSlots(selectedDate.toISOString().split('T')[0]);
+        setTimeSlots(data);
+      } catch (error) {
+        console.error('Error fetching time slots:', error.message);
+        setError(error.message);
+        // Fallback to default time slots if API fails
+        setTimeSlots({
+          morning: [
+            { hour: '09:00', slots: [1, 2, 3, 4] },
+            { hour: '10:00', slots: [1, 2, 3, 4] },
+            { hour: '11:00', slots: [1, 2, 3, 4] },
+            { hour: '12:00', slots: [1, 2, 3, 4] },
+            { hour: '13:00', slots: [1, 2, 3, 4] },
+          ],
+          afternoon: [
+            { hour: '14:00', slots: [1, 2, 3, 4] },
+            { hour: '15:00', slots: [1, 2, 3, 4] },
+            { hour: '16:00', slots: [1, 2, 3, 4] },
+            { hour: '17:00', slots: [1, 2, 3, 4] },
+            { hour: '18:00', slots: [1, 2, 3, 4] },
+            { hour: '19:00', slots: [1, 2, 3, 4] },
+          ],
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTimeSlots();
+  }, [selectedDate]);
 
   const serviceOptions = {
     cat: [
@@ -489,8 +514,46 @@ const Appointment = () => {
   };
 
   const handleBookingClick = () => {
-    if (selectedSlots.length > 0) setIsServiceModalOpen(true);
-    else alert('Vui lòng chọn ít nhất một khung giờ');
+    if (selectedSlots.length > 0) {
+      setIsServiceModalOpen(true);
+    } else {
+      alert('Vui lòng chọn ít nhất một khung giờ');
+    }
+  };
+
+  const handleApiBooking = async () => {
+    if (!selectedTime || !customerInfo.fullName || !customerInfo.phone) {
+      alert('Vui lòng điền đầy đủ thông tin!');
+      return;
+    }
+
+    try {
+      const payload = {
+        date: selectedDate.toISOString().split('T')[0],
+        time: selectedTime,
+        customerName: customerInfo.fullName,
+        phone: customerInfo.phone,
+        depositAmount: calculateDeposit(), // Tự động tính tiền cọc
+        status: 'PENDING', // Mặc định trạng thái
+      };
+
+      await TimeSlotService.bookAppointment(payload);
+      alert('Đặt lịch thành công!');
+      setSelectedTime('');
+      setSelectedSlots([]);
+      setCustomerInfo({
+        fullName: '',
+        phone: '',
+        acceptTerms: false,
+      });
+
+      // Gọi lại API để cập nhật trạng thái
+      const data = await TimeSlotService.getTimeSlots(selectedDate.toISOString().split('T')[0]);
+      setTimeSlots(data);
+    } catch (error) {
+      console.error('Error booking:', error);
+      alert('Đặt lịch thất bại!');
+    }
   };
 
   const handleServiceConfirm = () => {
@@ -527,67 +590,98 @@ const Appointment = () => {
         <button
           onClick={() => setSelectedSession('afternoon')}
           className={`p-4 rounded-lg text-center transition-colors ${
-            selectedSession === 'afternoon'
-              ? 'bg-blue-600 text-white'
-              : 'bg-white hover:bg-gray-100'
+            selectedSession === 'afternoon' ? 'bg-blue-600 text-white' : 'bg-white hover:bg-gray-100'
           }`}
         >
           <h4 className="font-medium">Buổi chiều</h4>
           <p className="text-sm">14:00 - 20:00</p>
         </button>
       </div>
-      {selectedSession && (
+      {isLoading ? (
+        <div className="flex justify-center items-center h-32">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-gray-500">Đang tải khung giờ...</span>
+        </div>
+      ) : error ? (
+        <div className="bg-white p-4 rounded-lg shadow-sm text-center">
+          <p className="text-red-500">{error}</p>
+          <button
+            onClick={() => fetchTimeSlots()}
+            className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Thử lại
+          </button>
+        </div>
+      ) : selectedSession ? (
         <div className="bg-white p-4 rounded-lg shadow-sm">
-          {timeSlots[selectedSession].map((block, blockIndex) => (
-            <div key={blockIndex} className="mb-4 last:mb-0">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="w-16 text-sm font-medium text-gray-600">{block.hour}</span>
-                <div className="flex-1 grid grid-cols-4 gap-3">
-                  {block.slots.map((_, slotIndex) => (
-                    <div key={slotIndex}>
-                      <input
-                        type="checkbox"
-                        id={`time-${block.hour}-${slotIndex}`}
-                        className="hidden"
-                        disabled={
-                          selectedSlots.length > 0 &&
-                          !selectedSlots.includes(`${block.hour}-${slotIndex}`) &&
-                          selectedTime !== block.hour
-                        }
-                        checked={selectedSlots.includes(`${block.hour}-${slotIndex}`)}
-                        onChange={() => handleSlotSelection(block.hour, slotIndex)}
-                      />
-                      <label
-                        htmlFor={`time-${block.hour}-${slotIndex}`}
-                        className={`block w-full h-10 relative rounded-lg cursor-pointer transition-all border-2
-                          ${
-                            selectedSlots.includes(`${block.hour}-${slotIndex}`)
-                              ? 'bg-blue-600 border-blue-600 shadow-md transform scale-105'
-                              : selectedTime && selectedTime !== block.hour
-                              ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-50'
-                              : 'bg-white border-gray-200 hover:border-blue-400 hover:shadow'
-                          }`}
-                      >
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span
-                            className={`text-sm font-medium ${
-                              selectedSlots.includes(`${block.hour}-${slotIndex}`)
-                                ? 'text-white'
-                                : 'text-gray-600'
-                            }`}
-                          >
-                            Slot {slotIndex + 1}
-                          </span>
-                        </div>
-                      </label>
+          {timeSlots[selectedSession]?.length > 0 ? (
+            timeSlots[selectedSession].map((block, blockIndex) => (
+              <div key={blockIndex} className="mb-4 last:mb-0">
+                <div className="flex items-start gap-2 mb-2">
+                  <span className="w-16 text-sm font-medium text-gray-600 mt-2">{block.hour}</span>
+                  <div className="flex-1">
+                    <div className="grid grid-cols-4 gap-3">
+                      {Array.from({ length: block.totalSlots || 4 }, (_, slotIndex) => {
+                        const slotId = `${block.hour}-${slotIndex}`;
+                        const isBooked = slotIndex < (block.bookedSlots || 0);
+                        return (
+                          <div key={slotIndex}>
+                            <input
+                              type="checkbox"
+                              id={`time-${block.hour}-${slotIndex}`}
+                              className="hidden"
+                              disabled={
+                                isBooked ||
+                                (selectedSlots.length > 0 &&
+                                  !selectedSlots.includes(slotId) &&
+                                  selectedTime !== block.hour) ||
+                                isSlotDisabled(block.hour)
+                              }
+                              checked={selectedSlots.includes(slotId)}
+                              onChange={() => handleSlotSelection(block.hour, slotIndex)}
+                            />
+                            <label
+                              htmlFor={`time-${block.hour}-${slotIndex}`}
+                              className={`block w-full h-10 relative rounded-lg cursor-pointer transition-all border-2
+                                ${
+                                  isBooked
+                                    ? 'bg-gray-500 border-gray-200 opacity-50 cursor-not-allowed'
+                                    : selectedSlots.includes(slotId)
+                                    ? 'bg-blue-600 border-blue-600 shadow-md transform scale-105'
+                                    : selectedTime && selectedTime !== block.hour
+                                    ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-50'
+                                    : isSlotDisabled(block.hour)
+                                    ? 'bg-gray-300 border-gray-200 cursor-not-allowed opacity-50'
+                                    : 'bg-white border-gray-200 hover:border-blue-400 hover:shadow'
+                                }`}
+                            >
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <span
+                                  className={`text-sm font-medium ${
+                                    selectedSlots.includes(slotId)
+                                      ? 'text-white'
+                                      : isBooked
+                                      ? 'text-gray-300'
+                                      : 'text-gray-600'
+                                  }`}
+                                >
+                                  {isBooked ? 'Đã đặt' : `Slot ${slotIndex + 1}`}
+                                </span>
+                              </div>
+                            </label>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <p className="text-gray-500 text-center">Không có khung giờ nào khả dụng</p>
+          )}
         </div>
-      )}
+      ) : null}
       <div className="mt-4 p-3 bg-white rounded-lg">
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
@@ -604,6 +698,7 @@ const Appointment = () => {
           </div>
         </div>
       </div>
+  
       <div className="mt-6 text-center">
         <button
           onClick={handleBookingClick}
