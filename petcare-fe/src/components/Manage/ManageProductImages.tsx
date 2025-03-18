@@ -173,7 +173,7 @@ const ManageProductImages = () => {
 
     return (
         <div className="p-6">
-            <ToastContainer 
+            <ToastContainer
                 position="top-right"
                 autoClose={3000}
                 hideProgressBar={false}
@@ -293,10 +293,10 @@ const ManageProductImages = () => {
                             </td>
                             <td className="border p-2">
                                 <button onClick={() => handleEditImage(image)} className="bg-yellow-500 text-white px-3 py-1 rounded">
-                                    <FiEdit size={16} /> Sửa
+                                    ✏️ Sửa
                                 </button>
                                 <button onClick={() => handleDeleteImage(image.productImageId)} className="bg-red-500 text-white px-3 py-1 rounded ml-2">
-                                    <FiTrash2 size={16} /> Xóa
+                                    🗑️ Xóa
                                 </button>
                             </td>
                         </tr>

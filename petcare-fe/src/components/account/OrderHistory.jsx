@@ -23,6 +23,7 @@ const OrderHistory = () => {
   const [selectedProductReview, setSelectedProductReview] = useState(null);
   const [rating, setRating] = useState(0);
   const [comment, setReviewText] = useState("");
+  const [isLoading, setIsLoading] = useState(false); // Thêm trạng thái loading
 
   useEffect(() => {
     if (userId) return;
@@ -40,7 +41,6 @@ const OrderHistory = () => {
     const fetchOrders = async () => {
       try {
         const data = await OrderHistoryService.getOrdersByUserId(userId);
-        // Sắp xếp tất cả đơn hàng theo orderDate ban đầu
         const sortedOrders = data.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
         setOrders(sortedOrders);
       } catch (error) {
@@ -79,19 +79,19 @@ const OrderHistory = () => {
       return;
     }
 
+    setIsLoading(true); // Bật loading trước khi gọi API
     try {
       const result = await OrderHistoryService.cancelOrder(orderId, reason);
       const updatedOrders = orders.map(order =>
         order.orderId === orderId
-          ? { ...order, statusName: result.status, cancelDate: new Date().toISOString() } // Thêm cancelDate
+          ? { ...order, statusName: result.status, cancelDate: new Date().toISOString() }
           : order
       );
       const sortedOrders = updatedOrders.sort((a, b) => {
         if (a.statusName === "Đã hủy" && b.statusName === "Đã hủy") {
-          // Sắp xếp đơn hàng "Đã hủy" theo cancelDate (nếu có) hoặc orderDate
           return new Date(b.cancelDate || b.orderDate) - new Date(a.cancelDate || a.orderDate);
         }
-        return new Date(b.orderDate) - new Date(a.orderDate); // Các trạng thái khác theo orderDate
+        return new Date(b.orderDate) - new Date(a.orderDate);
       });
       setOrders(sortedOrders);
 
@@ -108,16 +108,13 @@ const OrderHistory = () => {
         text: error.message,
         icon: "error",
       });
+    } finally {
+      setIsLoading(false); // Tắt loading sau khi hoàn tất (dù thành công hay lỗi)
     }
   };
 
-  // Lọc đơn hàng theo tab
   const filteredOrders = orders.filter(order => order.statusName === activeTab);
-
-  // Tính toán số trang
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
-
-  // Cắt danh sách đơn hàng theo trang hiện tại
   const displayedOrders = filteredOrders.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
@@ -189,7 +186,17 @@ const OrderHistory = () => {
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
+    <div className="p-6 bg-white rounded-lg shadow-md relative">
+      {/* Loading overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="flex flex-col items-center">
+            <div className="w-12 h-12 border-4 border-t-4 border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
+            <p className="mt-2 text-white">Đang xử lý...</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex border-b mb-4">
         {TABS.map(tab => (
           <button
@@ -223,7 +230,7 @@ const OrderHistory = () => {
         <tbody>
           {displayedOrders.length === 0 ? (
             <tr>
-              <td colSpan={activeTab === "Chờ xác nhận" ? "6" : "5"} className="text-center p-4 text-gray-500">
+              <td colSpan={activeTab === "Chờ xác nhận" || activeTab === "Hoàn thành" ? "5" : "4"} className="text-center p-4 text-gray-500">
                 Không có đơn hàng nào.
               </td>
             </tr>
@@ -249,6 +256,7 @@ const OrderHistory = () => {
                     <button
                       className="text-red-500 hover:text-red-700"
                       onClick={() => handleCancelOrder(order.orderId)}
+                      disabled={isLoading} // Vô hiệu hóa nút khi đang loading
                     >
                       <FaTimes className="text-xl" />
                     </button>

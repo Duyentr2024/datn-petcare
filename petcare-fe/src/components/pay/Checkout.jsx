@@ -493,7 +493,9 @@ const Checkout = () => {
     const fetchVouchers = async () => {
       try {
         const data = await VoucherService.getAllVouchers();
-        setVouchers(data);
+        // Lọc chỉ hiển thị voucher có status = true
+        const activeVouchers = data.filter(voucher => voucher.status === true);
+        setVouchers(activeVouchers);
       } catch (error) {
         console.error("Lỗi khi lấy danh sách voucher:", error);
       }
@@ -509,9 +511,11 @@ const Checkout = () => {
     const today = new Date();
     if (
       selected &&
-      (selected.quantity <= 0 || new Date(selected.endDate) < today)
+      (selected.status === false || // Không áp dụng nếu không hoạt động
+        selected.quantity <= 0 ||
+        new Date(selected.endDate) < today)
     ) {
-      setSelectedVoucher(""); // Reset nếu voucher không còn hợp lệ
+      setSelectedVoucher(""); // Reset nếu voucher không hợp lệ
       setDiscount(0);
       setCondition(0);
     } else if (selected) {

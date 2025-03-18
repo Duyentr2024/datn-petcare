@@ -14,6 +14,7 @@ const CreateVoucher = () => {
     quantity: "",
     percents: "",
     condition: "",
+    status: true,
   });
 
   const handleChange = (e) => {
@@ -100,14 +101,15 @@ const CreateVoucher = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 p-1 rounded-lg shadow-lg">
+    <div className="max-w-2xl mx-auto bg-white p-1 rounded-lg shadow-lg border border-black">
+      {/* Thêm viền đen tổng thể */}
       <div className="bg-white p-6 rounded-lg relative">
         {/* Nút Quay lại với icon */}
         <button
           onClick={() => navigate("/admin/voucher-management")}
           className="absolute top-2 left-2 bg-gray-200 hover:bg-gray-300 text-gray-800 p-2 rounded-full transition duration-200 shadow-md"
         >
-          <FaArrowLeft size={18} /> {/* Icon mũi tên trái */}
+          <FaArrowLeft size={18} />
         </button>
 
         {/* Tiêu đề */}
@@ -118,7 +120,7 @@ const CreateVoucher = () => {
         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
           {/* Tên Voucher */}
           <div className="col-span-2">
-            <label className="block font-medium text-red-500">
+            <label className="block font-semibold text-gray-700">
               Tên Voucher
             </label>
             <input
@@ -126,13 +128,13 @@ const CreateVoucher = () => {
               name="name"
               value={voucher.name}
               onChange={handleChange}
-              className="w-full p-2 border-2 border-red-400 rounded-lg focus:ring-2 focus:ring-red-500"
+              className="w-full p-2 border border-black rounded-lg " // Viền đen
             />
           </div>
 
           {/* Ngày Bắt Đầu */}
           <div>
-            <label className="block font-medium text-blue-500">
+            <label className="block font-semibold text-gray-700">
               Ngày Bắt Đầu
             </label>
             <input
@@ -140,13 +142,13 @@ const CreateVoucher = () => {
               name="startDate"
               value={voucher.startDate}
               onChange={handleChange}
-              className="w-full p-2 border-2 border-blue-400 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 border border-black rounded-lg" // Viền đen
             />
           </div>
 
           {/* Ngày Kết Thúc */}
           <div>
-            <label className="block font-medium text-green-500">
+            <label className="block font-semibold text-gray-700">
               Ngày Kết Thúc
             </label>
             <input
@@ -154,14 +156,14 @@ const CreateVoucher = () => {
               name="endDate"
               value={voucher.endDate}
               onChange={handleChange}
-              className="w-full p-2 border-2 border-green-400 rounded-lg focus:ring-2 focus:ring-green-500"
+              className="w-full p-2 border border-black rounded-lg" // Viền đen
               required
             />
           </div>
 
           {/* Số lượng */}
           <div>
-            <label className="block font-medium text-purple-500">
+            <label className="block font-semibold text-gray-700">
               Số lượng
             </label>
             <input
@@ -169,13 +171,13 @@ const CreateVoucher = () => {
               name="quantity"
               value={voucher.quantity}
               onChange={handleChange}
-              className="w-full p-2 border-2 border-purple-400 rounded-lg focus:ring-2 focus:ring-purple-500"
+              className="w-full p-2 border border-black rounded-lg" // Viền đen
             />
           </div>
 
           {/* Giảm giá (%) */}
           <div>
-            <label className="block font-medium text-orange-500">
+            <label className="block font-semibold text-gray-700">
               Giảm giá (%)
             </label>
             <input
@@ -183,13 +185,13 @@ const CreateVoucher = () => {
               name="percents"
               value={voucher.percents}
               onChange={handleChange}
-              className="w-full p-2 border-2 border-orange-400 rounded-lg focus:ring-2 focus:ring-orange-500"
+              className="w-full p-2 border border-black rounded-lg" // Viền đen
             />
           </div>
 
           {/* Điều kiện (VNĐ) */}
           <div className="col-span-2">
-            <label className="block font-medium text-pink-500">
+            <label className="block font-semibold text-gray-700">
               Điều kiện (VNĐ)
             </label>
             <div className="relative">
@@ -198,12 +200,12 @@ const CreateVoucher = () => {
                 name="condition"
                 value={new Intl.NumberFormat("vi-VN").format(voucher.condition)}
                 onChange={(e) => {
-                  const rawValue = e.target.value.replace(/\D/g, ""); // Chỉ giữ lại số
+                  const rawValue = e.target.value.replace(/\D/g, "");
                   handleChange({
                     target: { name: "condition", value: rawValue },
-                  }); // Gọi handleChange với giá trị mới
+                  });
                 }}
-                className="w-full p-2 border-2 border-pink-400 rounded-lg focus:ring-2 focus:ring-pink-500 pr-10"
+                className="w-full p-2 border border-black rounded-lg" // Viền đen
               />
               <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600">
                 VNĐ
