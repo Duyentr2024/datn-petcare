@@ -24,6 +24,7 @@ const OrderManage = () => {
   const [filterStatus, setFilterStatus] = useState("");
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [vouchers, setVouchers] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -50,7 +51,7 @@ const OrderManage = () => {
       const data = await OrderManageService.getAllOrders();
       const sortedOrders = data
         .filter((order) => order && order.orderId)
-        .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
+        .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate)); // Mặc định sắp xếp theo orderDate
       setOrders(sortedOrders);
     } catch (error) {
       console.error("Failed to fetch orders", error);
@@ -58,7 +59,6 @@ const OrderManage = () => {
     }
   };
 
-  // Hàm lấy phần trăm giảm giá từ voucherId
   const getVoucherPercents = (voucherId) => {
     const voucher = vouchers.find((v) => v.voucherId === voucherId);
     return voucher ? voucher.percents : 0;
@@ -73,44 +73,26 @@ const OrderManage = () => {
     returned: 6,
   };
 
-  const handleStatusChange = async (orderId, newStatus) => {
-    const order = orders.find((o) => o.orderId === orderId);
-    if (!order) return;
+  const getStatusLabel = (statusId) => {
+    const tab = TABS.find((t) => statusMap[t.key] === statusId);
+    return tab ? tab.label : "Không xác định";
+  };
 
-    const finalStatuses = [
-      statusMap["completed"],
-      statusMap["cancelled"],
-      statusMap["returned"],
-    ];
-
-    if (finalStatuses.includes(order.statusId)) {
-      Swal.fire({
-        icon: "warning",
-        title: "Không thể thay đổi!",
-        text: "Đơn hàng ở trạng thái 'Hoàn thành', 'Đã hủy' hoặc 'Trả hàng' không thể cập nhật trạng thái.",
-        confirmButtonColor: "#d33",
-      });
-      return;
-    }
-
-    if (
-      newStatus == statusMap["cancelled"] &&
-      order.statusId !== statusMap["pending"]
-    ) {
-      Swal.fire({
-        icon: "warning",
-        title: "Không thể hủy đơn!",
-        text: "Chỉ có thể hủy đơn khi trạng thái là 'Chờ xác nhận'.",
-        confirmButtonColor: "#d33",
-      });
-      return;
-    }
-
+  const handleStatusChange = async (orderId, newStatus, reason = null) => {
     try {
       const result = await Swal.fire({
-        title: "Xác nhận thay đổi?",
-        text: "Bạn có chắc chắn muốn cập nhật trạng thái đơn hàng?",
+        title: newStatus === statusMap["cancelled"] ? "Hủy đơn hàng" : "Xác nhận thay đổi?",
+        text: newStatus === statusMap["cancelled"]
+          ? "Vui lòng nhập lý do hủy đơn hàng:"
+          : "Bạn có chắc chắn muốn cập nhật trạng thái đơn hàng?",
         icon: "question",
+        input: newStatus === statusMap["cancelled"] ? "textarea" : null,
+        inputPlaceholder: newStatus === statusMap["cancelled"] ? "Nhập lý do hủy..." : null,
+        inputValidator: (value) => {
+          if (newStatus === statusMap["cancelled"] && (!value || value.trim() === "")) {
+            return "Lý do hủy không được để trống!";
+          }
+        },
         showCancelButton: true,
         confirmButtonColor: "#3085d6",
         cancelButtonColor: "#d33",
@@ -119,13 +101,30 @@ const OrderManage = () => {
       });
 
       if (result.isConfirmed) {
-        await OrderManageService.updateOrderStatus(orderId, newStatus);
+        const reasonText = newStatus === statusMap["cancelled"] ? result.value : reason;
+
+        if (newStatus === statusMap["cancelled"]) {
+          setIsLoading(true);
+          Swal.fire({
+            title: "Đang xử lý...",
+            html: "Vui lòng chờ trong khi hủy đơn hàng và gửi email thông báo.",
+            allowOutsideClick: false,
+            didOpen: () => {
+              Swal.showLoading();
+            },
+          });
+        }
+
+        await OrderManageService.updateOrderStatus(orderId, newStatus, reasonText);
+
+        // Cập nhật danh sách đơn hàng và thêm thời gian cập nhật trạng thái
         setOrders((prevOrders) =>
           prevOrders.map((order) =>
             order.orderId === orderId
               ? {
                   ...order,
                   statusId: parseInt(newStatus),
+                  statusUpdateDate: new Date().toISOString(), // Thêm thời gian cập nhật trạng thái
                   paymentStatus:
                     parseInt(newStatus) === statusMap["completed"]
                       ? "Đã thanh toán"
@@ -134,14 +133,19 @@ const OrderManage = () => {
               : order
           )
         );
+
+        setIsLoading(false);
         Swal.fire({
           icon: "success",
           title: "Cập nhật thành công!",
-          text: "Trạng thái đơn hàng đã được cập nhật.",
+          text: newStatus === statusMap["cancelled"]
+            ? "Đơn hàng đã được hủy và email thông báo đã được gửi đến khách hàng."
+            : "Trạng thái đơn hàng đã được cập nhật.",
         });
       }
     } catch (error) {
       console.error("Cập nhật trạng thái thất bại", error);
+      setIsLoading(false);
       Swal.fire({
         icon: "error",
         title: "Lỗi!",
@@ -150,13 +154,25 @@ const OrderManage = () => {
     }
   };
 
-  const filteredOrders = orders.filter((order) => {
-    return (
-      (activeTab === "all" || order.statusId === statusMap[activeTab]) &&
-      (searchTerm === "" || order.orderId.toString().includes(searchTerm)) &&
-      (filterStatus === "" || order.statusId === parseInt(filterStatus))
-    );
-  });
+  const filteredOrders = orders
+    .filter((order) => {
+      return (
+        (activeTab === "all" || order.statusId === statusMap[activeTab]) &&
+        (searchTerm === "" || order.orderId.toString().includes(searchTerm)) &&
+        (filterStatus === "" || order.statusId === parseInt(filterStatus))
+      );
+    })
+    .sort((a, b) => {
+      if (activeTab === "all" || activeTab === "pending") {
+        // Sắp xếp theo ngày đặt hàng (mới nhất lên đầu)
+        return new Date(b.orderDate) - new Date(a.orderDate);
+      } else {
+        // Sắp xếp theo thời gian cập nhật trạng thái (mới nhất lên đầu)
+        const dateA = a.statusUpdateDate ? new Date(a.statusUpdateDate) : new Date(a.orderDate);
+        const dateB = b.statusUpdateDate ? new Date(b.statusUpdateDate) : new Date(b.orderDate);
+        return dateB - dateA;
+      }
+    });
 
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
   const paginatedOrders = filteredOrders.slice(
@@ -217,8 +233,8 @@ const OrderManage = () => {
               <th className="p-3 border">Khách hàng</th>
               <th className="p-3 border">Ngày đặt</th>
               <th className="p-3 border">Tổng tiền</th>
-              <th className="p-3 border">Chi tiết</th>
-              <th className="p-3 border">Trạng thái</th>
+              {activeTab === "all" && <th className="p-3 border">Trạng thái</th>}
+              <th className="p-3 border">Thao tác</th>
             </tr>
           </thead>
           <tbody>
@@ -231,36 +247,80 @@ const OrderManage = () => {
                     {new Date(order.orderDate).toLocaleDateString()}
                   </td>
                   <td className="p-3 border">
-                    {order.totalAmount.toLocaleString()} VNĐ
+                    {order.totalAmount.toLocaleString()} đ
                   </td>
-                  <td className="p-3 border">
+                  {activeTab === "all" && (
+                    <td className="p-3 border">{getStatusLabel(order.statusId)}</td>
+                  )}
+                  <td className="p-3 border flex justify-center space-x-2">
                     <button
                       onClick={() => setSelectedOrder(order)}
                       className="text-blue-500 hover:text-blue-700"
+                      title="Xem chi tiết"
                     >
                       <FaEye size={20} />
                     </button>
-                  </td>
-                  <td className="p-3 border">
-                    <select
-                      value={order.statusId}
-                      onChange={(e) =>
-                        handleStatusChange(order.orderId, e.target.value)
-                      }
-                      className="p-2 border rounded bg-white"
-                    >
-                      {Object.entries(statusMap).map(([key, value]) => (
-                        <option key={key} value={value}>
-                          {TABS.find((tab) => tab.key === key)?.label}
-                        </option>
-                      ))}
-                    </select>
+                    {activeTab === "pending" && order.statusId === statusMap["pending"] && (
+                      <>
+                        <button
+                          onClick={() =>
+                            handleStatusChange(order.orderId, statusMap["shipping"])
+                          }
+                          className="px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                          disabled={isLoading}
+                        >
+                          Đang vận chuyển
+                        </button>
+                        <button
+                          onClick={() =>
+                            handleStatusChange(order.orderId, statusMap["cancelled"])
+                          }
+                          className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                          disabled={isLoading}
+                        >
+                          Hủy hàng
+                        </button>
+                      </>
+                    )}
+                    {activeTab === "shipping" && order.statusId === statusMap["shipping"] && (
+                      <button
+                        onClick={() =>
+                          handleStatusChange(order.orderId, statusMap["waiting"])
+                        }
+                        className="px-2 py-1 bg-orange-500 text-white rounded hover:bg-orange-600"
+                        disabled={isLoading}
+                      >
+                        Chờ giao hàng
+                      </button>
+                    )}
+                    {activeTab === "waiting" && order.statusId === statusMap["waiting"] && (
+                      <button
+                        onClick={() =>
+                          handleStatusChange(order.orderId, statusMap["completed"])
+                        }
+                        className="px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                        disabled={isLoading}
+                      >
+                        Hoàn thành
+                      </button>
+                    )}
+                    {activeTab === "completed" && order.statusId === statusMap["completed"] && (
+                      <button
+                        onClick={() =>
+                          handleStatusChange(order.orderId, statusMap["returned"])
+                        }
+                        className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                        disabled={isLoading}
+                      >
+                        Trả hàng
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="p-4 text-center text-gray-500">
+                <td colSpan={activeTab === "all" ? "6" : "5"} className="p-4 text-center text-gray-500">
                   Không có đơn hàng nào
                 </td>
               </tr>
@@ -279,7 +339,7 @@ const OrderManage = () => {
                 : "bg-blue-500 text-white"
             }`}
             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
+            disabled={currentPage === 1 || isLoading}
           >
             Trước
           </button>
@@ -292,10 +352,8 @@ const OrderManage = () => {
                 ? "bg-gray-300 cursor-not-allowed"
                 : "bg-blue-500 text-white"
             }`}
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-            }
-            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages || isLoading}
           >
             Sau
           </button>
@@ -317,7 +375,6 @@ const OrderManage = () => {
               Chi tiết đơn hàng
             </h2>
 
-            {/* Tính tổng tiền sản phẩm chưa tính phí ship và voucher */}
             {(() => {
               const subtotalProducts =
                 selectedOrder.orderDetails?.reduce(
@@ -327,7 +384,6 @@ const OrderManage = () => {
 
               return (
                 <div className="flex flex-col md:flex-row gap-6 mb-4">
-                  {/* Cột trái */}
                   <div className="flex-1 border-b pb-4">
                     <p className="text-lg">
                       <strong>Mã đơn hàng:</strong>{" "}
@@ -364,7 +420,6 @@ const OrderManage = () => {
                     </p>
                   </div>
 
-                  {/* Cột phải */}
                   <div className="flex-1 border-b pb-4">
                     <p className="text-lg pb-4">
                       <strong>Phí vận chuyển:</strong>
@@ -373,23 +428,26 @@ const OrderManage = () => {
                         {selectedOrder.shippingCost !== undefined
                           ? selectedOrder.shippingCost.toLocaleString()
                           : "0"}{" "}
-                        VNĐ
+                        đ
                       </span>
                     </p>
                     <p className="text-lg pb-4">
                       <strong>Voucher áp dụng:</strong>{" "}
                       <span className="text-green-600">
                         {selectedOrder.voucherId
-                          ? `Giảm ${getVoucherPercents(
-                              selectedOrder.voucherId
-                            )}% từ voucher`
+                          ? `${(
+                              ((subtotalProducts +
+                                (selectedOrder.shippingCost || 0)) *
+                                getVoucherPercents(selectedOrder.voucherId)) /
+                              100
+                            ).toLocaleString()} đ`
                           : "Không có"}
                       </span>
                     </p>
                     <p className="text-lg pb-4">
                       <strong>Tổng tiền sản phẩm:</strong>{" "}
                       <span className="text-red-400 font-normal">
-                        {subtotalProducts.toLocaleString()} VNĐ
+                        {subtotalProducts.toLocaleString()} đ
                       </span>
                     </p>
                     <p className="text-lg">
@@ -399,7 +457,7 @@ const OrderManage = () => {
                         {selectedOrder.totalAmount !== undefined
                           ? selectedOrder.totalAmount.toLocaleString()
                           : "0"}{" "}
-                        VNĐ
+                        đ
                       </span>
                     </p>
                   </div>
@@ -437,6 +495,13 @@ const OrderManage = () => {
                       <p className="text-sm text-gray-700">
                         Số lượng: {item.quantity || "0"}
                       </p>
+                      <p className="text-sm text-gray-700">
+                        Giá:{" "}
+                        {item.price !== undefined
+                          ? item.price.toLocaleString()
+                          : "0"}{" "}
+                        đ
+                      </p>
                     </div>
                   </div>
                 ))
@@ -444,11 +509,11 @@ const OrderManage = () => {
                 <p>Không có sản phẩm trong đơn hàng</p>
               )}
             </div>
-
             <div className="text-center mt-6">
               <button
                 onClick={() => setSelectedOrder(null)}
                 className="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                disabled={isLoading}
               >
                 Đóng
               </button>
