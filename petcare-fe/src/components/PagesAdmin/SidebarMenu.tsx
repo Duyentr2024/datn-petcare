@@ -18,7 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 const SidebarMenu = () => {
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
-  const [isSpaDropdownOpen, setIsSpaDropdownOpen] = useState(false); 
+  const [isSpaDropdownOpen, setIsSpaDropdownOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
 
