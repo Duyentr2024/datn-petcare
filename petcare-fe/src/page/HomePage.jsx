@@ -22,6 +22,8 @@ import SearchProduct from "../components/product/search/SearchProduct.jsx";
 import NewsDetail from "../service/newpages/NewsDetail.jsx";
 import Policy from "../elements/Policy.jsx";
 import Guide from "../elements/Guide.jsx";
+import SpaPage from "../components/spaGrooming/Grooming.jsx";
+import AppointmentPage from "./AppointmentPage.jsx";
 
 // Hiệu ứng chuyển trang
 const pageVariants = {
@@ -58,6 +60,9 @@ const AnimatedRoutes = () => {
                     <Route path="/newsdetail/:id" element={<NewsDetail />} />
                     <Route path="/policy" element={<Policy />} />
                     <Route path="/guide" element={<Guide />} />
+                    <Route path="/spa" element={<SpaPage />} />
+                    
+            <Route path="/appointment" element={<AppointmentPage />} />
                     {/* ✅ Route yêu cầu đăng nhập */}
                     <Route element={<PrivateRoute />}>
                         <Route path="/my-account/*" element={<MyAccount />} />

@@ -4,20 +4,25 @@ import ManageSlot from './ManageSlot';
 import ManagePetService from './ManagePetService';
 import ManageWeight from './ManageWeight';
 import TimeSlotService from '../../../service/spaService/TimeSlotService';
+import { useAuth } from '../../../context/AuthContext.jsx';
 
 const ManageSpaPage = () => {
+  const { user, token, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('slot');
   const [isBookingEnabled, setIsBookingEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
 
   useEffect(() => {
     const fetchBookingStatus = async () => {
       try {
         setIsLoading(true);
+        setErrorMessage(null);
         const status = await TimeSlotService.getBookingStatus();
         setIsBookingEnabled(status);
       } catch (error) {
         console.error('Lỗi khi lấy trạng thái đặt lịch:', error.message);
+        setErrorMessage(error.message);
       } finally {
         setIsLoading(false);
       }
@@ -26,46 +31,78 @@ const ManageSpaPage = () => {
   }, []);
 
   const toggleBookingStatus = async () => {
+    if (!user?.userId || !token) {
+      console.error('Không tìm thấy userId hoặc token. Vui lòng đăng nhập với vai trò admin.');
+      setErrorMessage('Không tìm thấy userId hoặc token. Vui lòng đăng nhập với vai trò admin.');
+      return;
+    }
+
     const newStatus = !isBookingEnabled;
     try {
       setIsLoading(true);
-      await TimeSlotService.updateBookingStatus(newStatus);
+      setErrorMessage(null);
+      await TimeSlotService.updateBookingStatus(newStatus, token);
       setIsBookingEnabled(newStatus);
     } catch (error) {
       console.error('Lỗi khi cập nhật trạng thái đặt lịch:', error.message);
+      setErrorMessage(error.message);
+      if (error.message.includes("Phiên đăng nhập hết hạn")) {
+        logout();
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
+  const canToggleBooking = user && (user.role === "ADMIN" || user.role === "STAFF");
+
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-4">
+      <div className="px-6 py-4 border-b">
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold text-white">Quản lý đặt lịch</h2>
+          <h2 className="text-xl font-bold text-gray-800">Quản lý đặt lịch</h2>
           <div className="flex items-center space-x-3">
-            <span className="text-sm font-medium text-white">
+            <div className={`p-1.5 rounded-full ${isBookingEnabled ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+              {isBookingEnabled ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              )}
+            </div>
+            <span className={`text-sm font-medium ${isBookingEnabled ? 'text-green-700' : 'text-red-700'}`}>
               {isBookingEnabled ? 'Đang mở đặt lịch' : 'Tạm ngưng đặt lịch'}
             </span>
             <Switch
               checked={isBookingEnabled}
               onChange={toggleBookingStatus}
-              disabled={isLoading}
+              disabled={isLoading || !canToggleBooking}
               className={`${
-                isBookingEnabled ? 'bg-green-400' : 'bg-red-400'
-              } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-indigo-700 ${
-                isBookingEnabled ? 'focus:ring-green-400' : 'focus:ring-red-400'
-              } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                isBookingEnabled ? 'bg-green-500' : 'bg-red-500'
+              } relative inline-flex h-6 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                isBookingEnabled ? 'focus:ring-green-500' : 'focus:ring-red-500'
+              } ${isLoading || !canToggleBooking ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <span className="sr-only">Bật/tắt chức năng đặt lịch</span>
               <span
                 className={`${
-                  isBookingEnabled ? 'translate-x-6' : 'translate-x-1'
-                } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+                  isBookingEnabled ? 'translate-x-7' : 'translate-x-1'
+                } inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform duration-200 ease-in-out`}
               />
             </Switch>
+            {!canToggleBooking && (
+              <p className="text-red-500 text-xs whitespace-nowrap">
+                Chỉ ADMIN/STAFF mới có quyền
+              </p>
+            )}
           </div>
         </div>
+        {errorMessage && (
+          <p className="text-red-700 text-xs mt-2">{errorMessage}</p>
+        )}
       </div>
 
       <div className="px-6 py-3 border-b border-gray-200">

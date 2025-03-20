@@ -1,12 +1,10 @@
 import axios from 'axios';
 
-// Sử dụng biến môi trường VITE_API_BASE_URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
   ? `${import.meta.env.VITE_API_BASE_URL}/api`
   : 'http://localhost:8080/api';
 
 const TimeSlotService = {
-  // Lấy danh sách khung giờ
   getTimeSlots: async (date) => {
     try {
       const response = await axios.get(`${API_BASE_URL}/timeslots`, {
@@ -25,7 +23,6 @@ const TimeSlotService = {
     }
   },
 
-  // Đặt lịch hẹn
   bookAppointment: async (payload) => {
     try {
       const response = await axios.post(`${API_BASE_URL}/timeslots/book`, payload);
@@ -39,11 +36,10 @@ const TimeSlotService = {
     }
   },
 
-  // Lấy trạng thái đặt lịch (bật/tắt)
   getBookingStatus: async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/booking-enabled`);
-      return response.data.settingValue; // Trả về true/false
+      return response.data.settingValue;
     } catch (error) {
       const errorMessage = error.response
         ? `Error ${error.response.status}: ${error.response.data?.message || error.response.statusText}`
@@ -53,18 +49,27 @@ const TimeSlotService = {
     }
   },
 
-  // Cập nhật trạng thái đặt lịch (bật/tắt)
-  updateBookingStatus: async (status) => {
+  updateBookingStatus: async (status, token) => {
     try {
-      const response = await axios.put(`${API_BASE_URL}/booking-enabled`, null, {
-        params: { status },
-      });
+      const response = await axios.put(
+        `${API_BASE_URL}/staff/booking-enabled`,
+        null,
+        {
+          params: { status },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
       return response.data;
     } catch (error) {
       const errorMessage = error.response
-        ? `Error ${error.response.status}: ${error.response.data?.message || error.response.statusText}`
+        ? `Error ${error.response.status}: ${error.response.data || error.response.statusText}`
         : error.message || 'Unknown error';
-      console.error('Error updating booking status:', errorMessage);
+      console.error('Error updating booking status:', errorMessage, error);
+      if (error.response?.status === 401) {
+        throw new Error("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại");
+      }
       throw new Error(errorMessage);
     }
   },

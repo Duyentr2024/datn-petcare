@@ -41,7 +41,7 @@ const OrderOffline = () => {
       paymentMethod: 'CASH', 
       error: '',
       customerPhone: '',
-      customerName: 'Khách vãng lai',
+      customerName: 'Khách lẻ',
       accumulatePoints: false,
       totalPoints: 0,
       pointsToUse: 0
@@ -216,7 +216,6 @@ const OrderOffline = () => {
             ? { ...tab, products: tab.products.filter(p => p.id !== productDetailId) }
             : tab
         ));
-        // toast.success(`Đã xóa ${product.products.productName} khỏi giỏ hàng offline`); // Xóa dòng này
       } else {
         // Thêm sản phẩm vào giỏ hàng offline
         if (product.quantity < 1) {

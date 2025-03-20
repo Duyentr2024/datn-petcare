@@ -3,16 +3,12 @@ import HomePage from "./page/HomePage.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import Admin from "./page/Admin.jsx";
 import TopButton from "./elements/TopButton";
-import SpaPage from "./page/SpaPage.jsx";
-import AppointmentPage from "./page/AppointmentPage.jsx";
 import ChatBot from "./components/ChatBot";
 import PrivateRoute from "./context/PrivateRoute.jsx";
 import AdminSpa from "./components/spaGrooming/admin/AdminAppointment.jsx";
-
-import ManageSlot from "./components/Manage/manageSpa/ManageSlot.jsx";
 import ManageSpaPage from "./components/Manage/manageSpa/ManageSpaPage.jsx";
-
 import OrderOffline from "./components/orderOffline/OrderOffline.jsx";
+import StaffPage from "./page/StaffPage.jsx";
 
 function App() {
   return (
@@ -22,16 +18,17 @@ function App() {
           {/* Route chính */}
           <Route path="/*" element={<HomePage />} />
 
-          <Route path="/spa" element={<SpaPage />} />
-          <Route path="/appointment" element={<AppointmentPage />} />
-          <Route path="/admin-spa" element={<AdminSpa />} />
-          <Route path="/manage-slot" element={<ManageSlot />} />
-          <Route path="/manage-spa" element={<ManageSpaPage />} />
-
-          {/* Chỉ admin vào được */}
+          {/* Chỉ admin và staff vào được */}
           <Route element={<PrivateRoute requiredRoles={["ADMIN", "STAFF"]} />}>
-            <Route path="/orderOffline" element={<OrderOffline />} />
             <Route path="/admin/*" element={<Admin />} />
+
+            {/* Staff routes */}
+            <Route path="/staff/*" element={<StaffPage />}>
+
+              <Route path="orderOffline" element={<OrderOffline />} />
+              <Route path="manage-spa" element={<ManageSpaPage />} />
+              <Route path="admin-spa" element={<AdminSpa />} />
+            </Route>
           </Route>
         </Routes>
         <ChatBot />

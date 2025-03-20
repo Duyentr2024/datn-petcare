@@ -1,13 +1,15 @@
-import { FiBell, FiLogOut } from "react-icons/fi";
+import { FiLogOut } from "react-icons/fi";
 import { jwtDecode } from "jwt-decode";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useAuth } from "../../context/AuthContext"; // Import useAuth để sử dụng logout từ AuthContext
 
-const HeaderAdmin = ({ title = "Admin Dashboard" }) => {
+const HeaderStaff = ({ title = "Staff Dashboard" }) => {
   const navigate = useNavigate();
+  const { logout } = useAuth(); // Lấy hàm logout từ AuthContext
   const [user, setUser] = useState({
-    name: "Admin",
+    name: "Staff",
     avatar: "https://via.placeholder.com/40",
   });
 
@@ -18,7 +20,7 @@ const HeaderAdmin = ({ title = "Admin Dashboard" }) => {
         const decoded = jwtDecode(token);
         console.log("Thông tin user từ token:", decoded);
         setUser({
-          name: decoded.fullName || "Admin",
+          name: decoded.fullName || "Staff",
           avatar: decoded.imageUrl || "https://via.placeholder.com/40",
         });
       } catch (error) {
@@ -28,23 +30,20 @@ const HeaderAdmin = ({ title = "Admin Dashboard" }) => {
   }, []);
 
   const handleLogout = () => {
-    Cookies.remove("accessToken");
-    navigate("/login");
+    Cookies.remove("accessToken"); // Xóa token khỏi cookie
+    logout(); // Gọi hàm logout từ AuthContext để cập nhật trạng thái
+    navigate("/login"); // Chuyển hướng về trang đăng nhập
   };
 
   return (
-    <div className="flex justify-between items-center bg-gradient-to-b from-gray-700 via-gray-800 to-gray-900 px-6 py-3 text-white shadow-md top-0">
+    <div className="flex justify-between items-center bg-gradient-to-b from-blue-600 to-blue-800 px-6 py-3 text-white shadow-md top-0">
       <h1 className="text-xl font-semibold">{title}</h1>
       <div className="flex items-center gap-6">
-        <button className="relative p-2 hover:bg-gray-700 rounded-full">
-          <FiBell className="w-6 h-6" />
-          <span className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full"></span>
-        </button>
         <div className="flex items-center gap-2">
           <img
             src={user.avatar}
             alt="User Avatar"
-            className="w-10 h-10 rounded-full border border-gray-600"
+            className="w-10 h-10 rounded-full border border-gray-300"
           />
           <span className="font-medium">{user.name}</span>
         </div>
@@ -60,4 +59,4 @@ const HeaderAdmin = ({ title = "Admin Dashboard" }) => {
   );
 };
 
-export default HeaderAdmin;
+export default HeaderStaff;

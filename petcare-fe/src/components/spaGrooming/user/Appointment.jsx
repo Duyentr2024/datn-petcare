@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
-import { FaBath, FaCalendarAlt, FaClock, FaSpa } from 'react-icons/fa';
+import { FaBath, FaCalendarAlt, FaClock, FaSpa, FaHome, FaChevronRight } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
 import TimeSlotService from '../../../service/spaService/TimeSlotService';
+import './appointment.css';
 
-// Component ServiceModal (khôi phục từ code gốc của bạn)
+
 const ServiceModal = memo(
   ({ isServiceModalOpen, setIsServiceModalOpen, selectedSlots, pets, setPets, serviceErrors, setServiceErrors, serviceOptions, weightOptions, handlePetChange, handleServiceConfirm, addNewPet, removePet }) => (
     <div className={`fixed inset-0 z-50 ${isServiceModalOpen ? 'block' : 'hidden'}`}>
@@ -54,7 +56,7 @@ const ServiceModal = memo(
                   <select
                     value={pet.petType}
                     onChange={(e) => handlePetChange(index, 'petType', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#026AC7] ${
                       !pet.petType && serviceErrors.petInfo ? 'border-red-500' : 'border-gray-300'
                     }`}
                   >
@@ -74,7 +76,7 @@ const ServiceModal = memo(
                     value={pet.service}
                     onChange={(e) => handlePetChange(index, 'service', e.target.value)}
                     disabled={!pet.petType}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#026AC7] ${
                       !pet.service && serviceErrors.petInfo ? 'border-red-500' : 'border-gray-300'
                     } ${!pet.petType ? 'bg-gray-100' : ''}`}
                   >
@@ -98,7 +100,7 @@ const ServiceModal = memo(
                     value={pet.weight}
                     onChange={(e) => handlePetChange(index, 'weight', e.target.value)}
                     disabled={!pet.petType}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#026AC7] ${
                       !pet.weight && serviceErrors.petInfo ? 'border-red-500' : 'border-gray-300'
                     } ${!pet.petType ? 'bg-gray-100' : ''}`}
                   >
@@ -119,13 +121,13 @@ const ServiceModal = memo(
                   <textarea
                     value={pet.note}
                     onChange={(e) => handlePetChange(index, 'note', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 h-[42px] resize-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-[#026AC7] h-[42px] resize-none"
                     placeholder="Ghi chú thêm về thú cưng..."
                   />
                 </div>
                 <div className="col-span-2 flex justify-end items-center">
                   <span className="text-sm font-medium text-gray-700 mr-2">Giá dịch vụ:</span>
-                  <span className="text-blue-600 font-medium">
+                  <span className="text-[#026AC7] font-medium">
                     {pet.price.toLocaleString('vi-VN')}đ
                   </span>
                 </div>
@@ -144,7 +146,7 @@ const ServiceModal = memo(
               className={`px-6 py-2 rounded-lg font-medium transition-colors ${
                 pets.length === selectedSlots.length &&
                 pets.every((pet) => pet.petType && pet.service && pet.weight)
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  ? 'bg-[#026AC7] text-white hover:bg-[#0253a0]'
                   : 'bg-gray-200 text-gray-500 cursor-not-allowed'
               }`}
             >
@@ -157,7 +159,6 @@ const ServiceModal = memo(
   )
 );
 
-// Component CustomerModal (khôi phục từ code gốc của bạn)
 const CustomerModal = memo(
   ({ isCustomerModalOpen, setIsCustomerModalOpen, customerInfo, setCustomerInfo, errors, setErrors, handleCustomerInfoChange, fullNameRef, phoneRef }) => (
     <div className={`fixed inset-0 z-50 ${isCustomerModalOpen ? 'block' : 'hidden'}`}>
@@ -177,7 +178,7 @@ const CustomerModal = memo(
                   name="fullName"
                   value={customerInfo.fullName}
                   onChange={handleCustomerInfoChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#026AC7] ${
                     errors.fullName ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Nhập họ và tên"
@@ -194,7 +195,7 @@ const CustomerModal = memo(
                   name="phone"
                   value={customerInfo.phone}
                   onChange={handleCustomerInfoChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#026AC7] ${
                     errors.phone ? 'border-red-500' : 'border-gray-300'
                   }`}
                   placeholder="Nhập số điện thoại"
@@ -208,7 +209,7 @@ const CustomerModal = memo(
                   id="acceptTerms"
                   checked={customerInfo.acceptTerms}
                   onChange={handleCustomerInfoChange}
-                  className="rounded text-blue-600 focus:ring-blue-500"
+                  className="rounded text-[#026AC7] focus:ring-[#026AC7]"
                 />
                 <label htmlFor="acceptTerms" className="text-sm text-gray-600">
                   Tôi đồng ý với các điều khoản dịch vụ
@@ -237,14 +238,14 @@ const CustomerModal = memo(
               Hủy
             </button>
             <button
-              className={`px-6 py-2.5 bg-blue-600 text-white rounded-md ${
+              className={`px-6 py-2.5 bg-[#026AC7] text-white rounded-md ${
                 !customerInfo.acceptTerms ||
                 errors.fullName ||
                 errors.phone ||
                 !customerInfo.fullName ||
                 !customerInfo.phone
                   ? 'opacity-50 cursor-not-allowed'
-                  : 'hover:bg-blue-700'
+                  : 'hover:bg-[#0253a0]'
               }`}
               disabled={
                 !customerInfo.acceptTerms ||
@@ -263,7 +264,7 @@ const CustomerModal = memo(
   )
 );
 
-// Component chính Appointment
+
 const Appointment = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weekDates, setWeekDates] = useState([]);
@@ -547,7 +548,6 @@ const Appointment = () => {
         acceptTerms: false,
       });
 
-      // Gọi lại API để cập nhật trạng thái
       const data = await TimeSlotService.getTimeSlots(selectedDate.toISOString().split('T')[0]);
       setTimeSlots(data);
     } catch (error) {
@@ -571,257 +571,328 @@ const Appointment = () => {
     }
   };
 
-  const renderTimeSlots = () => (
-    <div className="bg-gray-50 p-4 rounded-lg">
-      <div className="flex items-center gap-2 mb-4">
-        <FaSpa className="w-5 h-5 text-blue-600" />
-        <h3 className="text-md font-medium">Chọn khung giờ</h3>
-      </div>
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <button
-          onClick={() => setSelectedSession('morning')}
-          className={`p-4 rounded-lg text-center transition-colors ${
-            selectedSession === 'morning' ? 'bg-blue-600 text-white' : 'bg-white hover:bg-gray-100'
-          }`}
-        >
-          <h4 className="font-medium">Buổi sáng</h4>
-          <p className="text-sm">9:00 - 14:00</p>
-        </button>
-        <button
-          onClick={() => setSelectedSession('afternoon')}
-          className={`p-4 rounded-lg text-center transition-colors ${
-            selectedSession === 'afternoon' ? 'bg-blue-600 text-white' : 'bg-white hover:bg-gray-100'
-          }`}
-        >
-          <h4 className="font-medium">Buổi chiều</h4>
-          <p className="text-sm">14:00 - 20:00</p>
-        </button>
-      </div>
-      {isLoading ? (
-        <div className="flex justify-center items-center h-32">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-gray-500">Đang tải khung giờ...</span>
+  return (
+    <div className="min-h-screen bg-gray-50 flex justify-center">
+      <div className="w-full max-w-7xl">
+        {/* Breadcrumb */}
+        <div className="bg-white border-b w-full">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center text-sm">
+            <Link to="/" className="flex items-center text-gray-600 hover:text-[#026AC7]">
+              <FaHome className="mr-1" />
+              <span>Trang chủ</span>
+            </Link>
+            <FaChevronRight className="mx-2 text-gray-400 text-xs" />
+            <Link to="/staff/spa-grooming" className="text-gray-600 hover:text-[#026AC7]">
+              Dịch vụ spa
+            </Link>
+            <FaChevronRight className="mx-2 text-gray-400 text-xs" />
+            <span className="text-[#026AC7] font-medium">Đặt lịch</span>
+          </div>
         </div>
-      ) : error ? (
-        <div className="bg-white p-4 rounded-lg shadow-sm text-center">
-          <p className="text-red-500">{error}</p>
-          <button
-            onClick={() => fetchTimeSlots()}
-            className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            Thử lại
-          </button>
-        </div>
-      ) : selectedSession ? (
-        <div className="bg-white p-4 rounded-lg shadow-sm">
-          {timeSlots[selectedSession]?.length > 0 ? (
-            timeSlots[selectedSession].map((block, blockIndex) => (
-              <div key={blockIndex} className="mb-4 last:mb-0">
-                <div className="flex items-start gap-2 mb-2">
-                  <span className="w-16 text-sm font-medium text-gray-600 mt-2">{block.hour}</span>
-                  <div className="flex-1">
-                    <div className="grid grid-cols-4 gap-3">
-                      {Array.from({ length: block.totalSlots || 4 }, (_, slotIndex) => {
-                        const slotId = `${block.hour}-${slotIndex}`;
-                        const isBooked = slotIndex < (block.bookedSlots || 0);
-                        return (
-                          <div key={slotIndex}>
-                            <input
-                              type="checkbox"
-                              id={`time-${block.hour}-${slotIndex}`}
-                              className="hidden"
-                              disabled={
-                                isBooked ||
-                                (selectedSlots.length > 0 &&
-                                  !selectedSlots.includes(slotId) &&
-                                  selectedTime !== block.hour) ||
-                                isSlotDisabled(block.hour)
-                              }
-                              checked={selectedSlots.includes(slotId)}
-                              onChange={() => handleSlotSelection(block.hour, slotIndex)}
-                            />
-                            <label
-                              htmlFor={`time-${block.hour}-${slotIndex}`}
-                              className={`block w-full h-10 relative rounded-lg cursor-pointer transition-all border-2
-                                ${
-                                  isBooked
-                                    ? 'bg-gray-500 border-gray-200 opacity-50 cursor-not-allowed'
-                                    : selectedSlots.includes(slotId)
-                                    ? 'bg-blue-600 border-blue-600 shadow-md transform scale-105'
-                                    : selectedTime && selectedTime !== block.hour
-                                    ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-50'
-                                    : isSlotDisabled(block.hour)
-                                    ? 'bg-gray-300 border-gray-200 cursor-not-allowed opacity-50'
-                                    : 'bg-white border-gray-200 hover:border-blue-400 hover:shadow'
-                                }`}
-                            >
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <span
-                                  className={`text-sm font-medium ${
-                                    selectedSlots.includes(slotId)
-                                      ? 'text-white'
-                                      : isBooked
-                                      ? 'text-gray-300'
-                                      : 'text-gray-600'
-                                  }`}
-                                >
-                                  {isBooked ? 'Đã đặt' : `Slot ${slotIndex + 1}`}
-                                </span>
+
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          {/* Header - Main title */}
+          <h1 className="text-3xl font-bold text-[#026AC7] mb-8 ">Chăm sóc thú cưng chuyên nghiệp – Đặt lịch ngay tại PetCare!</h1>
+
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="w-full md:w-2/3">
+              {/* Booking time selection */}
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-6 border-2 border-[#CDEBFF] transition-transform hover:translate-y-[-5px]">
+                <div className="flex items-center gap-3 mb-5 pb-3 border-b border-gray-100">
+                  <div className="bg-[#026AC7] rounded-full p-2 text-white">
+                    <FaCalendarAlt className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-800">Chọn thời gian</h2>
+                </div>
+
+                <div className="mb-6 bg-gray-50 p-4 rounded-lg">
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-2">
+                      <FaClock className="w-5 h-5 text-[#026AC7]" />
+                      <h3 className="text-md font-medium">Ngày đặt lịch</h3>
+                    </div>
+                    <span className="text-[#026AC7] font-medium">{formatDate(selectedDate)}</span>
+                  </div>
+                  <div className="grid grid-cols-7 gap-4">
+                    {weekDates.map((date, index) => {
+                      const { day, date: dateStr } = formatDayDate(date);
+                      return (
+                        <div key={index} className="text-center">
+                          <input
+                            type="radio"
+                            id={`date-${index}`}
+                            name="booking-date"
+                            className="hidden"
+                            checked={selectedDate.toDateString() === date.toDateString()}
+                            onChange={() => {
+                              setSelectedDate(date);
+                              setSelectedSession('');
+                              setSelectedTime('');
+                              setSelectedSlots([]);
+                            }}
+                          />
+                          <label
+                            htmlFor={`date-${index}`}
+                            className={`cursor-pointer flex flex-col items-center p-2 rounded-lg transition-all ${
+                              selectedDate.toDateString() === date.toDateString()
+                                ? 'bg-[#026AC7] text-white shadow-md transform scale-105'
+                                : 'hover:bg-[#CDEBFF] border border-gray-100'
+                            }`}
+                          >
+                            <span className="text-sm">{day}</span>
+                            <span className="text-lg font-semibold">{dateStr}</span>
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Time Slots Section */}
+                <div className="bg-gray-50 p-5 rounded-lg border border-[#026AC7]/20">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="bg-[#026AC7] rounded-full p-1.5 text-white">
+                      <FaSpa className="w-4 h-4" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-800">Chọn khung giờ</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <button
+                      onClick={() => setSelectedSession('morning')}
+                      className={`p-4 rounded-lg text-center transition-all ${
+                        selectedSession === 'morning' 
+                          ? 'bg-[#026AC7] text-white shadow-md transform scale-105' 
+                          : 'bg-white hover:bg-[#CDEBFF] border border-gray-200'
+                      }`}
+                    >
+                      <h4 className="font-medium">Buổi sáng</h4>
+                      <p className="text-sm">9:00 - 14:00</p>
+                    </button>
+                    <button
+                      onClick={() => setSelectedSession('afternoon')}
+                      className={`p-4 rounded-lg text-center transition-all ${
+                        selectedSession === 'afternoon' 
+                          ? 'bg-[#026AC7] text-white shadow-md transform scale-105' 
+                          : 'bg-white hover:bg-[#CDEBFF] border border-gray-200'
+                      }`}
+                    >
+                      <h4 className="font-medium">Buổi chiều</h4>
+                      <p className="text-sm">14:00 - 20:00</p>
+                    </button>
+                  </div>
+                  {isLoading ? (
+                    <div className="flex justify-center items-center h-32">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#026AC7]"></div>
+                      <span className="ml-2 text-gray-500">Đang tải khung giờ...</span>
+                    </div>
+                  ) : error ? (
+                    <div className="bg-white p-4 rounded-lg shadow-sm text-center">
+                      <p className="text-red-500">{error}</p>
+                      <button
+                        onClick={() => fetchTimeSlots()}
+                        className="mt-2 px-4 py-2 bg-[#026AC7] text-white rounded-md hover:bg-[#0253a0]"
+                      >
+                        Thử lại
+                      </button>
+                    </div>
+                  ) : selectedSession ? (
+                    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                      {timeSlots[selectedSession]?.length > 0 ? (
+                        timeSlots[selectedSession].map((block, blockIndex) => (
+                          <div key={blockIndex} className="mb-4 last:mb-0">
+                            <div className="flex items-start gap-2 mb-2">
+                              <span className="w-16 text-sm font-medium text-[#026AC7] mt-2">{block.hour}</span>
+                              <div className="flex-1">
+                                <div className="grid grid-cols-4 gap-3">
+                                  {Array.from({ length: block.totalSlots || 4 }, (_, slotIndex) => {
+                                    const slotId = `${block.hour}-${slotIndex}`;
+                                    const isBooked = slotIndex < (block.bookedSlots || 0);
+                                    return (
+                                      <div key={slotIndex}>
+                                        <input
+                                          type="checkbox"
+                                          id={`time-${block.hour}-${slotIndex}`}
+                                          className="hidden"
+                                          disabled={
+                                            isBooked ||
+                                            (selectedSlots.length > 0 &&
+                                              !selectedSlots.includes(slotId) &&
+                                              selectedTime !== block.hour) ||
+                                            isSlotDisabled(block.hour)
+                                          }
+                                          checked={selectedSlots.includes(slotId)}
+                                          onChange={() => handleSlotSelection(block.hour, slotIndex)}
+                                        />
+                                        <label
+                                          htmlFor={`time-${block.hour}-${slotIndex}`}
+                                          className={`block w-full h-10 relative rounded-lg cursor-pointer transition-all border-2
+                                            ${
+                                              isBooked
+                                                ? 'bg-gray-500 border-gray-200 opacity-50 cursor-not-allowed'
+                                                : selectedSlots.includes(slotId)
+                                                ? 'bg-[#026AC7] border-[#026AC7] shadow-md transform scale-105'
+                                                : selectedTime && selectedTime !== block.hour
+                                                ? 'bg-gray-100 border-gray-200 cursor-not-allowed opacity-50'
+                                                : isSlotDisabled(block.hour)
+                                                ? 'bg-gray-300 border-gray-200 cursor-not-allowed opacity-50'
+                                                : 'bg-white border-gray-200 hover:border-[#026AC7] hover:shadow'
+                                            }`}
+                                        >
+                                          <div className="absolute inset-0 flex items-center justify-center">
+                                            <span
+                                              className={`text-sm font-medium ${
+                                                selectedSlots.includes(slotId)
+                                                  ? 'text-white'
+                                                  : isBooked
+                                                  ? 'text-gray-300'
+                                                  : 'text-gray-600'
+                                              }`}
+                                            >
+                                              {isBooked ? 'Đã đặt' : `Slot ${slotIndex + 1}`}
+                                            </span>
+                                          </div>
+                                        </label>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               </div>
-                            </label>
+                            </div>
                           </div>
-                        );
-                      })}
+                        ))
+                      ) : (
+                        <p className="text-gray-500 text-center py-8">Không có khung giờ nào khả dụng</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-gray-500">
+                      Vui lòng chọn buổi sáng hoặc buổi chiều để xem các khung giờ khả dụng
+                    </div>
+                  )}
+                  <div className="mt-4 p-3 bg-white rounded-lg border border-gray-100">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 border-2 border-gray-200 rounded-lg"></div>
+                        <span>Còn trống</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-[#026AC7] rounded-lg"></div>
+                        <span>Đang chọn</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-gray-500 border-2 border-gray-200 rounded-lg opacity-50"></div>
+                        <span>Đã đặt</span>
+                      </div>
+                    </div>
+                  </div>
+              
+                  <div className="mt-6 text-center">
+                    <button
+                      onClick={handleBookingClick}
+                      disabled={selectedSlots.length === 0}
+                      className={`px-8 py-3 rounded-lg font-medium transition-all ${
+                        selectedSlots.length > 0
+                          ? 'bg-[#026AC7] text-white hover:bg-[#0253a0] shadow-md hover:shadow-lg'
+                          : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      Đặt lịch
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Booking Information Summary */}
+            <div className="w-full md:w-1/3">
+              <div className="bg-white rounded-lg shadow-lg p-6 border-2 border-[#CDEBFF] transition-transform hover:translate-y-[-5px] sticky top-6">
+                <div className="flex items-center gap-3 mb-5 pb-3 border-b border-gray-100">
+                  <div className="bg-[#026AC7] rounded-full p-2 text-white">
+                    <FaCalendarAlt className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-800">Thông tin đặt lịch</h2>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center py-2 border-b border-dashed">
+                    <span className="text-gray-600">Ngày</span>
+                    <span className="font-medium">{formatDate(selectedDate)}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-dashed">
+                    <span className="text-gray-600">Thời gian</span>
+                    <span className="font-medium text-[#026AC7]">{selectedTime || '--:--'}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-dashed">
+                    <span className="text-gray-600">Số lượng thú cưng</span>
+                    <span className="font-medium">{selectedSlots.length}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-dashed">
+                    <span className="text-gray-600">Tiền cọc</span>
+                    <span className="font-bold text-[#026AC7]">
+                      {calculateDeposit().toLocaleString('vi-VN')}đ
+                    </span>
+                  </div>
+                  <div className="p-4 bg-[#CDEBFF] rounded-lg mt-4">
+                    <div className="flex items-start">
+                      <div className="text-[#026AC7] mr-2 mt-1">
+                        <FaClock className="w-4 h-4" />
+                      </div>
+                      <p className="text-sm text-gray-700">
+                        Tiền cọc 50.000đ/slot sẽ được hoàn trả khi bạn hủy lịch trước 12 tiếng. Sau thời gian này, tiền cọc sẽ không được hoàn lại. Vui lòng liên hệ Hotline 0844 233 799 để hủy lịch.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Các hướng dẫn */}
+                <div className="mt-6">
+                  <h3 className="font-medium mb-3 text-gray-700">Quy trình dịch vụ:</h3>
+                  <div className="space-y-2">
+                    <div className="flex items-start">
+                      <div className="w-6 h-6 rounded-full bg-[#026AC7] text-white flex items-center justify-center flex-shrink-0 mt-0.5 mr-2 text-sm">1</div>
+                      <p className="text-sm text-gray-600">Đặt lịch và thanh toán tiền cọc</p>
+                    </div>
+                    <div className="flex items-start">
+                      <div className="w-6 h-6 rounded-full bg-[#026AC7] text-white flex items-center justify-center flex-shrink-0 mt-0.5 mr-2 text-sm">2</div>
+                      <p className="text-sm text-gray-600">Mang thú cưng đến Petcare đúng giờ hẹn</p>
+                    </div>
+                    <div className="flex items-start">
+                      <div className="w-6 h-6 rounded-full bg-[#026AC7] text-white flex items-center justify-center flex-shrink-0 mt-0.5 mr-2 text-sm">3</div>
+                      <p className="text-sm text-gray-600">Sử dụng dịch vụ và thanh toán phần còn lại</p>
                     </div>
                   </div>
                 </div>
               </div>
-            ))
-          ) : (
-            <p className="text-gray-500 text-center">Không có khung giờ nào khả dụng</p>
-          )}
-        </div>
-      ) : null}
-      <div className="mt-4 p-3 bg-white rounded-lg">
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 border-2 border-gray-200 rounded-lg"></div>
-            <span>Còn trống</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg"></div>
-            <span>Đang chọn</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gray-500 border-2 border-gray-200 rounded-lg opacity-50"></div>
-            <span>Đã đặt</span>
+            </div>
           </div>
         </div>
-      </div>
-  
-      <div className="mt-6 text-center">
-        <button
-          onClick={handleBookingClick}
-          disabled={selectedSlots.length === 0}
-          className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-            selectedSlots.length > 0
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-          }`}
-        >
-          Đặt lịch
-        </button>
-      </div>
-    </div>
-  );
 
-  return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="flex gap-6">
-        <div className="w-2/3">
-          <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <FaCalendarAlt className="w-6 h-6 text-blue-600" />
-              <h2 className="text-lg font-semibold">Chọn thời gian</h2>
-            </div>
-            <div className="mb-6 bg-gray-50 p-4 rounded-lg">
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2">
-                  <FaClock className="w-5 h-5 text-blue-600" />
-                  <h3 className="text-md font-medium">Thời gian đặt lịch</h3>
-                </div>
-                <span className="text-blue-600 font-medium">{formatDate(selectedDate)}</span>
-              </div>
-              <div className="grid grid-cols-7 gap-4">
-                {weekDates.map((date, index) => {
-                  const { day, date: dateStr } = formatDayDate(date);
-                  return (
-                    <div key={index} className="text-center">
-                      <input
-                        type="radio"
-                        id={`date-${index}`}
-                        name="booking-date"
-                        className="hidden"
-                        checked={selectedDate.toDateString() === date.toDateString()}
-                        onChange={() => {
-                          setSelectedDate(date);
-                          setSelectedSession('');
-                          setSelectedTime('');
-                          setSelectedSlots([]);
-                        }}
-                      />
-                      <label
-                        htmlFor={`date-${index}`}
-                        className={`cursor-pointer flex flex-col items-center p-2 rounded-lg transition-colors ${
-                          selectedDate.toDateString() === date.toDateString()
-                            ? 'bg-blue-600 text-white'
-                            : 'hover:bg-gray-100'
-                        }`}
-                      >
-                        <span className="text-sm">{day}</span>
-                        <span className="text-lg font-semibold">{dateStr}</span>
-                      </label>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            {renderTimeSlots()}
-          </div>
-        </div>
-        <div className="w-1/3">
-          <div className="bg-white rounded-lg shadow-md p-4">
-            <h2 className="text-lg font-semibold mb-4">Thông tin đặt lịch</h2>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center py-2 border-b">
-                <span className="text-gray-600">Ngày</span>
-                <span className="font-medium">{formatDate(selectedDate)}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b">
-                <span className="text-gray-600">Thời gian</span>
-                <span className="font-medium">{selectedTime || '--:--'}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b">
-                <span className="text-gray-600">Số lượng thú cưng</span>
-                <span className="font-medium">{selectedSlots.length}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b">
-                <span className="text-gray-600">Tiền cọc</span>
-                <span className="font-medium text-blue-600">
-                  {calculateDeposit().toLocaleString('vi-VN')}đ
-                </span>
-              </div>
-              <div className="mt-2 text-sm text-gray-500 italic">* Tiền cọc: 50.000đ/slot</div>
-            </div>
-          </div>
-        </div>
+        <ServiceModal
+          isServiceModalOpen={isServiceModalOpen}
+          setIsServiceModalOpen={setIsServiceModalOpen}
+          selectedSlots={selectedSlots}
+          pets={pets}
+          setPets={setPets}
+          serviceErrors={serviceErrors}
+          setServiceErrors={setServiceErrors}
+          serviceOptions={serviceOptions}
+          weightOptions={weightOptions}
+          handlePetChange={handlePetChange}
+          handleServiceConfirm={handleServiceConfirm}
+          addNewPet={addNewPet}
+          removePet={removePet}
+        />
+        <CustomerModal
+          isCustomerModalOpen={isCustomerModalOpen}
+          setIsCustomerModalOpen={setIsCustomerModalOpen}
+          customerInfo={customerInfo}
+          setCustomerInfo={setCustomerInfo}
+          errors={errors}
+          setErrors={setErrors}
+          handleCustomerInfoChange={handleCustomerInfoChange}
+          fullNameRef={fullNameRef}
+          phoneRef={phoneRef}
+        />
       </div>
-      <ServiceModal
-        isServiceModalOpen={isServiceModalOpen}
-        setIsServiceModalOpen={setIsServiceModalOpen}
-        selectedSlots={selectedSlots}
-        pets={pets}
-        setPets={setPets}
-        serviceErrors={serviceErrors}
-        setServiceErrors={setServiceErrors}
-        serviceOptions={serviceOptions}
-        weightOptions={weightOptions}
-        handlePetChange={handlePetChange}
-        handleServiceConfirm={handleServiceConfirm}
-        addNewPet={addNewPet}
-        removePet={removePet}
-      />
-      <CustomerModal
-        isCustomerModalOpen={isCustomerModalOpen}
-        setIsCustomerModalOpen={setIsCustomerModalOpen}
-        customerInfo={customerInfo}
-        setCustomerInfo={setCustomerInfo}
-        errors={errors}
-        setErrors={setErrors}
-        handleCustomerInfoChange={handleCustomerInfoChange}
-        fullNameRef={fullNameRef}
-        phoneRef={phoneRef}
-      />
     </div>
   );
 };
