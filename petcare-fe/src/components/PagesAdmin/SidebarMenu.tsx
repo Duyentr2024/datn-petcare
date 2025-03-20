@@ -50,7 +50,7 @@ const SidebarMenu = () => {
     };
 
     return (
-        <div className="flex flex-col w-64 h-screen bg-gradient-to-b from-gray-700 via-gray-800 to-gray-900 text-white shadow-lg">
+        <div className="flex flex-col z-1 w-64 h-screen bg-gradient-to-b from-gray-700 via-gray-800 to-gray-900 text-white shadow-lg">
 
 
             {/* Navigation */}
@@ -79,7 +79,16 @@ const SidebarMenu = () => {
                             className="flex items-center p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition duration-300"
                         >
                             <FiFileText className="w-5 h-5 mr-3"/>
-                            <span>Hóa đơn</span>
+                            <span>Hóa đơn offline</span>
+                        </Link>
+                    </li>
+                    <li>
+                        <Link
+                            to="/admin/invoice-online"
+                            className="flex items-center p-3 bg-gray-600 text-white rounded-lg hover:bg-gray-500 transition duration-300"
+                        >
+                            <FiFileText className="w-5 h-5 mr-3"/>
+                            <span>Hóa đơn online</span>
                         </Link>
                     </li>
                     <li>
@@ -126,7 +135,7 @@ const SidebarMenu = () => {
                                     </li>
                                     <li>
                                         <Link
-                                            to="admin/client"
+                                            to="/admin/client"
                                             className="block p-2 rounded-lg hover:bg-gray-500 transition duration-300"
                                         >
                                             Quản lý người dùng
