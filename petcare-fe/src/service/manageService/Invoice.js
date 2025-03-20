@@ -30,3 +30,14 @@ export const getOrdersByDateRange = async (startDate, endDate) => {
         throw error;
     }
 };
+
+// Lấy tất cả hóa đơn online
+export const getAllOrdersOnline = async () => {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/all-orders-online`);
+        return response.data;
+    } catch (error) {
+        console.error("Lỗi khi lấy danh sách hóa đơn:", error);
+        throw error;
+    }
+};

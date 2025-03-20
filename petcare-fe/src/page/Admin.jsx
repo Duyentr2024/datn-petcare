@@ -20,6 +20,7 @@ import PostManage from "../components/Manage/managePost/PostManage.jsx";
 import PostForm from "../components/Manage/managePost/PostForm.jsx";
 import PostDetail from "../components/Manage/managePost/PostDetail.jsx";
 import HeaderAdmin from "../components/header/HeaderAdmin.jsx";
+import ManageOnline from "../components/Manage/ManageOnline.jsx";
 
 
 
@@ -39,6 +40,7 @@ function Admin() {
             <Route path="/" element={<ManageStatistics/>} />
             <Route path="/warehouse" element={<StockPage />} />
             <Route path="/invoice-management" element={<Invoice />} />
+            <Route path="/invoice-online" element={<ManageOnline />} />
             <Route path="/" element={<h1>Admin Dashboard</h1>} />
             <Route path="/employee" element={<ManageEmployee />} />
             <Route path="/product-color" element={<ManageProductColor />} />

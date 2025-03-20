@@ -10,23 +10,13 @@ import { useNavigate } from "react-router-dom";
 
 const isPaymentDisabled = (currentTab) => {
   const totalAmount = Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 10 * 30000));
-
-  if (currentTab.products.length === 0) {
-    return true; // Vô hiệu hóa nếu không có sản phẩm
-  }
-
-  if (currentTab.paymentMethod === 'TRANSFER') {
-    return false; // Luôn cho phép thanh toán nếu là chuyển khoản
-  }
-
+  if (currentTab.products.length === 0) return true;
+  if (currentTab.paymentMethod === 'TRANSFER') return false;
   if (currentTab.paymentMethod === 'CASH') {
-    if (totalAmount === 0) {
-      return false; // Cho phép thanh toán nếu tổng tiền là 0
-    }
-    return currentTab.customerPayment < totalAmount; // Kiểm tra số tiền nếu là tiền mặt
+    if (totalAmount === 0) return false;
+    return currentTab.customerPayment < totalAmount;
   }
-
-  return true; // Mặc định vô hiệu hóa nếu không có phương thức
+  return true;
 };
 
 const OrderOffline = () => {
@@ -38,10 +28,40 @@ const OrderOffline = () => {
       customerPayment: 0,
       inputPayment: '',
       change: 0,
-      paymentMethod: 'CASH', 
+      paymentMethod: 'CASH',
       error: '',
       customerPhone: '',
-      customerName: 'Khách vãng lai',
+      customerName: 'Khách lẻ',
+      accumulatePoints: false,
+      totalPoints: 0,
+      pointsToUse: 0
+    },
+    {
+      id: 2,
+      title: "Hóa đơn 2",
+      products: [],
+      customerPayment: 0,
+      inputPayment: '',
+      change: 0,
+      paymentMethod: 'CASH',
+      error: '',
+      customerPhone: '',
+      customerName: 'Khách lẻ',
+      accumulatePoints: false,
+      totalPoints: 0,
+      pointsToUse: 0
+    },
+    {
+      id: 3,
+      title: "Hóa đơn 3",
+      products: [],
+      customerPayment: 0,
+      inputPayment: '',
+      change: 0,
+      paymentMethod: 'CASH',
+      error: '',
+      customerPhone: '',
+      customerName: 'Khách lẻ',
       accumulatePoints: false,
       totalPoints: 0,
       pointsToUse: 0
@@ -57,7 +77,6 @@ const OrderOffline = () => {
   const [cookies] = useCookies(["accessToken"]);
   const navigate = useNavigate();
 
-  // Khi component mount, xác thực nhân viên và lấy giỏ hàng offline
   useEffect(() => {
     const token = cookies.accessToken;
     if (token) {
@@ -66,7 +85,6 @@ const OrderOffline = () => {
         setStaffId(decoded.userId);
         setStaffName(decoded.fullName || "Nhân viên");
         setIsAuthenticated(true);
-        fetchOfflineCartDetails(decoded.userId); // Lấy giỏ hàng offline
       } else {
         navigate("/login");
       }
@@ -75,8 +93,9 @@ const OrderOffline = () => {
     }
   }, [cookies.accessToken, navigate]);
 
-  // Lấy danh sách sản phẩm từ API
   useEffect(() => {
+    if (!staffId) return;
+
     const fetchProducts = async () => {
       try {
         const data = await getAllProductDetails();
@@ -85,13 +104,24 @@ const OrderOffline = () => {
         console.error('Không thể tải sản phẩm:', error);
       }
     };
-    fetchProducts();
-  }, []);
 
-  // Hàm lấy chi tiết giỏ hàng offline từ backend
-  const fetchOfflineCartDetails = async (userId) => {
+    const fetchInitialCart = async () => {
+      try {
+        for (const tab of tabs) {
+          await fetchOfflineCartDetails(staffId, tab.id);
+        }
+      } catch (error) {
+        console.error('Không thể tải giỏ hàng ban đầu:', error);
+      }
+    };
+
+    fetchProducts();
+    fetchInitialCart();
+  }, [staffId]);
+
+  const fetchOfflineCartDetails = async (userId, tabId) => {
     try {
-      const cartDetails = await getOfflineCartDetails(userId);
+      const cartDetails = await getOfflineCartDetails(userId, tabId);
       const cartProducts = cartDetails.map(cart => ({
         id: cart.productDetails.productDetailId,
         name: cart.productDetails.products.productName,
@@ -101,15 +131,15 @@ const OrderOffline = () => {
         total: cart.quantityItem * cart.productDetails.price,
         image: cart.productDetails.products?.image || '/images/default-image.jpg'
       }));
-      setTabs(tabs.map(tab =>
-        tab.id === activeTab ? { ...tab, products: cartProducts } : tab
+      setTabs(prevTabs => prevTabs.map(tab =>
+        tab.id === tabId ? { ...tab, products: cartProducts } : tab
       ));
     } catch (error) {
-      toast.error('Không thể lấy giỏ hàng offline');
+      console.error(`Không thể lấy giỏ hàng cho tab ${tabId}:`, error);
+      toast.error(`Không thể lấy giỏ hàng cho tab ${tabId}`);
     }
   };
 
-  // Component ProductLists (giữ nguyên từ code của bạn, chỉ thêm logic chọn sản phẩm)
   const ProductLists = ({ products, handleAddProduct, selectedProducts, currentPage, setCurrentPage }) => {
     const [localSearchTerm, setLocalSearchTerm] = useState("");
     const productsPerPage = 10;
@@ -125,19 +155,19 @@ const OrderOffline = () => {
 
     return (
       <>
-        <div className="flex items-center bg-white w-[500px] rounded px-1 sm:px-2 py-1 mb-4">
-          <IoSearchOutline className="text-gray-500 text-sm sm:text-base" />
+        <div className="flex items-center bg-white w-[500px] rounded px-1 sm:px-2 py-1 mb-4 border border-[#e59f1e]">
+          <IoSearchOutline className="text-[#e59f1e] text-sm sm:text-base" />
           <input
             type="text"
             placeholder="Tìm hàng hóa"
-            className="px-1 sm:px-2 outline-none sm:w-auto text-sm sm:text-base"
+            className="px-1 sm:px-2 outline-none sm:w-auto text-sm sm:text-base text-gray-700"
             value={localSearchTerm}
             onChange={(e) => setLocalSearchTerm(e.target.value)}
           />
         </div>
         <div className="overflow-auto" style={{ maxHeight: '500px' }}>
           <table className="w-full">
-            <thead className="bg-gray-200 sticky top-0">
+            <thead className="bg-[#e59f1e] text-white sticky top-0">
               <tr>
                 <th className="p-1 text-left text-xs">STT</th>
                 <th className="p-1 text-right text-xs">Ảnh</th>
@@ -152,7 +182,7 @@ const OrderOffline = () => {
               {currentProducts.map((product, index) => (
                 <tr
                   key={product.productDetailId}
-                  className={`border-b hover:bg-gray-100 cursor-pointer ${selectedProducts.some(p => p.id === product.productDetailId) ? 'bg-green-50' : ''}`}
+                  className={`border-b hover:bg-orange-50 cursor-pointer ${selectedProducts.some(p => p.id === product.productDetailId) ? 'bg-orange-100' : ''}`}
                   onClick={() => handleAddProduct(product)}
                 >
                   <td className="p-1 text-xs">{indexOfFirstProduct + index + 1}</td>
@@ -171,7 +201,7 @@ const OrderOffline = () => {
                   <td className="p-1 text-right text-xs">{product.quantity || 0}</td>
                   <td className="p-1 text-right text-xs">
                     {selectedProducts.some(p => p.id === product.productDetailId) && (
-                      <IoCheckmark className="text-green-600" />
+                      <IoCheckmark className="text-[#e59f1e]" />
                     )}
                   </td>
                 </tr>
@@ -181,15 +211,15 @@ const OrderOffline = () => {
         </div>
         <div className="flex justify-center mt-4">
           <button
-            className="px-3 py-1 mx-1 text-sm bg-gray-200 rounded disabled:opacity-50"
+            className="px-3 py-1 mx-1 text-sm bg-[#e59f1e] text-white rounded hover:bg-[#d18e17] disabled:opacity-50"
             disabled={currentPage === 1}
             onClick={() => setCurrentPage(prev => prev - 1)}
           >
             Trước
           </button>
-          <span className="px-3 py-1 text-sm">{currentPage} / {totalPages}</span>
+          <span className="px-3 py-1 text-sm text-gray-700">{currentPage} / {totalPages}</span>
           <button
-            className="px-3 py-1 mx-1 text-sm bg-gray-200 rounded disabled:opacity-50"
+            className="px-3 py-1 mx-1 text-sm bg-[#e59f1e] text-white rounded hover:bg-[#d18e17] disabled:opacity-50"
             disabled={currentPage === totalPages}
             onClick={() => setCurrentPage(prev => prev + 1)}
           >
@@ -200,7 +230,6 @@ const OrderOffline = () => {
     );
   };
 
-  // Xử lý thêm/xóa sản phẩm vào giỏ hàng offline
   const handleAddProduct = async (product) => {
     const userId = staffId;
     const productDetailId = product.productDetailId;
@@ -209,21 +238,18 @@ const OrderOffline = () => {
 
     try {
       if (existingProduct) {
-        // Xóa sản phẩm khỏi giỏ hàng offline
-        await removeProductFromOfflineCart(userId, productDetailId);
+        await removeProductFromOfflineCart(userId, productDetailId, activeTab);
         setTabs(tabs.map(tab =>
           tab.id === activeTab
             ? { ...tab, products: tab.products.filter(p => p.id !== productDetailId) }
             : tab
         ));
-        // toast.success(`Đã xóa ${product.products.productName} khỏi giỏ hàng offline`); // Xóa dòng này
       } else {
-        // Thêm sản phẩm vào giỏ hàng offline
         if (product.quantity < 1) {
           toast.error(`Sản phẩm "${product.products.productName}" đã hết hàng!`);
           return;
         }
-        await addProductToOfflineCart(userId, productDetailId, 1);
+        await addProductToOfflineCart(userId, productDetailId, 1, activeTab);
         setTabs(tabs.map(tab =>
           tab.id === activeTab
             ? {
@@ -240,10 +266,9 @@ const OrderOffline = () => {
             }
             : tab
         ));
-        // toast.success(`Đã thêm ${product.products.productName} vào giỏ hàng offline`); // Xóa dòng này
       }
     } catch (error) {
-      toast.error('Không thể cập nhật giỏ hàng offline');
+      toast.error('Không thể cập nhật giỏ hàng offline: ' + (error.message || 'Lỗi không xác định'));
     }
   };
 
@@ -253,8 +278,8 @@ const OrderOffline = () => {
     ));
   };
 
-  // Xử lý thanh toán
   const handlePayment = async () => {
+    const currentTab = tabs.find(tab => tab.id === activeTab);
     const totalAmount = Math.max(
       0,
       currentTab.products.reduce((sum, p) => sum + p.total, 0) -
@@ -274,9 +299,10 @@ const OrderOffline = () => {
       })),
       paymentMethod: currentTab.paymentMethod,
       customerPhone: currentTab.customerPhone || null,
-      customerName: currentTab.customerName || 'Khách vãng lai',
+      customerName: currentTab.customerName || 'Khách lẻ',
       accumulatePoints: !!currentTab.customerPhone,
       pointsToUse: currentTab.pointsToUse,
+      tabId: activeTab
     };
 
     try {
@@ -302,10 +328,10 @@ const OrderOffline = () => {
               change: 0,
               error: '',
               customerPhone: '',
-              customerName: 'Khách vãng lai',
+              customerName: 'Khách lẻ',
               totalPoints: 0,
               pointsToUse: 0,
-              paymentMethod: 'CASH' // Đặt lại về mặc định sau khi thanh toán
+              paymentMethod: 'CASH'
             }
             : tab
         )
@@ -313,6 +339,8 @@ const OrderOffline = () => {
 
       const updatedProducts = await getAllProductDetails();
       setProductsFromApi(updatedProducts);
+
+      await fetchOfflineCartDetails(staffId, activeTab);
     } catch (error) {
       console.error('Lỗi thanh toán:', error.response ? error.response.data : error.message);
       toast.error(
@@ -322,7 +350,6 @@ const OrderOffline = () => {
     }
   };
 
-  // Các hàm khác (giữ nguyên từ code của bạn)
   const handlePointsToUseChange = (value) => {
     const points = parseInt(value) || 0;
     setTabs(tabs.map(tab => {
@@ -335,75 +362,61 @@ const OrderOffline = () => {
     }));
   };
 
-  const currentTab = tabs.find(tab => tab.id === activeTab) || tabs[0];
-
-  const handleTabChange = (tabId) => setActiveTab(tabId);
-
-  const addNewTab = () => {
-    const newTab = {
-      id: tabs.length ? Math.max(...tabs.map(tab => tab.id)) + 1 : 1,
-      title: `Hóa đơn ${tabs.length + 1}`,
-      products: [],
-      customerPayment: 0,
-      inputPayment: '',
-      change: 0,
-      error: '',
-      customerPhone: '',
-      customerName: 'Khách vãng lai',
-      accumulatePoints: false,
-      totalPoints: 0,
-      pointsToUse: 0
-    };
-    setTabs([...tabs, newTab]);
-    setActiveTab(newTab.id);
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    if (staffId) fetchOfflineCartDetails(staffId, tabId);
   };
 
-  const closeTab = (tabId, e) => {
-    e.stopPropagation();
-    if (tabs.length === 1) return;
-    const newTabs = tabs.filter(tab => tab.id !== tabId);
-    setTabs(newTabs);
-    if (activeTab === tabId) setActiveTab(newTabs[newTabs.length - 1].id);
-  };
+  const handleIncrement = async (productId) => {
+    const currentTab = tabs.find(tab => tab.id === activeTab);
+    const product = currentTab.products.find(p => p.id === productId);
+    const productInStock = productsFromApi.find(p => p.productDetailId === productId);
+    const stockQuantity = productInStock?.quantity || 0;
+    const newQuantity = product.quantity + 1;
 
-  const handleIncrement = (productId) => {
-    setTabs(tabs.map(tab => {
-      if (tab.id === activeTab) {
-        const updatedProducts = tab.products.map(product => {
-          if (product.id === productId) {
-            const productInStock = productsFromApi.find(p => p.productDetailId === productId);
-            const stockQuantity = productInStock?.quantity || 0;
-            const newQuantity = product.quantity + 1;
+    if (newQuantity > stockQuantity) {
+      toast.error(`Số lượng vượt quá tồn kho (${stockQuantity})!`);
+      return;
+    }
 
-            if (newQuantity > stockQuantity) {
-              toast.error(`Số lượng vượt quá tồn kho (${stockQuantity})!`);
-              return product;
-            }
-
-            return { ...product, quantity: newQuantity, total: product.price * newQuantity };
+    try {
+      await addProductToOfflineCart(staffId, productId, 1, activeTab);
+      setTabs(tabs.map(tab =>
+        tab.id === activeTab
+          ? {
+            ...tab,
+            products: tab.products.map(p =>
+              p.id === productId ? { ...p, quantity: newQuantity, total: p.price * newQuantity } : p
+            )
           }
-          return product;
-        });
-        return { ...tab, products: updatedProducts };
-      }
-      return tab;
-    }));
+          : tab
+      ));
+    } catch (error) {
+      toast.error('Không thể tăng số lượng: ' + (error.message || 'Lỗi không xác định'));
+    }
   };
 
-  const handleDecrement = (productId) => {
-    setTabs(tabs.map(tab => {
-      if (tab.id === activeTab) {
-        const updatedProducts = tab.products.map(product => {
-          if (product.id === productId && product.quantity > 1) {
-            const newQuantity = product.quantity - 1;
-            return { ...product, quantity: newQuantity, total: product.price * newQuantity };
+  const handleDecrement = async (productId) => {
+    const currentTab = tabs.find(tab => tab.id === activeTab);
+    const product = currentTab.products.find(p => p.id === productId);
+
+    if (product.quantity <= 1) return;
+
+    try {
+      await addProductToOfflineCart(staffId, productId, -1, activeTab);
+      setTabs(tabs.map(tab =>
+        tab.id === activeTab
+          ? {
+            ...tab,
+            products: tab.products.map(p =>
+              p.id === productId ? { ...p, quantity: p.quantity - 1, total: p.price * (p.quantity - 1) } : p
+            )
           }
-          return product;
-        });
-        return { ...tab, products: updatedProducts };
-      }
-      return tab;
-    }));
+          : tab
+      ));
+    } catch (error) {
+      toast.error('Không thể giảm số lượng: ' + (error.message || 'Lỗi không xác định'));
+    }
   };
 
   const handleDelete = (productId) => {
@@ -464,7 +477,7 @@ const OrderOffline = () => {
                     t.id === activeTab
                       ? {
                         ...t,
-                        customerName: pointInfo.name || 'Khách vãng lai',
+                        customerName: pointInfo.name || 'Khách lẻ',
                         totalPoints: pointInfo.totalPoints || 0,
                         accumulatePoints: true,
                       }
@@ -477,13 +490,13 @@ const OrderOffline = () => {
                 setTabs((tabs) =>
                   tabs.map((t) =>
                     t.id === activeTab
-                      ? { ...t, customerName: 'Khách vãng lai', totalPoints: 0, accumulatePoints: false, pointsToUse: 0 }
+                      ? { ...t, customerName: 'Khách lẻ', totalPoints: 0, accumulatePoints: false, pointsToUse: 0 }
                       : t
                   )
                 );
               });
           } else {
-            updatedTab.customerName = 'Khách vãng lai';
+            updatedTab.customerName = 'Khách lẻ';
             updatedTab.totalPoints = 0;
             updatedTab.accumulatePoints = false;
             updatedTab.pointsToUse = 0;
@@ -505,47 +518,24 @@ const OrderOffline = () => {
     }));
   };
 
-  const handleAccumulatePointsChange = (e) => {
-    const checked = e.target.checked;
-    setTabs(tabs.map(tab => {
-      if (tab.id === activeTab) {
-        return { ...tab, accumulatePoints: checked };
-      }
-      return tab;
-    }));
-  };
+  const currentTab = tabs.find(tab => tab.id === activeTab) || tabs[0];
 
   return (
     <div className="flex flex-col h-screen">
-      <header className="bg-[#fbb321] p-1 sm:p-2 fixed top-0 left-0 right-0 z-20 flex justify-between items-center">
+      <header className="bg-[#e59f1e] p-1 sm:p-2 fixed top-0 left-0 right-0 z-20 flex justify-between items-center">
         <div className="flex items-center gap-1 sm:gap-2">
           <div className="flex overflow-x-auto hide-scrollbar">
             {tabs.map(tab => (
               <div
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
-                className={`flex items-center bg-[#e59f1e] text-white px-2 sm:px-3 py-1 rounded-t border-b-2 
+                className={`flex items-center bg-[#d18e17] text-white px-2 sm:px-3 py-1 rounded-t border-b-2 
                             ${activeTab === tab.id ? 'border-white' : 'border-transparent hover:border-white'} 
-                            cursor-pointer min-w-max`}
+                            cursor-pointer min-w-max mr-2`}
               >
                 <span className="text-xs sm:text-sm">{tab.title}</span>
-                <IoClose
-                  className="ml-1 sm:ml-2 hover:bg-red-600 rounded text-sm sm:text-base"
-                  onClick={(e) => closeTab(tab.id, e)}
-                />
               </div>
             ))}
-          </div>
-          <div className="flex gap-1 ml-2">
-            <button className="bg-[#e59f1e] text-white rounded p-1 text-sm sm:text-base">
-              <span>◀</span>
-            </button>
-            <button
-              className="bg-[#e59f1e] text-white rounded p-1 text-sm sm:text-base"
-              onClick={addNewTab}
-            >
-              <span>+</span>
-            </button>
           </div>
         </div>
         {isAuthenticated && (
@@ -558,74 +548,105 @@ const OrderOffline = () => {
       {currentTab && (
         <div className="flex flex-1 min-h-0 pt-12">
           <div className="w-2/3 p-2 sm:p-4 border-r overflow-auto flex flex-col relative">
-            <div className="mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-sm font-medium">Giỏ hàng offline</h3>
+            <div className="mb-4 flex-1 flex flex-col">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-base font-semibold text-gray-900">Giỏ hàng</h3>
                 <button
-                  className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600"
+                  className="bg-[#e59f1e] text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-[#d18e17] transition-all duration-200 shadow-sm"
                   onClick={() => setIsDrawerOpen(true)}
                 >
                   Thêm sản phẩm
                 </button>
               </div>
-              <table className="w-full">
-                <thead className="bg-green-600 text-white">
-                  <tr>
-                    <th className="p-1 sm:p-2 text-left text-xs sm:text-sm">STT</th>
-                    <th className="p-1 sm:p-2 text-left text-xs sm:text-sm">Ảnh</th>
-                    <th className="p-1 sm:p-2 text-left text-xs sm:text-sm">Tên sản phẩm</th>
-                    <th className="p-1 sm:p-2 text-left text-xs sm:text-sm">Biến thể</th>
-                    <th className="p-1 sm:p-2 text-center text-xs sm:text-sm">SL</th>
-                    <th className="p-1 sm:p-2 text-right text-xs sm:text-sm">Đơn giá</th>
-                    <th className="p-1 sm:p-2 text-right text-xs sm:text-sm">Thành tiền</th>
-                    <th className="p-1 sm:p-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentTab.products.map((product, index) => (
-                    <tr key={product.id} className="border-b hover:bg-gray-50">
-                      <td className="p-1 sm:p-2 text-xs sm:text-sm">{index + 1}</td>
-                      <td className="p-1 sm:p-2 text-xs sm:text-sm">
-                        <img
-                          src={product.image || '/images/default-image.jpg'}
-                          alt={product.name || 'Sản phẩm'}
-                          className="w-12 h-12 object-cover rounded"
-                        />
-                      </td>
-                      <td className="p-1 sm:p-2 text-xs sm:text-sm">{product.name}</td>
-                      <td className="p-1 sm:p-2 text-xs sm:text-sm">{product.variant}</td>
-                      <td className="p-1 sm:p-2">
-                        <div className="flex items-center justify-center gap-1 sm:gap-2">
-                          <button
-                            onClick={() => handleDecrement(product.id)}
-                            className="px-1 sm:px-2 py-0.5 sm:py-1 text-gray-600 hover:bg-gray-100 rounded text-xs sm:text-sm"
-                            disabled={product.quantity <= 1}
-                          >
-                            -
-                          </button>
-                          <span className="w-6 sm:w-8 text-center text-xs sm:text-sm">{product.quantity}</span>
-                          <button
-                            onClick={() => handleIncrement(product.id)}
-                            className="px-1 sm:px-2 py-0.5 sm:py-1 text-gray-600 hover:bg-gray-100 rounded text-xs sm:text-sm"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </td>
-                      <td className="p-1 sm:p-2 text-right text-xs sm:text-sm">{product.price.toLocaleString()}đ</td>
-                      <td className="p-1 sm:p-2 text-right text-xs sm:text-sm">{product.total.toLocaleString()}đ</td>
-                      <td className="p-1 sm:p-2 text-center">
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className="text-gray-500 hover:text-red-600 text-xs sm:text-base"
-                        >
-                          <IoClose />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {currentTab.products.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-white rounded-xl shadow-sm p-8 border border-[#e59f1e]/20">
+                  <svg
+                    className="w-20 h-20 mb-6 text-[#e59f1e]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.5"
+                      d="M3 3h18l-2 13H5L3 3zm0 0l2 13m4-5h6m-6 4h6"
+                    />
+                  </svg>
+                  <h4 className="text-xl font-bold text-gray-800 mb-2">Chưa có sản phẩm nào</h4>
+                  <p className="text-sm text-gray-600 text-center max-w-xs">
+                    Thêm sản phẩm vào giỏ để bắt đầu tạo hóa đơn bán hàng nhé!
+                  </p>
+                  <button
+                    className="mt-6 bg-[#e59f1e] text-white px-6 py-2 rounded-full text-sm font-medium hover:bg-[#d18e17] transition-all duration-200 shadow-md hover:shadow-lg"
+                    onClick={() => setIsDrawerOpen(true)}
+                  >
+                    Thêm sản phẩm ngay
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl shadow-sm border border-[#e59f1e]/20">
+                  <table className="w-full">
+                    <thead className="bg-[#e59f1e] text-white">
+                      <tr>
+                        <th className="p-2 sm:p-3 text-left text-xs sm:text-sm font-semibold">STT</th>
+                        <th className="p-2 sm:p-3 text-left text-xs sm:text-sm font-semibold">Ảnh</th>
+                        <th className="p-2 sm:p-3 text-left text-xs sm:text-sm font-semibold">Tên sản phẩm</th>
+                        <th className="p-2 sm:p-3 text-left text-xs sm:text-sm font-semibold">Biến thể</th>
+                        <th className="p-2 sm:p-3 text-center text-xs sm:text-sm font-semibold">SL</th>
+                        <th className="p-2 sm:p-3 text-right text-xs sm:text-sm font-semibold">Đơn giá</th>
+                        <th className="p-2 sm:p-3 text-right text-xs sm:text-sm font-semibold">Thành tiền</th>
+                        <th className="p-2 sm:p-3"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentTab.products.map((product, index) => (
+                        <tr key={product.id} className="border-b hover:bg-orange-50 transition-colors duration-100">
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm text-gray-700">{index + 1}</td>
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm">
+                            <img
+                              src={product.image || '/images/default-image.jpg'}
+                              alt={product.name || 'Sản phẩm'}
+                              className="w-12 h-12 object-cover rounded-md shadow-sm"
+                            />
+                          </td>
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm text-gray-800">{product.name}</td>
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm text-gray-600">{product.variant}</td>
+                          <td className="p-2 sm:p-3">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => handleDecrement(product.id)}
+                                className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-[#e59f1e]/20 rounded-full transition-colors duration-200 disabled:opacity-50"
+                                disabled={product.quantity <= 1}
+                              >
+                                -
+                              </button>
+                              <span className="w-8 text-center text-sm font-medium text-gray-800">{product.quantity}</span>
+                              <button
+                                onClick={() => handleIncrement(product.id)}
+                                className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-[#e59f1e]/20 rounded-full transition-colors duration-200"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </td>
+                          <td className="p-2 sm:p-3 text-right text-xs sm:text-sm text-gray-800">{product.price.toLocaleString()}đ</td>
+                          <td className="p-2 sm:p-3 text-right text-xs sm:text-sm text-gray-800 font-medium">{product.total.toLocaleString()}đ</td>
+                          <td className="p-2 sm:p-3 text-center">
+                            <button
+                              onClick={() => handleDelete(product.id)}
+                              className="text-gray-500 hover:text-[#e59f1e] transition-colors duration-200"
+                            >
+                              <IoClose size={18} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <div
@@ -634,9 +655,9 @@ const OrderOffline = () => {
             >
               <div className="p-4">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-sm font-medium">Danh sách sản phẩm</h3>
+                  <h3 className="text-sm font-medium text-gray-900">Danh sách sản phẩm</h3>
                   <button
-                    className="text-gray-500 hover:text-gray-700"
+                    className="text-gray-500 hover:text-[#e59f1e]"
                     onClick={() => setIsDrawerOpen(false)}
                   >
                     <IoClose size={24} />
@@ -670,13 +691,13 @@ const OrderOffline = () => {
                   value={currentTab.customerPhone}
                   onChange={handlePhoneChange}
                   placeholder="Số ĐT khách hàng"
-                  className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
+                  className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-[#e59f1e] text-xs"
                   maxLength="10"
                 />
                 {currentTab.customerPhone && (
                   <button
                     onClick={() => setTabs(tabs.map(tab => tab.id === activeTab ? { ...tab, customerPhone: '', totalPoints: 0, pointsToUse: 0 } : tab))}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#e59f1e]"
                   >
                     <IoClose size={14} />
                   </button>
@@ -689,7 +710,7 @@ const OrderOffline = () => {
                   value={currentTab.customerName}
                   onChange={handleNameChange}
                   placeholder="Tên khách hàng"
-                  className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
+                  className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-[#e59f1e] text-xs"
                 />
               </div>
 
@@ -699,7 +720,7 @@ const OrderOffline = () => {
                   <select
                     value={currentTab.pointsToUse}
                     onChange={(e) => handlePointsToUseChange(e.target.value)}
-                    className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs"
+                    className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-[#e59f1e] text-xs"
                   >
                     <option value={0}>Không sử dụng</option>
                     {Array.from({ length: Math.floor(currentTab.totalPoints / 10) }, (_, i) => (i + 1) * 10).map(points => (
@@ -712,7 +733,7 @@ const OrderOffline = () => {
               )}
 
               {currentTab.customerPhone && (
-                <div className="text-xs text-green-600">Điểm tích lũy: {currentTab.totalPoints}</div>
+                <div className="text-xs text-[#e59f1e]">Điểm tích lũy: {currentTab.totalPoints}</div>
               )}
             </div>
 
@@ -728,7 +749,7 @@ const OrderOffline = () => {
                   <span className="text-gray-600">Giảm giá</span>
                   <span>{(currentTab.pointsToUse / 10 * 30000).toLocaleString()}đ</span>
                 </div>
-                <div className="flex justify-between font-semibold text-green-600 border-t pt-0.5">
+                <div className="flex justify-between font-semibold text-[#e59f1e] border-t pt-0.5">
                   <span>Khách cần trả</span>
                   <span>{Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 10 * 30000)).toLocaleString()}đ</span>
                 </div>
@@ -747,7 +768,7 @@ const OrderOffline = () => {
                   ].map(method => (
                     <button
                       key={method.value}
-                      className={`px-2 py-1 rounded text-xs ${currentTab.paymentMethod === method.value ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                      className={`px-2 py-1 rounded text-xs ${currentTab.paymentMethod === method.value ? 'bg-[#e59f1e] text-white' : 'bg-gray-100 text-gray-700 hover:bg-[#e59f1e]/20'}`}
                       onClick={() => handlePaymentMethodChange(method.value)}
                     >
                       {method.label}
@@ -761,7 +782,7 @@ const OrderOffline = () => {
                   <div className="mb-2">
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-xs text-gray-700">Tổng tiền cần trả:</span>
-                      <span className="text-xs font-bold text-green-600">
+                      <span className="text-xs font-bold text-[#e59f1e]">
                         {Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 10 * 30000)).toLocaleString()}đ
                       </span>
                     </div>
@@ -771,7 +792,7 @@ const OrderOffline = () => {
                       value={currentTab.inputPayment}
                       onChange={handleInputChange}
                       placeholder="Nhập số tiền"
-                      className={`w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 text-xs ${currentTab.error ? 'border-red-500' : ''}`}
+                      className={`w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-[#e59f1e] text-xs ${currentTab.error ? 'border-red-500' : ''}`}
                     />
                     {currentTab.error && <p className="text-red-500 text-xs mt-1">{currentTab.error}</p>}
                   </div>
@@ -782,7 +803,7 @@ const OrderOffline = () => {
                       {[50000, 100000, 200000, 500000, 1000000].map(amount => (
                         <button
                           key={amount}
-                          className={`py-1 border rounded text-xs transition-colors ${currentTab.customerPayment === amount ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-blue-600 hover:text-white'}`}
+                          className={`py-1 border rounded text-xs transition-colors ${currentTab.customerPayment === amount ? 'bg-[#e59f1e] text-white' : 'bg-gray-100 hover:bg-[#e59f1e] hover:text-white'}`}
                           onClick={() => handleQuickAmount(amount)}
                         >
                           {amount.toLocaleString()}
@@ -795,16 +816,16 @@ const OrderOffline = () => {
 
               <div className="flex flex-col justify-end flex-grow">
                 {currentTab.paymentMethod === 'CASH' && currentTab.change > 0 && (
-                  <div className="mb-2 bg-blue-50 p-1 rounded">
+                  <div className="mb-2 bg-[#e59f1e]/10 p-1 rounded">
                     <div className="flex justify-between text-xs">
-                      <span className="text-blue-700 font-medium">Tiền thối</span>
-                      <span className="text-blue-700 font-bold">{currentTab.change.toLocaleString()}đ</span>
+                      <span className="text-[#e59f1e] font-medium">Tiền thối</span>
+                      <span className="text-[#e59f1e] font-bold">{currentTab.change.toLocaleString()}đ</span>
                     </div>
                   </div>
                 )}
 
                 <button
-                  className={`w-full py-1.5 rounded text-sm font-semibold text-white ${isPaymentDisabled(currentTab) ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
+                  className={`w-full py-1.5 rounded text-sm font-semibold text-white ${isPaymentDisabled(currentTab) ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#e59f1e] hover:bg-[#d18e17]'}`}
                   disabled={isPaymentDisabled(currentTab)}
                   onClick={handlePayment}
                 >
@@ -813,7 +834,6 @@ const OrderOffline = () => {
               </div>
             </div>
           </div>
-
         </div>
       )}
       <ToastContainer />
