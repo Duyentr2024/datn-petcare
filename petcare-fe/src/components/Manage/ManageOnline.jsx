@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
-import { getAllOrders, getOrdersByDateRange } from "../../service/manageService/Invoice";
+import { getAllOrdersOnline, getOrdersByDateRange } from "../../service/manageService/OrdersOnline";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { FaCalendarAlt, FaTimes } from "react-icons/fa"; // Thêm FaTimes cho nút đóng
+import { FaCalendarAlt, FaTimes } from "react-icons/fa";
 
 const ITEMS_PER_PAGE = 14;
 
-const Invoice = () => {
+const ManageOnline = () => {
     const [orders, setOrders] = useState([]);
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
@@ -17,25 +17,25 @@ const Invoice = () => {
     const [currentPage, setCurrentPage] = useState(1);
 
     useEffect(() => {
-        fetchAllOrders();
+        fetchAllOrdersOnline();
     }, []);
 
-    const fetchAllOrders = async () => {
+    const fetchAllOrdersOnline = async () => {
         try {
-            const data = await getAllOrders();
+            const data = await getAllOrdersOnline();
             const sortedOrders = data.sort((a, b) => b.orderId - a.orderId);
             setOrders(sortedOrders);
         } catch (error) {
-            toast.error("Không thể tải danh sách hóa đơn!");
+            toast.error("Không thể tải danh sách hóa đơn online!");
         }
     };
 
     const formatDate = (date) => {
         if (!date) return "";
-        const day = String(date.getDate()).padStart(2, "0");
-        const month = String(date.getMonth() + 1).padStart(2, "0");
         const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`; // Format for API: yyyy-MM-dd
     };
 
     const handleSearchByDateRange = async () => {
@@ -61,6 +61,7 @@ const Invoice = () => {
             }
         } catch (error) {
             toast.error("Không thể tìm kiếm hóa đơn!");
+            console.error("Lỗi khi tìm kiếm hóa đơn:", error);
         }
     };
 
@@ -77,10 +78,19 @@ const Invoice = () => {
         setSelectedOrder(null);
     };
 
+    const calculateSubtotal = (orderDetails) => {
+        return orderDetails.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    };
+
+    const calculateDiscount = (order) => {
+        const subtotal = calculateSubtotal(order.orderDetails);
+        return subtotal + order.shippingCost - order.totalAmount;
+    };
+
     return (
         <div className="container mx-auto p-1 bg-gray-50 min-h-screen">
-            <h2 className="text-2xl font-bold text-gray-800 mb-3">Quản Lý Hóa Đơn Offline</h2>
-            {/* Bộ lọc ngày với giao diện giống hình ảnh */}
+            <h2 className="text-2xl font-bold text-gray-800 mb-3">Quản Lý Hóa Đơn Online</h2>
+            {/* Bộ lọc ngày */}
             <div className="bg-white p-2 rounded-lg shadow-md mb-4">
                 <div className="flex items-center gap-2">
                     <div className="flex items-end gap-2">
@@ -118,15 +128,16 @@ const Invoice = () => {
                     </button>
                 </div>
             </div>
+
             {/* Bảng hóa đơn */}
             <div className="bg-white rounded-lg shadow-md">
                 {paginatedOrders.length > 0 ? (
                     <>
-                        <table className="w-full [table-layout:fixed] overflow-x-hidden">
+                        <table className="w-full table-auto">
                             <thead className="bg-gray-100">
                                 <tr>
                                     <th className="p-1 text-left text-[10px] font-semibold text-gray-600">Mã HD</th>
-                                    <th className="p-1 text-left text-[10px] font-semibold text-gray-600">Nhân viên</th>
+                                    <th className="p-1 text-left text-[10px] font-semibold text-gray-600">Khách hàng</th>
                                     <th className="p-1 text-left text-[10px] font-semibold text-gray-600">Tổng tiền</th>
                                     <th className="p-1 text-left text-[10px] font-semibold text-gray-600">Phương thức TT</th>
                                     <th className="p-1 text-left text-[10px] font-semibold text-gray-600">Trạng thái</th>
@@ -138,10 +149,10 @@ const Invoice = () => {
                                 {paginatedOrders.map((order) => (
                                     <tr key={order.orderId} className="border-b hover:bg-gray-50">
                                         <td className="p-1 text-[10px]">{order.orderId}</td>
-                                        <td className="p-1 text-[10px] truncate max-w-[100px]">{order.staffName}</td>
+                                        <td className="p-1 text-[10px] truncate max-w-[100px]">{order.userName || "Khách hàng online"}</td>
                                         <td className="p-1 text-[10px]">{order.totalAmount.toLocaleString()} VNĐ</td>
                                         <td className="p-1 text-[10px] truncate max-w-[100px]">{order.paymentMethod}</td>
-                                        <td className="p-1 text-[10px]">{order.status}</td>
+                                        <td className="p-1 text-[10px]">{order.statusName}</td>
                                         <td className="p-1 text-[10px] truncate max-w-[120px]">{new Date(order.orderDate).toLocaleString("vi-VN")}</td>
                                         <td className="p-1">
                                             <button
@@ -156,7 +167,6 @@ const Invoice = () => {
                             </tbody>
                         </table>
 
-                        {/* Phân trang */}
                         {totalPages > 1 && (
                             <div className="p-2 flex justify-center items-center gap-2">
                                 <button
@@ -180,57 +190,67 @@ const Invoice = () => {
                         )}
                     </>
                 ) : (
-                    <p className="p-4 text-gray-500 text-center">Không có hóa đơn nào trong khoảng thời gian này.</p>
+                    <p className="p-4 text-gray-500 text-center">Không có hóa đơn online nào trong khoảng thời gian này.</p>
                 )}
             </div>
+
             {/* Modal chi tiết */}
             {isModalOpen && selectedOrder && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
                     <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative">
-                        {/* Nút đóng ở trên cùng bên phải */}
                         <button
                             onClick={closeModal}
                             className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl"
                         >
                             <FaTimes />
                         </button>
-                        <h3 className="text-xl font-semibold text-gray-800 mb-4">Chi Tiết Hóa Đơn #{selectedOrder.orderId}</h3>
+                        <h3 className="text-xl font-semibold text-gray-800 mb-4">Chi Tiết Hóa Đơn Online #{selectedOrder.orderId}</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                             <div>
-                                <label className="block text-sm font-medium text-gray-600">Nhân viên</label>
-                                <p className="mt-1 p-2 bg-gray-100 rounded">{selectedOrder.staffName}</p>
+                                <label className="block text-sm font-medium text-gray-600">Khách hàng</label>
+                                <p className="mt-1 p-2 bg-gray-100 rounded">{selectedOrder.userName || "Khách hàng online"}</p>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-600">Ngày tạo</label>
-                                <p className="mt-1 p-2 bg-gray-100 rounded">{new Date(selectedOrder.orderDate).toLocaleString("vi-VN")}</p>
+                                <label className="block text-sm font-medium text-gray-600">Số điện thoại</label>
+                                <p className="mt-1 p-2 bg-gray-100 rounded">{selectedOrder.phone || "Không có"}</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-600">Trạng thái thanh toán</label>
+                                <p className="mt-1 p-2 bg-gray-100 rounded">{selectedOrder.paymentStatus}</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-600">Trạng thái đơn hàng</label>
+                                <p className="mt-1 p-2 bg-gray-100 rounded">{selectedOrder.statusName}</p>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-600">Phương thức TT</label>
                                 <p className="mt-1 p-2 bg-gray-100 rounded">{selectedOrder.paymentMethod}</p>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-600">Trạng thái</label>
-                                <p className="mt-1 p-2 bg-gray-100 rounded">{selectedOrder.status}</p>
+                                <label className="block text-sm font-medium text-gray-600">Mã voucher</label>
+                                <p className="mt-1 p-2 bg-gray-100 rounded">
+                                    {selectedOrder.voucherName || (selectedOrder.voucherId ? `Voucher #${selectedOrder.voucherId}` : "Không sử dụng")}
+                                </p>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-600">Tổng tiền</label>
+                                <label className="block text-sm font-medium text-gray-600">Tổng tiền sản phẩm</label>
+                                <p className="mt-1 p-2 bg-gray-100 rounded">{calculateSubtotal(selectedOrder.orderDetails).toLocaleString()} VNĐ</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-600">Phí vận chuyển</label>
+                                <p className="mt-1 p-2 bg-gray-100 rounded">{selectedOrder.shippingCost.toLocaleString()} VNĐ</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-600">Số tiền giảm giá</label>
+                                <p className="mt-1 p-2 bg-gray-100 rounded">{calculateDiscount(selectedOrder).toLocaleString()} VNĐ</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-600">Thành tiền</label>
                                 <p className="mt-1 p-2 bg-gray-100 rounded">{selectedOrder.totalAmount.toLocaleString()} VNĐ</p>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-600">Điểm tích lũy</label>
-                                <p className="mt-1 p-2 bg-gray-100 rounded">{selectedOrder.pointsEarned || 0}</p>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-600">Tổng điểm</label>
-                                <p className="mt-1 p-2 bg-gray-100 rounded">{selectedOrder.totalPoints || 0}</p>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-600">Khách hàng</label>
-                                <p className="mt-1 p-2 bg-gray-100 rounded">{selectedOrder.customerName || "Khách lẻ"}</p>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-600">Số điện thoại</label>
-                                <p className="mt-1 p-2 bg-gray-100 rounded">{selectedOrder.customerPhone || "Không"}</p>
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-medium text-gray-600">Địa chỉ giao hàng</label>
+                                <p className="mt-1 p-2 bg-gray-100 rounded">{selectedOrder.shippingAddress}</p>
                             </div>
                         </div>
 
@@ -240,6 +260,7 @@ const Invoice = () => {
                                 <table className="w-full border-collapse">
                                     <thead className="bg-gray-100">
                                         <tr>
+                                            <th className="p-2 text-left text-xs font-semibold text-gray-600">Hình ảnh</th>
                                             <th className="p-2 text-left text-xs font-semibold text-gray-600">Sản phẩm</th>
                                             <th className="p-2 text-left text-xs font-semibold text-gray-600">Thông tin</th>
                                             <th className="p-2 text-left text-xs font-semibold text-gray-600">Số lượng</th>
@@ -247,8 +268,15 @@ const Invoice = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {(selectedOrder.items || []).map((item, index) => (
+                                        {(selectedOrder.orderDetails || []).map((item, index) => (
                                             <tr key={index} className="border-b">
+                                                <td className="p-2">
+                                                    <img
+                                                        src={item.imageUrl}
+                                                        alt={item.productName}
+                                                        className="w-10 h-10 object-cover rounded"
+                                                    />
+                                                </td>
                                                 <td className="p-2 text-xs">{item.productName}</td>
                                                 <td className="p-2 text-xs">{`${item.colorValue}, ${item.sizeValue}, ${item.weightValue}kg`}</td>
                                                 <td className="p-2 text-xs">{item.quantity}</td>
@@ -268,4 +296,4 @@ const Invoice = () => {
     );
 };
 
-export default Invoice;
+export default ManageOnline;
