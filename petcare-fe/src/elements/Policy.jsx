@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaChevronDown, FaChevronUp, FaBoxOpen, FaCut, FaClinicMedical, FaQuestion, FaEnvelope, FaHome } from 'react-icons/fa';
 import './policy.css';
@@ -6,6 +6,10 @@ import './policy.css';
 const Policy = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [expandedFaqs, setExpandedFaqs] = useState([]);
+  
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const tabs = [
     { id: 'products', title: 'Bảo hành sản phẩm', icon: <FaBoxOpen /> },

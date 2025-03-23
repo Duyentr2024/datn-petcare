@@ -47,6 +47,14 @@ const PetWeightService = {
       throw new Error('Lỗi khi kích hoạt khoảng cân nặng: ' + error.message);
     }
   },
+  getWeightsByPetType: async (petType) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/by-pet-type?petType=${petType}`);
+      return response.data;
+    } catch (error) {
+      throw new Error('Lỗi khi lấy cân nặng theo loại thú cưng: ' + error.message);
+    }
+  },
 };
 
 export default PetWeightService;

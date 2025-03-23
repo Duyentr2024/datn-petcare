@@ -3,11 +3,11 @@ import { jwtDecode } from "jwt-decode";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useAuth } from "../../context/AuthContext"; // Import useAuth để sử dụng logout từ AuthContext
+import { useAuth } from "../../context/AuthContext"; 
 
-const HeaderStaff = ({ title = "Staff Dashboard" }) => {
+const HeaderStaff = ({ title = "PetCare" }) => {
   const navigate = useNavigate();
-  const { logout } = useAuth(); // Lấy hàm logout từ AuthContext
+  const { logout } = useAuth(); 
   const [user, setUser] = useState({
     name: "Staff",
     avatar: "https://via.placeholder.com/40",
@@ -30,9 +30,9 @@ const HeaderStaff = ({ title = "Staff Dashboard" }) => {
   }, []);
 
   const handleLogout = () => {
-    Cookies.remove("accessToken"); // Xóa token khỏi cookie
-    logout(); // Gọi hàm logout từ AuthContext để cập nhật trạng thái
-    navigate("/login"); // Chuyển hướng về trang đăng nhập
+    Cookies.remove("accessToken"); 
+    logout(); 
+    navigate("/login"); 
   };
 
   return (

@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaHome, FaShoppingCart, FaFacebookF, FaInstagram, FaPhoneAlt, FaMapMarkerAlt, FaArrowRight, FaInfoCircle, FaCommentDots } from 'react-icons/fa';
 import './guide.css';
 
 const Guide = () => {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Breadcrumb */}

@@ -1,3 +1,4 @@
+// TimeSlotService.js
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
@@ -7,7 +8,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 const TimeSlotService = {
   getTimeSlots: async (date) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/timeslots`, {
+      const response = await axios.get(`${API_BASE_URL}/time-slots`, {
         params: { date },
       });
       if (!response.data || (!response.data.morning && !response.data.afternoon)) {
@@ -25,7 +26,7 @@ const TimeSlotService = {
 
   bookAppointment: async (payload) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/timeslots/book`, payload);
+      const response = await axios.post(`${API_BASE_URL}/appointments`, payload);
       return response.data;
     } catch (error) {
       const errorMessage = error.response
@@ -39,7 +40,7 @@ const TimeSlotService = {
   getBookingStatus: async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/booking-enabled`);
-      return response.data.settingValue;
+      return response.data; // Trả về trực tiếp response.data (true/false)
     } catch (error) {
       const errorMessage = error.response
         ? `Error ${error.response.status}: ${error.response.data?.message || error.response.statusText}`
@@ -57,7 +58,7 @@ const TimeSlotService = {
         {
           params: { status },
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
           },
         }
       );

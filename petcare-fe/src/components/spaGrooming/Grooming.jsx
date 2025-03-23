@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FaLeaf, FaBath, FaCut, FaCircle, FaPaw, FaCheck, FaCut as FaScissorReplacement, FaShower, FaClipboardList, FaQuestion, FaCalendarAlt, FaMedkit, FaRuler, FaClock, FaList, FaArrowRight, FaHome, FaChevronRight, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 
@@ -7,6 +7,10 @@ import './grooming.css';
 
 const Grooming = () => {
   const [selectedService, setSelectedService] = useState('bath');
+  
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   
   const services = {
     bath: {

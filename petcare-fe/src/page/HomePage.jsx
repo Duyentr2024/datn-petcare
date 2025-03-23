@@ -24,7 +24,7 @@ import Policy from "../elements/Policy.jsx";
 import Guide from "../elements/Guide.jsx";
 import SpaPage from "../components/spaGrooming/Grooming.jsx";
 import AppointmentPage from "./AppointmentPage.jsx";
-
+import CheckoutPayment from "../components/spaGrooming/user/CheckoutPayment.jsx";
 // Hiệu ứng chuyển trang
 const pageVariants = {
     hidden: { opacity: 0, y: 30 },
@@ -61,6 +61,7 @@ const AnimatedRoutes = () => {
                     <Route path="/policy" element={<Policy />} />
                     <Route path="/guide" element={<Guide />} />
                     <Route path="/spa" element={<SpaPage />} />
+                    <Route path="/checkout-payment" element={<CheckoutPayment />} />
                     
             <Route path="/appointment" element={<AppointmentPage />} />
                     {/* ✅ Route yêu cầu đăng nhập */}
