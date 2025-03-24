@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { gsap } from "gsap";
 import {
-  FaPhoneAlt,
   FaSearch,
   FaShoppingCart,
   FaUser,
@@ -15,8 +14,6 @@ import { useCookies } from "react-cookie";
 import { useAuth } from "../../context/AuthContext"; // Import hook useAuth từ context
 import logo from "../../assets/images/banner1.png";
 import { motion } from "framer-motion";
-import CartDetailsService from "../../service/CartDetailsService/CartDetailsService.jsx";
-import axios from "axios"; // Thêm axios để gọi API
 
 export default function Header() {
   const [searchTerm, setSearchTerm] = useState("");

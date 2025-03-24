@@ -1,4 +1,4 @@
-import  { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FiBell, FiLogOut } from "react-icons/fi";
 import { jwtDecode } from "jwt-decode";
 import Cookies from "js-cookie";
@@ -12,7 +12,7 @@ const HeaderAdmin = () => {
     });
 
     useEffect(() => {
-        const token = Cookies.get("accessToken"); // Lấy token từ cookie
+        const token = Cookies.get("accessToken");
         if (token) {
             try {
                 const decoded = jwtDecode(token);
@@ -28,21 +28,21 @@ const HeaderAdmin = () => {
     }, []);
 
     const handleLogout = () => {
-        Cookies.remove("accessToken"); // Xóa token khỏi cookie
-        navigate("/login"); // Chuyển hướng về trang đăng nhập
+        Cookies.remove("accessToken");
+        navigate("/login");
     };
 
     return (
-        <div className="flex justify-between items-center bg-gradient-to-b from-gray-700 via-gray-800 to-gray-900 px-6 py-3 text-white shadow-md top-0">
+        <div className="flex justify-between items-center bg-gradient-to-r from-[#B2EBF2] to-[#FFCCBC] px-6 py-3 text-[#4B5563] shadow-md top-0">
             {/* Tiêu đề */}
             <h1 className="text-xl font-semibold">Admin Dashboard</h1>
 
             {/* Khu vực phải */}
             <div className="flex items-center gap-6">
                 {/* Chuông thông báo */}
-                <button className="relative p-2 hover:bg-gray-700 rounded-full">
+                <button className="relative p-2 hover:bg-[#80DEEA] rounded-full">
                     <FiBell className="w-6 h-6" />
-                    <span className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full"></span>
+                    <span className="absolute top-1 right-1 w-3 h-3 bg-[#FF5A4A] rounded-full"></span>
                 </button>
 
                 {/* Avatar và Tên người dùng */}
@@ -50,15 +50,15 @@ const HeaderAdmin = () => {
                     <img
                         src={user.avatar}
                         alt="User Avatar"
-                        className="w-10 h-10 rounded-full border border-gray-600"
+                        className="w-10 h-10 rounded-full border border-[#80DEEA]"
                     />
-                    <span className="font-medium">{user.name}</span>
+                    <span className="font-semibold bg-[#E6F0FA] text-[#4B5563] px-2 py-1 rounded-lg">{user.name}</span>
                 </div>
 
                 {/* Đăng xuất */}
                 <button
                     onClick={handleLogout}
-                    className="flex items-center gap-2 bg-red-600 px-3 py-2 rounded-lg hover:bg-red-700 transition"
+                    className="flex items-center gap-2 bg-[#FF8A65] px-3 py-2 rounded-lg hover:bg-[#FF7043] transition"
                 >
                     <FiLogOut className="w-5 h-5" />
                     <span>Đăng xuất</span>
