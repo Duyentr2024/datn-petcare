@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   AiOutlineUser,
@@ -7,38 +7,32 @@ import {
   AiOutlineHeart,
 } from "react-icons/ai";
 import { MdOutlineLocationOn } from "react-icons/md";
-import { useAuth } from "../../context/AuthContext"; // Import hook useAuth từ context
+import { useAuth } from "../../context/AuthContext";
 
 const SidebarAccount = () => {
-  const location = useLocation(); // Lấy thông tin đường dẫn hiện tại
-  const [selectedItem, setSelectedItem] = useState(location.pathname); // Cập nhật selectedItem khi đường dẫn thay đổi
-  const { user, token, setUser, setToken } = useAuth(); // Lấy setUser từ context
-  console.log("user", user);
-  // Cập nhật lại selectedItem khi location.pathname thay đổi
+  const location = useLocation();
+  const [selectedItem, setSelectedItem] = useState(location.pathname);
+  const { user } = useAuth();
+
   useEffect(() => {
     setSelectedItem(location.pathname);
   }, [location]);
 
-  const toggleSidebar = () => {
-    setIsOpen(!isOpen); // Toggle trạng thái của sidebar
-  };
-
-  const getRoleLabel = () =>{
-    if(user?.role === "ADMIN"){
+  const getRoleLabel = () => {
+    if (user?.role === "ADMIN") {
       return "Quản trị viên";
     }
-    if(user?.role === "STAFF"){
+    if (user?.role === "STAFF") {
       return "Nhân viên";
     }
-    
     return "";
-  }
+  };
 
   return (
-    <div className="w-1/3 bg-[#FBB321] rounded-lg p-6 absolute right-full translate-x-2/3 top-5 h-[530px]">
+    <div className="w-full bg-[#FBB321] rounded-lg p-6 sticky top-[153px] h-[530px] right-full -translate-x-[40%] z-10 ">
       <div className="flex flex-col items-center">
         <img
-          src={user?.imageUrl   || "https://placehold.co/100x100"}
+          src={user?.imageUrl || "https://placehold.co/100x100"}
           alt="User avatar"
           className="rounded-full mb-4 w-[100px] h-[100px] object-cover"
         />

@@ -3,7 +3,6 @@ import { FaLeaf, FaBath, FaCut, FaCircle, FaPaw, FaCheck, FaCut as FaScissorRepl
 import { Link } from 'react-router-dom';
 
 /* Keyframe Animation for FAQ Answers */
-import './grooming.css';
 
 const Grooming = () => {
   const [selectedService, setSelectedService] = useState('bath');

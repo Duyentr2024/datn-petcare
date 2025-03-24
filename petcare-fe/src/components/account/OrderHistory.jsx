@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import OrderHistoryService from "../../service/accountService/OrderHistoryService";
 import ReviewService from "../../service/reviewService/ReviewService";
 import { useAuth } from "../../context/AuthContext";
 import { decodeToken } from "../utils/jwt";
 import { useCookies } from "react-cookie";
 import Swal from "sweetalert2";
-import { FaEye, FaTimes, FaStar } from "react-icons/fa";
+import { FaArrowLeft, FaTimes, FaStar } from "react-icons/fa";
 import { useLocation } from "react-router-dom";
+
 const TABS = ["Chờ xác nhận", "Đang vận chuyển", "Chờ giao hàng", "Hoàn thành", "Đã hủy", "Trả hàng"];
 const ITEMS_PER_PAGE = 5;
 
@@ -16,15 +17,15 @@ const OrderHistory = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedOrderReview, setselectedOrderReview] = useState(null);
   const [activeTab, setActiveTab] = useState("Chờ xác nhận");
-  const [currentPage, setCurrentPage] = useState(1); // Trang hiện tại
-  const location = useLocation(); // Thêm để đọc URL
+  const [currentPage, setCurrentPage] = useState(1);
+  const location = useLocation();
   const [cookies] = useCookies(["accessToken"]);
   const { setUser, setToken, user } = useAuth();
   const [expandedProducts, setExpandedProducts] = useState({});
   const [selectedProductReview, setSelectedProductReview] = useState(null);
   const [rating, setRating] = useState(0);
   const [comment, setReviewText] = useState("");
-  const [isLoading, setIsLoading] = useState(false); // Thêm trạng thái loading
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (userId) return;
@@ -44,15 +45,14 @@ const OrderHistory = () => {
         const data = await OrderHistoryService.getOrdersByUserId(userId);
         const sortedOrders = data.sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate));
         setOrders(sortedOrders);
-        // Xử lý orderId từ URL
         const params = new URLSearchParams(location.search);
         const orderId = params.get("orderId");
         if (orderId) {
           const order = sortedOrders.find((o) => o.orderId === parseInt(orderId, 10));
           if (order) {
-            setActiveTab(order.statusName); // Chọn tab theo trạng thái
-            setSelectedOrder(order); // Mở modal chi tiết đơn hàng
-            setCurrentPage(1); // Reset về trang đầu
+            setActiveTab(order.statusName);
+            setSelectedOrder(order);
+            setCurrentPage(1);
           } else {
             console.warn("Không tìm thấy đơn hàng với ID:", orderId);
           }
@@ -93,7 +93,7 @@ const OrderHistory = () => {
       return;
     }
 
-    setIsLoading(true); // Bật loading trước khi gọi API
+    setIsLoading(true);
     try {
       const result = await OrderHistoryService.cancelOrder(orderId, reason);
       const updatedOrders = orders.map(order =>
@@ -123,7 +123,7 @@ const OrderHistory = () => {
         icon: "error",
       });
     } finally {
-      setIsLoading(false); // Tắt loading sau khi hoàn tất (dù thành công hay lỗi)
+      setIsLoading(false);
     }
   };
 
@@ -200,8 +200,7 @@ const OrderHistory = () => {
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md relative">
-      {/* Loading overlay */}
+    <div className="bg-white rounded-lg relative">
       {isLoading && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="flex flex-col items-center">
@@ -211,172 +210,186 @@ const OrderHistory = () => {
         </div>
       )}
 
-      <div className="flex border-b mb-4">
-        {TABS.map(tab => (
-          <button
-            key={tab}
-            className={`px-4 py-2 ${activeTab === tab ? "border-b-2 border-orange-500 text-orange-500" : "text-gray-600"}`}
-            onClick={() => {
-              setActiveTab(tab);
-              setCurrentPage(1);
-            }}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+      {/* Hiển thị tab và table nếu không có đơn hàng được chọn */}
+      {!selectedOrder && (
+        <>
+          <div className="flex border-b mb-4">
+            {TABS.map(tab => (
+              <button
+                key={tab}
+                className={`px-4 py-2 ${activeTab === tab ? "border-b-2 border-orange-500 text-orange-500" : "text-gray-600"}`}
+                onClick={() => {
+                  setActiveTab(tab);
+                  setCurrentPage(1);
+                  setSelectedOrder(null);
+                }}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
 
-      <table className="w-full border-collapse border border-gray-200">
-        <thead>
-          <tr className="bg-gray-100 text-left">
-            <th className="p-3 border border-gray-200">Ngày đặt hàng</th>
-            <th className="p-3 border border-gray-200">Tổng tiền</th>
-            <th className="p-3 border border-gray-200">Trạng thái</th>
-            <th className="p-3 border border-gray-200 text-center">Chi tiết</th>
-            {activeTab === "Chờ xác nhận" && (
-              <th className="p-3 border border-gray-200 text-center">Hủy hàng</th>
-            )}
-            {activeTab === "Hoàn thành" && (
-              <th className="p-3 border border-gray-200 text-center">Đánh giá</th>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {displayedOrders.length === 0 ? (
-            <tr>
-              <td colSpan={activeTab === "Chờ xác nhận" || activeTab === "Hoàn thành" ? "5" : "4"} className="text-center p-4 text-gray-500">
-                Không có đơn hàng nào.
-              </td>
-            </tr>
-          ) : (
-            displayedOrders.map((order) => (
-              <tr key={order.orderId} className="border border-gray-200">
-                <td className="p-3 border border-gray-200">
-                  {new Date(order.orderDate).toLocaleString("vi-VN", {
-                    year: "numeric",
-                    month: "2-digit",
-                    day: "2-digit",
-                  })}
-                </td>
-                <td className="p-3 border border-gray-200 text-red-500">{formatCurrency(order.totalAmount)}</td>
-                <td className="p-3 border border-gray-200 text-orange-500 font-semibold">{order.statusName}</td>
-                <td className="p-3 border border-gray-200 text-center">
-                  <button className="text-blue-500 hover:text-blue-700" onClick={() => setSelectedOrder(order)}>
-                    <FaEye className="text-xl" />
-                  </button>
-                </td>
+          <table className="w-full border-collapse border border-gray-200">
+            <thead>
+              <tr className="bg-gray-100 text-left">
+                <th className="p-3 border border-gray-200">Ngày đặt hàng</th>
+                <th className="p-3 border border-gray-200">Tổng tiền</th>
+                <th className="p-3 border border-gray-200">Trạng thái</th>
+                <th className="p-3 border border-gray-200 text-center">Chi tiết</th>
                 {activeTab === "Chờ xác nhận" && (
-                  <td className="p-3 border border-gray-200 text-center">
-                    <button
-                      className="text-red-500 hover:text-red-700"
-                      onClick={() => handleCancelOrder(order.orderId)}
-                      disabled={isLoading} // Vô hiệu hóa nút khi đang loading
-                    >
-                      <FaTimes className="text-xl" />
-                    </button>
-                  </td>
+                  <th className="p-3 border border-gray-200 text-center">Hủy hàng</th>
                 )}
                 {activeTab === "Hoàn thành" && (
-                  <td className="p-3 border border-gray-200 text-center">
-                    <button
-                      className="text-yellow-500 hover:text-yellow-700"
-                      onClick={() => openReviewModal(order)}
-                    >
-                      <FaStar className="text-xl" />
-                    </button>
-                  </td>
+                  <th className="p-3 border border-gray-200 text-center">Đánh giá</th>
                 )}
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            </thead>
+            <tbody>
+              {displayedOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={activeTab === "Chờ xác nhận" || activeTab === "Hoàn thành" ? "5" : "4"} className="text-center p-4 text-gray-500">
+                    Không có đơn hàng nào.
+                  </td>
+                </tr>
+              ) : (
+                displayedOrders.map((order) => (
+                  <tr key={order.orderId} className="border border-gray-200">
+                    <td className="p-3 border border-gray-200">
+                      {new Date(order.orderDate).toLocaleString("vi-VN", {
+                        year: "numeric",
+                        month: "2-digit",
+                        day: "2-digit",
+                      })}
+                    </td>
+                    <td className="p-3 border border-gray-200 text-red-500">{formatCurrency(order.totalAmount)}</td>
+                    <td className="p-3 border border-gray-200 text-orange-500 font-semibold">{order.statusName}</td>
+                    <td className="p-3 border border-gray-200 text-center">
+                      <button
+                        className="bg-blue-500 text-white px-3 py-1 rounded-md hover:bg-blue-600 transition-colors"
+                        onClick={() => setSelectedOrder(order)}
+                      >
+                        Xem chi tiết
+                      </button>
+                    </td>
+                    {activeTab === "Chờ xác nhận" && (
+                      <td className="p-3 border border-gray-200 text-center">
+                        <button
+                          className="text-red-500 hover:text-red-700"
+                          onClick={() => handleCancelOrder(order.orderId)}
+                          disabled={isLoading}
+                        >
+                          <FaTimes className="text-xl" />
+                        </button>
+                      </td>
+                    )}
+                    {activeTab === "Hoàn thành" && (
+                      <td className="p-3 border border-gray-200 text-center">
+                        <button
+                          className="text-yellow-500 hover:text-yellow-700"
+                          onClick={() => openReviewModal(order)}
+                        >
+                          <FaStar className="text-xl" />
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
 
-      {totalPages > 1 && (
-        <div className="flex justify-center mt-4">
-          <button
-            className={`px-4 py-2 mx-1 ${currentPage === 1 ? "opacity-50 cursor-not-allowed" : "bg-gray-200 hover:bg-gray-300"}`}
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage(currentPage - 1)}
-          >
-            Trước
-          </button>
-          <span className="px-4 py-2">{currentPage} / {totalPages}</span>
-          <button
-            className={`px-4 py-2 mx-1 ${currentPage === totalPages ? "opacity-50 cursor-not-allowed" : "bg-gray-200 hover:bg-gray-300"}`}
-            disabled={currentPage === totalPages}
-            onClick={() => setCurrentPage(currentPage + 1)}
-          >
-            Sau
-          </button>
-        </div>
+          {totalPages > 1 && (
+            <div className="flex justify-center mt-4">
+              <button
+                className={`px-4 py-2 mx-1 ${currentPage === 1 ? "opacity-50 cursor-not-allowed" : "bg-gray-200 hover:bg-gray-300"}`}
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(currentPage - 1)}
+              >
+                Trước
+              </button>
+              <span className="px-4 py-2">{currentPage} / {totalPages}</span>
+              <button
+                className={`px-4 py-2 mx-1 ${currentPage === totalPages ? "opacity-50 cursor-not-allowed" : "bg-gray-200 hover:bg-gray-300"}`}
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(currentPage + 1)}
+              >
+                Sau
+              </button>
+            </div>
+          )}
+        </>
       )}
 
+      {/* Phần chi tiết đơn hàng hiển thị khi có đơn hàng được chọn */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center px-4">
-          <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative">
+        <div className="mt-8">
+          <div className="flex items-center mb-4">
             <button
-              className="absolute top-4 right-4 text-gray-600 hover:text-red-500 text-2xl"
+              className="flex items-center text-blue-500 hover:text-blue-700 mr-4"
               onClick={() => setSelectedOrder(null)}
             >
-              ✖
+              <FaArrowLeft className="mr-2" /> Quay lại danh sách
             </button>
-            <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
-              🛒 Chi tiết đơn hàng #{selectedOrder.orderId}
+            <h2 className="text-2xl font-bold text-gray-800">
+              Đơn hàng: #{selectedOrder.orderId}
             </h2>
-            <div className="mb-6 space-y-2 text-gray-700">
-              <p>
-                <strong className="text-gray-800">📅 Ngày đặt hàng:</strong>{" "}
-                {new Date(selectedOrder.orderDate).toLocaleString("vi-VN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  second: "2-digit",
-                  year: "numeric",
-                  month: "2-digit",
-                  day: "2-digit",
-                  timeZone: "Asia/Ho_Chi_Minh",
-                })}
-              </p>
-              <p>
-                <strong className="text-gray-800">💰 Tổng tiền:</strong>{" "}
-                <span className="text-red-500 font-semibold">{formatCurrency(selectedOrder.totalAmount)}</span>
-              </p>
-              <p>
-                <strong className="text-gray-800">📦 Trạng thái:</strong>{" "}
-                <span className="font-medium">{selectedOrder.statusName}</span>
-              </p>
-            </div>
-            <h3 className="text-xl font-semibold mb-4 text-gray-800">🛍️ Danh sách sản phẩm:</h3>
-            <div className="overflow-x-auto pr-2">
-              <ul className="flex gap-6">
-                {displayedProducts.map((item) => {
-                  const isExpanded = expandedProducts[item.orderDetailId];
-                  const truncatedName = item.productName.length > 15 ? item.productName.substring(0, 15) + "..." : item.productName;
-                  return (
-                    <li key={item.orderDetailId} className="flex-shrink-0 w-[280px] p-4 bg-gray-50 rounded-lg shadow-lg">
-                      <div className="flex items-center gap-6">
-                        <img src={item.imageUrl} alt={item.productName} className="w-24 h-24 object-cover rounded-lg border" />
-                        <div className="flex-1 text-left">
-                          <p className="font-semibold text-gray-900 text-lg">
-                            {isExpanded ? item.productName : truncatedName}
-                            {item.productName.length > 15 && (
-                              <button onClick={() => toggleProductName(item.orderDetailId)} className="text-blue-500 text-sm ml-2">
-                                {isExpanded ? "Ẩn bớt" : "Xem thêm"}
-                              </button>
-                            )}
-                          </p>
-                          <p>Số lượng: {item.quantity}</p>
-                          <p className="text-red-500 font-bold">Giá: {formatCurrency(item.price)}</p>
-                          <p><strong className="text-gray-800">Kích thước:</strong> {item.sizeValue || "N/A"}</p>
-                          <p><strong className="text-gray-800">Trọng lượng:</strong> {item.weightValue || "N/A"}</p>
-                          <p><strong className="text-gray-800">Màu sắc:</strong> {item.colorValue || "N/A"}</p>
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+          </div>
+          <div className="mb-6 space-y-2 text-gray-700">
+            <p>
+              <strong className="text-gray-800">Ngày đặt hàng:</strong>{" "}
+              {new Date(selectedOrder.orderDate).toLocaleString("vi-VN", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+              })}
+            </p>
+            <p>
+              <strong className="text-gray-800">Tổng tiền:</strong>{" "}
+              <span className="text-red-500 font-semibold">{formatCurrency(selectedOrder.totalAmount)}</span>
+            </p>
+            <p>
+              <strong className="text-gray-800">Trạng thái:</strong>{" "}
+              <span className="font-medium">{selectedOrder.statusName}</span>
+            </p>
+          </div>
+          <table className="w-full border-collapse border border-gray-200">
+            <thead>
+              <tr className="bg-gray-100 text-left">
+                <th className="p-3 border border-gray-200">Sản phẩm</th>
+                <th className="p-3 border border-gray-200">Đơn giá</th>
+                <th className="p-3 border border-gray-200">Số lượng</th>
+                <th className="p-3 border border-gray-200">Thành tiền</th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayedProducts.map((item) => (
+                <tr key={item.orderDetailId} className="border border-gray-200">
+                  <td className="p-3 border border-gray-200 flex items-center gap-4">
+                    <img src={item.imageUrl} alt={item.productName} className="w-16 h-16 object-cover rounded-lg border" />
+                    <div>
+                      <p className="font-semibold">{item.productName}</p>
+                      <p className="text-sm text-gray-600">
+                        Kích thước: {item.sizeValue || "N/A"} | Trọng lượng: {item.weightValue || "N/A"} | Màu sắc: {item.colorValue || "N/A"}
+                      </p>
+                    </div>
+                  </td>
+                  <td className="p-3 border border-gray-200">{formatCurrency(item.price)}</td>
+                  <td className="p-3 border border-gray-200">{item.quantity}</td>
+                  <td className="p-3 border border-gray-200 text-red-500">{formatCurrency(item.price * item.quantity)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="mt-4 flex justify-between">
+            <p>
+              <strong>Tình trạng đơn hàng:</strong> {selectedOrder.statusName}
+            </p>
+            <p>
+              <strong>Dự kiến giao:</strong> <span className="text-gray-500">Từ 3 - 5 ngày</span>
+            </p>
+            <p className="text-red-500">
+              <strong>Tổng tiền:</strong> {formatCurrency(selectedOrder.totalAmount + 30000)}
+            </p>
           </div>
         </div>
       )}

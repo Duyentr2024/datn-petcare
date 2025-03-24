@@ -7,7 +7,6 @@ import PetServiceService from '../../../service/spaService/PetServiceService';
 import PetWeightService from '../../../service/spaService/PetWeightService';
 import ServiceModal from './ServiceModal';
 import CustomerModal from './CustomerModal';
-import './appointment.css';
 
 const Appointment = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());

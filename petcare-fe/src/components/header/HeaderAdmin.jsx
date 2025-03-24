@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import  { useEffect, useState } from "react";
 import { FiBell, FiLogOut } from "react-icons/fi";
 import { jwtDecode } from "jwt-decode";
 import Cookies from "js-cookie";

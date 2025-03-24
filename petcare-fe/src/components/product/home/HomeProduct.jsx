@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ProductCard } from "../ProductCard";
 import ProductSkeleton from "../home/ProductSkeleton";
 import ProductsService from "../../../service/serviceProduct/ProductsService.js";
 import ProductDetailsService from "../../../service/serviceProduct/ProductDetailsService.js";
-import { Swiper, SwiperSlide } from "swiper/react";
+import { SwiperSlide } from "swiper/react";
 import "swiper/css";
 import "swiper/css/navigation";
 import { Navigation } from "swiper/modules";
@@ -15,7 +15,7 @@ function HomeProduct() {
     const [loading, setLoading] = useState(true);
     const [productsByCategory, setProductsByCategory] = useState({});
     const [selectedProductId, setSelectedProductId] = useState(null);
-    const [productDetails, setProductDetails] = useState(null);
+    const [setProductDetails] = useState(null);
 
     useEffect(() => {
         const fetchProducts = async () => {

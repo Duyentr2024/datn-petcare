@@ -76,6 +76,7 @@ const Introduce = () => {
 
   // Auto-scroll effect cho hình ảnh dài trong tivi với hiệu ứng mượt mà
   useEffect(() => {
+    window.scrollTo(0, 0);
     if (innerRef.current) {
       let scrollPosition = 0;
       const speed = 1; // Tốc độ cuộn (bạn có thể điều chỉnh)
