@@ -9,6 +9,7 @@ import { toast } from "react-toastify";
 import { useNavigate, useLocation } from "react-router-dom";
 import VoucherService from "../../service/voucherService/VoucherService.jsx";
 import VNPayService from "../../service/paymentService/VNPayService.jsx";
+import MomoService from "../../service/paymentService/MomoService.jsx";
 
 const Checkout = () => {
   const { user } = useAuth();
@@ -493,7 +494,9 @@ const Checkout = () => {
     const fetchVouchers = async () => {
       try {
         const data = await VoucherService.getAllVouchers();
-        setVouchers(data);
+        // Lọc chỉ hiển thị voucher có status = true
+        const activeVouchers = data.filter(voucher => voucher.status === true);
+        setVouchers(activeVouchers);
       } catch (error) {
         console.error("Lỗi khi lấy danh sách voucher:", error);
       }
@@ -509,9 +512,11 @@ const Checkout = () => {
     const today = new Date();
     if (
       selected &&
-      (selected.quantity <= 0 || new Date(selected.endDate) < today)
+      (selected.status === false || // Không áp dụng nếu không hoạt động
+        selected.quantity <= 0 ||
+        new Date(selected.endDate) < today)
     ) {
-      setSelectedVoucher(""); // Reset nếu voucher không còn hợp lệ
+      setSelectedVoucher(""); // Reset nếu voucher không hợp lệ
       setDiscount(0);
       setCondition(0);
     } else if (selected) {
@@ -565,6 +570,7 @@ const Checkout = () => {
 
     try {
       if (paymentMethod === "VNPay") {
+        // Tạo đơn hàng trước khi tạo URL thanh toán
         const response = await axios.post(
           "http://localhost:8080/api/orders/checkout",
           orderDetails,
@@ -584,13 +590,75 @@ const Checkout = () => {
           })
         );
 
-        const amount = Math.round(totalBeforeDiscount - discountAmount);
-        const paymentUrl = await VNPayService.createPayment(
-          amount,
-          `${window.location.origin}/checkout`
-        );
-        console.log(`[FE] Redirecting to VNPay payment URL: ${paymentUrl}`);
-        window.location.href = paymentUrl;
+        try {
+          const amount = Math.round(totalBeforeDiscount - discountAmount);
+          const paymentUrl = await VNPayService.createPayment(
+            amount,
+            `${window.location.origin}/checkout`
+          );
+          console.log(`[FE] Redirecting to VNPay payment URL: ${paymentUrl}`);
+          window.location.href = paymentUrl;
+        } catch (paymentError) {
+          console.error(`[FE] Error creating VNPay payment: ${paymentError.message}`);
+          // Hủy đơn hàng đã tạo
+          await axios.put(
+            `http://localhost:8080/api/orders/${orderId}/status`,
+            { paymentStatus: "Đã hủy thanh toán" },
+            { headers: { "Content-Type": "application/json" } }
+          );
+          Swal.fire("Lỗi!", `Không thể tạo thanh toán VNPay: ${paymentError.message}`, "error");
+        }
+      } else if (paymentMethod === "MoMo") {
+        try {
+          // Đầu tiên, thử tạo URL thanh toán MoMo trước khi tạo đơn hàng
+          const amount = Math.round(totalBeforeDiscount - discountAmount);
+          const paymentUrl = await MomoService.createPayment(
+            String(amount),
+            `${window.location.origin}/checkout`
+          );
+          
+          // Sau khi có URL thanh toán MoMo, tạo đơn hàng trong database
+          const response = await axios.post(
+            "http://localhost:8080/api/orders/checkout",
+            orderDetails,
+            {
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+          const orderId = response.data.orderId;
+          console.log(`[FE] Order created for MoMo: orderId=${orderId}`);
+
+          localStorage.setItem(
+            "pendingOrder",
+            JSON.stringify({
+              orderId,
+              orderDetails,
+              voucherId: selectedVoucher,
+              paymentMethod: "MoMo"
+            })
+          );
+
+          console.log(`[FE] Redirecting to MoMo payment URL: ${paymentUrl}`);
+          window.location.href = paymentUrl;
+        } catch (error) {
+          console.error(`[FE] Error creating MoMo payment: ${error.message}`);
+          
+          // Nếu đơn hàng đã được tạo (có trong localStorage), hủy nó
+          const pendingOrder = JSON.parse(localStorage.getItem("pendingOrder"));
+          if (pendingOrder && pendingOrder.orderId) {
+            try {
+              await axios.delete(
+                `http://localhost:8080/api/orders/${pendingOrder.orderId}/payment-failed`
+              );
+              console.log(`[FE] Cancelled order ${pendingOrder.orderId} due to payment failure`);
+              localStorage.removeItem("pendingOrder");
+            } catch (cancelError) {
+              console.error(`[FE] Error cancelling order: ${cancelError.message}`);
+            }
+          }
+          
+          Swal.fire("Lỗi!", `Không thể tạo thanh toán MoMo: ${error.message}`, "error");
+        }
       } else {
         console.log(`[FE] Processing COD payment`);
         await handlePayment(orderDetails);
@@ -649,103 +717,202 @@ const Checkout = () => {
       const urlParams = new URLSearchParams(window.location.search);
       const pendingOrder = JSON.parse(localStorage.getItem("pendingOrder"));
       const vnpTxnRef = urlParams.get("vnp_TxnRef");
+      const momoOrderId = urlParams.get("orderId");
 
+      // Skip if no pending order or if we've already processed this transaction
       if (
-        !vnpTxnRef ||
+        (!vnpTxnRef && !momoOrderId) ||
         !pendingOrder ||
-        localStorage.getItem(`processed_${vnpTxnRef}`)
+        (vnpTxnRef && localStorage.getItem(`processed_${vnpTxnRef}`)) ||
+        (momoOrderId && localStorage.getItem(`processed_${momoOrderId}`))
       ) {
         console.log(
-          `[FE] Skipping payment result processing: vnpTxnRef=${vnpTxnRef}`
+          `[FE] Skipping payment result processing: vnpTxnRef=${vnpTxnRef}, momoOrderId=${momoOrderId}`
         );
         return;
       }
 
-      console.log(
-        `[FE] Processing VNPay payment result for orderId: ${pendingOrder.orderId}, vnpTxnRef: ${vnpTxnRef}`
-      );
-      localStorage.setItem(`processed_${vnpTxnRef}`, "true");
-      setHasProcessed(true);
-      if (vnpTxnRef) setProcessedTxnRef(vnpTxnRef);
+      // Handle VNPay payment result
+      if (vnpTxnRef && pendingOrder.paymentMethod !== "MoMo") {
+        console.log(
+          `[FE] Processing VNPay payment result for orderId: ${pendingOrder.orderId}, vnpTxnRef: ${vnpTxnRef}`
+        );
+        localStorage.setItem(`processed_${vnpTxnRef}`, "true");
+        setHasProcessed(true);
+        if (vnpTxnRef) setProcessedTxnRef(vnpTxnRef);
 
-      try {
-        const vnpResponseCode = urlParams.get("vnp_ResponseCode");
-        let message, icon;
+        try {
+          const vnpResponseCode = urlParams.get("vnp_ResponseCode");
+          let message, icon;
 
-        switch (vnpResponseCode) {
-          case "00":
-            message = "Thanh toán thành công!";
-            icon = "success";
-            console.log(
-              `[FE] VNPay success, updating paymentStatus to "Chờ xác nhận" for orderId: ${pendingOrder.orderId}`
-            );
-            await axios.put(
-              `http://localhost:8080/api/orders/${pendingOrder.orderId}/status`,
-              { paymentStatus: "Chờ xác nhận" },
-              { headers: { "Content-Type": "application/json" } }
-            );
-            if (pendingOrder.voucherId) {
+          switch (vnpResponseCode) {
+            case "00":
+              message = "Thanh toán thành công!";
+              icon = "success";
               console.log(
-                `[FE] Decrementing voucher quantity for voucherId: ${pendingOrder.voucherId}`
+                `[FE] VNPay success, updating paymentStatus to "Chờ xác nhận" for orderId: ${pendingOrder.orderId}`
               );
-              await VoucherService.decrementVoucherQuantity(
-                pendingOrder.voucherId
+              await axios.put(
+                `http://localhost:8080/api/orders/${pendingOrder.orderId}/status`,
+                { paymentStatus: "Chờ xác nhận" },
+                { headers: { "Content-Type": "application/json" } }
               );
-            }
-            localStorage.removeItem("pendingOrder");
-            await clearCart();
-            console.log(
-              `[FE] Cart cleared and pendingOrder removed for orderId: ${pendingOrder.orderId}`
-            );
-            break;
-          case "24":
-            message = "Bạn đã hủy thanh toán.";
-            icon = "info";
-            console.log(
-              `[FE] VNPay cancelled, updating paymentStatus to "Đã hủy thanh toán" for orderId: ${pendingOrder.orderId}`
-            );
-            await axios.put(
-              `http://localhost:8080/api/orders/${pendingOrder.orderId}/status`,
-              { paymentStatus: "Đã hủy thanh toán" },
-              { headers: { "Content-Type": "application/json" } }
-            );
-            break;
-          default:
-            message = `Thanh toán không thành công. Mã lỗi: ${vnpResponseCode}, Mã tra cứu: ${vnpTxnRef}`;
-            icon = "error";
-            console.log(
-              `[FE] VNPay failed, updating paymentStatus to "Đã hủy thanh toán" for orderId: ${pendingOrder.orderId}`
-            );
-            await axios.put(
-              `http://localhost:8080/api/orders/${pendingOrder.orderId}/status`,
-              { paymentStatus: "Đã hủy thanh toán" },
-              { headers: { "Content-Type": "application/json" } }
-            );
-            break;
-        }
-
-        Swal.fire({
-          title: vnpResponseCode === "00" ? "Thành công!" : "Thông báo",
-          text: message,
-          icon,
-        }).then(() => {
-          if (vnpResponseCode === "00") {
-            navigate("/my-account/history");
+              if (pendingOrder.voucherId) {
+                console.log(
+                  `[FE] Decrementing voucher quantity for voucherId: ${pendingOrder.voucherId}`
+                );
+                await VoucherService.decrementVoucherQuantity(
+                  pendingOrder.voucherId
+                );
+              }
+              localStorage.removeItem("pendingOrder");
+              await clearCart();
+              console.log(
+                `[FE] Cart cleared and pendingOrder removed for orderId: ${pendingOrder.orderId}`
+              );
+              break;
+            case "24":
+              message = "Bạn đã hủy thanh toán.";
+              icon = "info";
+              console.log(
+                `[FE] VNPay cancelled, updating paymentStatus to "Đã hủy thanh toán" for orderId: ${pendingOrder.orderId}`
+              );
+              await axios.put(
+                `http://localhost:8080/api/orders/${pendingOrder.orderId}/status`,
+                { paymentStatus: "Đã hủy thanh toán" },
+                { headers: { "Content-Type": "application/json" } }
+              );
+              break;
+            default:
+              message = `Thanh toán không thành công. Mã lỗi: ${vnpResponseCode}, Mã tra cứu: ${vnpTxnRef}`;
+              icon = "error";
+              console.log(
+                `[FE] VNPay failed, updating paymentStatus to "Đã hủy thanh toán" for orderId: ${pendingOrder.orderId}`
+              );
+              await axios.put(
+                `http://localhost:8080/api/orders/${pendingOrder.orderId}/status`,
+                { paymentStatus: "Đã hủy thanh toán" },
+                { headers: { "Content-Type": "application/json" } }
+              );
+              break;
           }
-        });
-        window.history.replaceState(
-          {},
-          document.title,
-          window.location.pathname
+
+          Swal.fire({
+            title: vnpResponseCode === "00" ? "Thành công!" : "Thông báo",
+            text: message,
+            icon,
+          }).then(() => {
+            if (vnpResponseCode === "00") {
+              navigate("/my-account/history");
+            }
+          });
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+          );
+        } catch (error) {
+          console.error(`[FE] Error handling VNPay payment result: ${error.message}`);
+          Swal.fire(
+            "Lỗi!",
+            "Không thể xử lý kết quả thanh toán: " +
+            (error.response?.data?.message || error.message),
+            "error"
+          );
+        }
+      }
+      
+      // Handle MoMo payment result
+      else if (momoOrderId && pendingOrder.paymentMethod === "MoMo") {
+        console.log(
+          `[FE] Processing MoMo payment result for orderId: ${pendingOrder.orderId}, momoOrderId: ${momoOrderId}`
         );
-      } catch (error) {
-        console.error(`[FE] Error handling payment result: ${error.message}`);
-        Swal.fire(
-          "Lỗi!",
-          "Không thể xử lý kết quả thanh toán: " +
-          (error.response?.data?.message || error.message),
-          "error"
-        );
+        localStorage.setItem(`processed_${momoOrderId}`, "true");
+        setHasProcessed(true);
+
+        try {
+          // Get the response code from MoMo
+          const resultCode = urlParams.get("resultCode");
+          let message, icon;
+
+          // Check MoMo payment status
+          const statusResponse = await MomoService.checkPaymentStatus(momoOrderId);
+          
+          switch (resultCode) {
+            case "0": // Success
+              message = "Thanh toán MoMo thành công!";
+              icon = "success";
+              console.log(
+                `[FE] MoMo success, updating paymentStatus to "Chờ xác nhận" for orderId: ${pendingOrder.orderId}`
+              );
+              await axios.put(
+                `http://localhost:8080/api/orders/${pendingOrder.orderId}/status`,
+                { paymentStatus: "Chờ xác nhận" },
+                { headers: { "Content-Type": "application/json" } }
+              );
+              if (pendingOrder.voucherId) {
+                console.log(
+                  `[FE] Decrementing voucher quantity for voucherId: ${pendingOrder.voucherId}`
+                );
+                await VoucherService.decrementVoucherQuantity(
+                  pendingOrder.voucherId
+                );
+              }
+              localStorage.removeItem("pendingOrder");
+              await clearCart();
+              console.log(
+                `[FE] Cart cleared and pendingOrder removed for orderId: ${pendingOrder.orderId}`
+              );
+              break;
+            case "1006": // User canceled
+              message = "Bạn đã hủy thanh toán MoMo.";
+              icon = "info";
+              console.log(
+                `[FE] MoMo cancelled, updating paymentStatus to "Đã hủy thanh toán" for orderId: ${pendingOrder.orderId}`
+              );
+              await axios.put(
+                `http://localhost:8080/api/orders/${pendingOrder.orderId}/status`,
+                { paymentStatus: "Đã hủy thanh toán" },
+                { headers: { "Content-Type": "application/json" } }
+              );
+              break;
+            default:
+              message = `Thanh toán MoMo không thành công. Mã lỗi: ${resultCode}`;
+              icon = "error";
+              console.log(
+                `[FE] MoMo failed, updating paymentStatus to "Đã hủy thanh toán" for orderId: ${pendingOrder.orderId}`
+              );
+              await axios.put(
+                `http://localhost:8080/api/orders/${pendingOrder.orderId}/status`,
+                { paymentStatus: "Đã hủy thanh toán" },
+                { headers: { "Content-Type": "application/json" } }
+              );
+              break;
+          }
+
+          Swal.fire({
+            title: resultCode === "0" ? "Thành công!" : "Thông báo",
+            text: message,
+            icon,
+          }).then(() => {
+            if (resultCode === "0") {
+              navigate("/my-account/history");
+            }
+          });
+          window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname
+          );
+        } catch (error) {
+          console.error(`[FE] Error handling MoMo payment result: ${error.message}`);
+          Swal.fire(
+            "Lỗi!",
+            "Không thể xử lý kết quả thanh toán MoMo: " +
+            (error.response?.data?.message || error.message),
+            "error"
+          );
+        }
       }
     };
 
@@ -945,12 +1112,17 @@ const Checkout = () => {
               <h1 className="text-2xl font-bold text-yellow-500 mb-6">
                 Phương thức thanh toán
               </h1>
-              <div className="flex gap-4 items-center">
+              <div className="flex gap-4 items-center flex-wrap">
                 {[
                   {
                     img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ8VNUYiwB1DuoiPYNKl6jXWIcQEOxbNkXM6w&s",
                     text: "Thanh toán VNPay",
                     value: "VNPay",
+                  },
+                  {
+                    img: "https://upload.wikimedia.org/wikipedia/vi/f/fe/MoMo_Logo.png",
+                    text: "Thanh toán MoMo",
+                    value: "MoMo",
                   },
                   {
                     img: "https://toidentowa.com/wp-content/uploads/2017/12/thanh-toan.png.webp",

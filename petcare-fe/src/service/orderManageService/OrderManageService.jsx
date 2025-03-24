@@ -19,23 +19,23 @@ const OrderManageService = {
         }
     },
 
-    updateOrderStatus: async (orderId, statusId) => {
+    updateOrderStatus: async (orderId, statusId, reason = null) => {
         try {
             const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/${statusId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                 },
+                body: reason ? JSON.stringify({ reason }) : null, // Gửi reason nếu có
             });
 
             const textResponse = await response.text();
-            console.log("Raw API Response:", textResponse); // Kiểm tra phản hồi thực tế
+            console.log("Raw API Response:", textResponse);
 
             if (!response.ok) {
                 throw new Error(`Failed to update order status: ${response.status}`);
             }
 
-            // Kiểm tra nếu phản hồi là JSON hợp lệ
             try {
                 return JSON.parse(textResponse);
             } catch (jsonError) {
@@ -64,7 +64,26 @@ const OrderManageService = {
             console.error("Lỗi khi hủy đơn hàng:", error);
             throw error;
         }
-    }
+    },
+
+    // Thêm phương thức mới để lấy đơn hàng theo voucherId
+    getOrdersByVoucherId: async (voucherId) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/orders/by-voucher/${voucherId}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            });
+            if (!response.ok) {
+                throw new Error("Failed to fetch orders by voucherId");
+            }
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching orders by voucherId:", error);
+            throw error;
+        }
+    },
 
 
 };
