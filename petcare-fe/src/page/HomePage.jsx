@@ -25,6 +25,7 @@ import Guide from "../elements/Guide.jsx";
 import SpaPage from "../components/spaGrooming/Grooming.jsx";
 import AppointmentPage from "./AppointmentPage.jsx";
 import CheckoutPayment from "../components/spaGrooming/user/CheckoutPayment.jsx";
+import ResetPassword from "../components/account/ResetPassword.jsx";
 // Hiệu ứng chuyển trang
 const pageVariants = {
     hidden: { opacity: 0, y: 30 },
@@ -54,6 +55,7 @@ const AnimatedRoutes = () => {
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
                     <Route path="/forgotPassword" element={<ForgotPassword />} />
+                    <Route path="/resetPassword" element={<ResetPassword />} />
                     <Route path="/verify-otp" element={<VerifyOTP />} />
                     <Route path="/introduce" element={<Introduce />} />
                     <Route path="/search" element={<SearchProduct />} />
