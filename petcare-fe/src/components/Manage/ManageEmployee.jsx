@@ -64,7 +64,7 @@ const ManageEmployee = () => {
                 return a.isStatus - b.isStatus;
             });
             setStaffs(sortedData);
-            if (activeTab === "STAFF") handleSearch(sortedData);
+            handleSearch([...sortedData, ...employees]);
         } catch (error) {
             console.error("Lỗi tải danh sách staff:", error);
             toast.error("Lỗi tải danh sách staff!");
@@ -83,7 +83,7 @@ const ManageEmployee = () => {
                 isStatus: emp.status === "active",
             }));
             setEmployees(mappedData);
-            if (activeTab === "EMPLOYEE") handleSearch(mappedData);
+            handleSearch([...staffs, ...mappedData]);
         } catch (error) {
             console.error("Lỗi tải danh sách employee:", error);
             toast.error("Lỗi tải danh sách employee!");
@@ -125,7 +125,7 @@ const ManageEmployee = () => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         const phoneRegex = /^0\d{9}$/;
 
-        if (activeTab === "STAFF") {
+        if (employeeInput.roleType === "STAFF") {
             if (!employeeInput.email?.trim()) return "Email không được để trống.";
             if (!emailRegex.test(employeeInput.email || "")) return "Email không đúng định dạng.";
             if (!editingEmployee && !employeeInput.password?.trim()) return "Mật khẩu không được để trống.";
@@ -136,7 +136,7 @@ const ManageEmployee = () => {
         if (!employeeInput.phone?.trim()) return "Số điện thoại không được để trống.";
         const phoneValue = String(employeeInput.phone || "").trim();
         if (!phoneRegex.test(phoneValue)) return "Số điện thoại phải bắt đầu bằng 0 và gồm 10 chữ số.";
-        if (activeTab === "EMPLOYEE" && !employeeInput.employeeType) return "Vui lòng chọn loại nhân viên.";
+        if (employeeInput.roleType === "EMPLOYEE" && !employeeInput.employeeType) return "Vui lòng chọn chức vụ.";
         return "";
     };
 
@@ -158,11 +158,11 @@ const ManageEmployee = () => {
         setLoading(true);
         try {
             let imageUrl = employeeInput.imageUrl;
-            if (activeTab === "STAFF" && employeeInput.imageFile) {
+            if (employeeInput.roleType === "STAFF" && employeeInput.imageFile) {
                 imageUrl = await uploadImageToFirebase(employeeInput.imageFile);
             }
     
-            const formData = activeTab === "STAFF"
+            const formData = employeeInput.roleType === "STAFF"
                 ? {
                     email: employeeInput.email,
                     password: editingEmployee ? undefined : employeeInput.password,
@@ -182,14 +182,14 @@ const ManageEmployee = () => {
     
             let response;
             if (editingEmployee) {
-                if (activeTab === "STAFF") {
+                if (employeeInput.roleType === "STAFF") {
                     response = await EmployeeService.updateEmployee(editingEmployee.userId, formData);
                 } else {
                     response = await EmployeeService.updateEmployeeInEmployeeTable(editingEmployee.employeeId, formData);
                 }
                 toast.success("Cập nhật nhân viên thành công!");
             } else {
-                if (activeTab === "STAFF") {
+                if (employeeInput.roleType === "STAFF") {
                     response = await EmployeeService.createEmployee(formData);
                 } else {
                     response = await EmployeeService.createEmployeeInEmployeeTable(formData);
@@ -199,7 +199,7 @@ const ManageEmployee = () => {
     
             resetForm();
             setIsFormOpen(false);
-            activeTab === "STAFF" ? loadStaffs() : loadEmployees();
+            employeeInput.roleType === "STAFF" ? loadStaffs() : loadEmployees();
         } catch (error) {
             const errorMsg = error.response?.data?.error || error.message || "Đã xảy ra lỗi!";
             setErrorMessage(errorMsg);
@@ -212,16 +212,16 @@ const ManageEmployee = () => {
         if (!employeeInput.phone) return false;
         
         const phoneToCheck = employeeInput.phone.trim();
-        const currentData = activeTab === "STAFF" ? staffs : employees;
+        const currentData = employeeInput.roleType === "STAFF" ? staffs : employees;
         
         // When editing, we should exclude the current employee from the duplicate check
         return currentData.some(item => {
             // Skip the current user being edited
             if (editingEmployee) {
-                if (activeTab === "STAFF" && item.userId === editingEmployee.userId) {
+                if (employeeInput.roleType === "STAFF" && item.userId === editingEmployee.userId) {
                     return false;
                 }
-                if (activeTab === "EMPLOYEE" && item.employeeId === editingEmployee.employeeId) {
+                if (employeeInput.roleType === "EMPLOYEE" && item.employeeId === editingEmployee.employeeId) {
                     return false;
                 }
             }
@@ -243,7 +243,7 @@ const ManageEmployee = () => {
             imageFile: null,
             imageUrl: "",
             userRoles: [],
-            roleType: activeTab,
+            roleType: "STAFF",
             employeeType: "",
         });
         setPreviewImage(null);
@@ -253,7 +253,10 @@ const ManageEmployee = () => {
     const handleEdit = (employee) => {
         setErrorMessage("");
         setEditingEmployee(employee);
-        if (activeTab === "STAFF") {
+        
+        const isStaff = !!employee.userId;
+        
+        if (isStaff) {
             setEmployeeInput({
                 ...employee,
                 password: "",
@@ -283,7 +286,8 @@ const ManageEmployee = () => {
     };
 
     const handleDelete = (id) => {
-        const employee = activeTab === "STAFF" ? staffs.find(emp => emp.userId === id) : employees.find(emp => emp.employeeId === id);
+        const isStaff = id && paginatedData.find(emp => emp.userId === id);
+        const employee = isStaff ? staffs.find(emp => emp.userId === id) : employees.find(emp => emp.employeeId === id);
         setEmployeeToDelete(employee);
         setIsDeleteModalOpen(true);
     };
@@ -291,9 +295,11 @@ const ManageEmployee = () => {
     const confirmDelete = async () => {
         if (!employeeToDelete) return;
 
+        const isStaff = !!employeeToDelete.userId;
+        
         setLoading(true);
         try {
-            if (activeTab === "STAFF") {
+            if (isStaff) {
                 await EmployeeService.updateEmployeeStatus(employeeToDelete.userId, false);
             } else {
                 await EmployeeService.updateEmployeeInEmployeeTable(employeeToDelete.employeeId, {
@@ -302,7 +308,7 @@ const ManageEmployee = () => {
                 });
             }
             toast.success("Xóa nhân viên thành công!");
-            activeTab === "STAFF" ? loadStaffs() : loadEmployees();
+            isStaff ? loadStaffs() : loadEmployees();
         } catch (error) {
             console.error("Lỗi khi xóa nhân viên:", error);
             toast.error("Lỗi khi xóa nhân viên: " + error.message);
@@ -313,7 +319,7 @@ const ManageEmployee = () => {
         }
     };
 
-    const handleSearch = (data = activeTab === "STAFF" ? staffs : employees) => {
+    const handleSearch = (data = [...staffs, ...employees]) => {
         const query = searchQuery.toLowerCase().trim();
         
         if (!query) {
@@ -322,25 +328,18 @@ const ManageEmployee = () => {
         }
         
         const filtered = data.filter((employee) =>
-            activeTab === "STAFF"
-                ? (employee.fullName?.toLowerCase().includes(query) ||
-                   employee.phone?.includes(query) ||
-                   (employee.email && employee.email.toLowerCase().includes(query)))
-                : (employee.fullName?.toLowerCase().includes(query) ||
-                   employee.phone?.includes(query) ||
-                   (employee.employeeType && employee.employeeType.toLowerCase().includes(query)))
+            employee.fullName?.toLowerCase().includes(query) ||
+            employee.phone?.includes(query) ||
+            (employee.email && employee.email.toLowerCase().includes(query)) ||
+            (employee.employeeType && employee.employeeType.toLowerCase().includes(query))
         );
         setFilteredData(filtered);
         setCurrentPage(1);
     };
 
     useEffect(() => {
-        if (activeTab === "STAFF") {
-            handleSearch(staffs);
-        } else {
-            handleSearch(employees);
-        }
-    }, [searchQuery, activeTab]);
+        handleSearch([...staffs, ...employees]);
+    }, [searchQuery, staffs, employees]);
 
     const handlePageChange = (page) => setCurrentPage(page);
 
@@ -357,46 +356,12 @@ const ManageEmployee = () => {
                     Danh sách nhân viên
                 </h2>
     
-                {/* Tabs */}
-                <div className="flex border-b mb-6">
-                    <button
-                        className={`flex-1 py-3 text-center font-medium transition-colors ${
-                            activeTab === "STAFF" 
-                            ? "border-b-2 border-[#f0b040] text-[#f0b040]" 
-                            : "text-gray-500 hover:text-[#f0b040]"
-                        }`}
-                        onClick={() => {
-                            setActiveTab("STAFF");
-                            setSearchQuery("");
-                            handleSearch(staffs);
-                            resetForm();
-                        }}
-                    >
-                        Quản lý Staff
-                    </button>
-                    <button
-                        className={`flex-1 py-3 text-center font-medium transition-colors ${
-                            activeTab === "EMPLOYEE" 
-                            ? "border-b-2 border-[#f0b040] text-[#f0b040]" 
-                            : "text-gray-500 hover:text-[#f0b040]"
-                        }`}
-                        onClick={() => {
-                            setActiveTab("EMPLOYEE");
-                            setSearchQuery("");
-                            handleSearch(employees);
-                            resetForm();
-                        }}
-                    >
-                        Quản lý Employee
-                    </button>
-                </div>
-    
                 {/* Search and Add Button */}
                 <div className="flex justify-between items-center mb-6 space-x-3">
                     <div className="relative w-full">
                         <input
                             type="text"
-                            placeholder={`Tìm kiếm bằng ${activeTab === "STAFF" ? "tên, số điện thoại hoặc email" : "tên, số điện thoại hoặc chức vụ"}...`}
+                            placeholder="Tìm kiếm bằng tên, số điện thoại, email hoặc chức vụ..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             autoComplete="off"
@@ -442,116 +407,127 @@ const ManageEmployee = () => {
     
                     {/* Form Container */}
                     <div className="space-y-5">
-                        {activeTab === "STAFF" ? (
-                            <>
-                                <div className="grid grid-cols-2 gap-5">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        {!editingEmployee && (
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Loại nhân viên</label>
+                                <div className="flex gap-6 mt-2">
+                                    <label className="flex items-center">
                                         <input
-                                            type="email"
-                                            value={employeeInput.email}
-                                            onChange={(e) => setEmployeeInput({ ...employeeInput, email: e.target.value })}
-                                            disabled={editingEmployee}
-                                            autoComplete="off"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#f0b040] transition-colors disabled:bg-gray-50"
+                                            type="radio"
+                                            value="STAFF"
+                                            checked={employeeInput.roleType === "STAFF"}
+                                            onChange={(e) => setEmployeeInput({ ...employeeInput, roleType: e.target.value })}
+                                            className="w-4 h-4 text-[#f0b040] focus:ring-[#f0b040]"
+                                        />
+                                        <span className="ml-2 text-gray-700">Nhân viên hệ thống</span>
+                                    </label>
+                                    <label className="flex items-center">
+                                        <input
+                                            type="radio"
+                                            value="EMPLOYEE"
+                                            checked={employeeInput.roleType === "EMPLOYEE"}
+                                            onChange={(e) => setEmployeeInput({ ...employeeInput, roleType: e.target.value })}
+                                            className="w-4 h-4 text-[#f0b040] focus:ring-[#f0b040]"
+                                        />
+                                        <span className="ml-2 text-gray-700">Nhân viên dịch vụ</span>
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+
+                        {employeeInput.roleType === "STAFF" && (
+                            <div className="grid grid-cols-2 gap-5">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                    <input
+                                        type="email"
+                                        value={employeeInput.email}
+                                        onChange={(e) => setEmployeeInput({ ...employeeInput, email: e.target.value })}
+                                        disabled={editingEmployee}
+                                        autoComplete="off"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#f0b040] transition-colors disabled:bg-gray-50"
+                                    />
+                                </div>
+                                {!editingEmployee && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
+                                        <input
+                                            type="password"
+                                            value={employeeInput.password}
+                                            onChange={(e) => setEmployeeInput({ ...employeeInput, password: e.target.value })}
+                                            autoComplete="new-password"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#f0b040] transition-colors"
                                         />
                                     </div>
-                                    {!editingEmployee && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
-                                            <input
-                                                type="password"
-                                                value={employeeInput.password}
-                                                onChange={(e) => setEmployeeInput({ ...employeeInput, password: e.target.value })}
-                                                autoComplete="new-password"
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#f0b040] transition-colors"
+                                )}
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-5">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
+                                <input
+                                    type="text"
+                                    value={employeeInput.fullName}
+                                    onChange={(e) => setEmployeeInput({ ...employeeInput, fullName: e.target.value })}
+                                    autoComplete="off"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#f0b040] transition-colors"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
+                                <input
+                                    type="text"
+                                    value={employeeInput.phone}
+                                    onChange={(e) => setEmployeeInput({ ...employeeInput, phone: e.target.value })}
+                                    autoComplete="off"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#f0b040] transition-colors"
+                                />
+                            </div>
+                        </div>
+
+                        {employeeInput.roleType === "STAFF" && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh</label>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex-1">
+                                        <input
+                                            type="file"
+                                            onChange={handleFileChange}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                                        />
+                                    </div>
+                                    {(previewImage || employeeInput.imageUrl) && (
+                                        <div className="relative">
+                                            <img
+                                                src={previewImage || employeeInput.imageUrl}
+                                                alt="Preview"
+                                                className="h-16 w-16 rounded-full border border-gray-300 object-cover"
                                             />
                                         </div>
                                     )}
                                 </div>
-                                <div className="grid grid-cols-2 gap-5">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
-                                        <input
-                                            type="text"
-                                            value={employeeInput.fullName}
-                                            onChange={(e) => setEmployeeInput({ ...employeeInput, fullName: e.target.value })}
-                                            autoComplete="off"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#f0b040] transition-colors"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
-                                        <input
-                                            type="text"
-                                            value={employeeInput.phone}
-                                            onChange={(e) => setEmployeeInput({ ...employeeInput, phone: e.target.value })}
-                                            autoComplete="off"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#f0b040] transition-colors"
-                                        />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Hình ảnh</label>
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex-1">
-                                            <input
-                                                type="file"
-                                                onChange={handleFileChange}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                                            />
-                                        </div>
-                                        {(previewImage || employeeInput.imageUrl) && (
-                                            <div className="relative">
-                                                <img
-                                                    src={previewImage || employeeInput.imageUrl}
-                                                    alt="Preview"
-                                                    className="h-16 w-16 rounded-full border border-gray-300 object-cover"
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
-                                    <input
-                                        type="text"
-                                        value={employeeInput.fullName}
-                                        onChange={(e) => setEmployeeInput({ ...employeeInput, fullName: e.target.value })}
-                                        autoComplete="off"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#f0b040] transition-colors"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
-                                    <input
-                                        type="text"
-                                        value={employeeInput.phone}
-                                        onChange={(e) => setEmployeeInput({ ...employeeInput, phone: e.target.value })}
-                                        autoComplete="off"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#f0b040] transition-colors"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Chức vụ</label>
-                                    <select
-                                        value={employeeInput.employeeType}
-                                        onChange={(e) => setEmployeeInput({ ...employeeInput, employeeType: e.target.value })}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#f0b040] transition-colors"
-                                    >
-                                        <option value="">Chọn loại nhân viên</option>
-                                        {employeeTypes.map((type) => (
-                                            <option key={type.value} value={type.value}>
-                                                {type.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </>
+                            </div>
                         )}
+
+                        {employeeInput.roleType === "EMPLOYEE" && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Chức vụ</label>
+                                <select
+                                    value={employeeInput.employeeType}
+                                    onChange={(e) => setEmployeeInput({ ...employeeInput, employeeType: e.target.value })}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:border-[#f0b040] transition-colors"
+                                >
+                                    <option value="">Chọn loại nhân viên</option>
+                                    {employeeTypes.map((type) => (
+                                        <option key={type.value} value={type.value}>
+                                            {type.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
                         {editingEmployee && (
                             <div className="flex items-center space-x-2">
                                 <label className="relative inline-flex items-center cursor-pointer">
@@ -566,6 +542,7 @@ const ManageEmployee = () => {
                                 </label>
                             </div>
                         )}
+
                         <div className="flex gap-4 mt-6">
                             <button
                                 onClick={handleSaveEmployee}
@@ -588,127 +565,80 @@ const ManageEmployee = () => {
                     <table className="w-full border-collapse bg-white overflow-hidden">
                         <thead className="sticky top-0 z-10">
                             <tr className="bg-[#f0b040] text-white text-sm font-medium">
-                                {activeTab === "STAFF" ? (
-                                    <>
-                                        <th className="py-3 px-5 border-b text-center">Hình ảnh</th>
-                                        <th className="py-3 px-5 border-b">Họ và Tên</th>
-                                        <th className="py-3 px-5 border-b">Email</th>
-                                        <th className="py-3 px-5 border-b">Số điện thoại</th>
-                                        <th className="py-3 px-5 border-b">Chức vụ</th>
-                                        <th className="py-3 px-5 border-b text-center">Trạng thái</th>
-                                        <th className="py-3 px-5 border-b text-center">Hành động</th>
-                                    </>
-                                ) : (
-                                    <>
-                                        <th className="py-3 px-5 border-b">Họ và Tên</th>
-                                        <th className="py-3 px-5 border-b">Số điện thoại</th>
-                                        <th className="py-3 px-5 border-b">Chức vụ</th>
-                                        <th className="py-3 px-5 border-b text-center">Trạng thái</th>
-                                        <th className="py-3 px-5 border-b text-center">Hành động</th>
-                                    </>
-                                )}
+                                <th className="py-3 px-5 border-b text-center">Hình ảnh</th>
+                                <th className="py-3 px-5 border-b">Họ và Tên</th>
+                                <th className="py-3 px-5 border-b">Email</th>
+                                <th className="py-3 px-5 border-b">Số điện thoại</th>
+                                <th className="py-3 px-5 border-b">Chức vụ</th>
+                                <th className="py-3 px-5 border-b text-center">Trạng thái</th>
+                                <th className="py-3 px-5 border-b text-center">Hành động</th>
                             </tr>
                         </thead>
                         <tbody>
                             {paginatedData.length > 0 ? (
                                 paginatedData.map((employee) => (
                                     <tr
-                                        key={activeTab === "STAFF" ? employee.userId : employee.employeeId}
+                                        key={employee.userId || employee.employeeId}
                                         className="hover:bg-gray-50 transition-colors border-b border-gray-100"
                                     >
-                                        {activeTab === "STAFF" ? (
-                                            <>
-                                                <td className="py-3 px-5 text-center">
-                                                    <div className="flex justify-center">
-                                                        <img
-                                                            src={employee.imageUrl || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"}
-                                                            alt="avatar"
-                                                            className="h-10 w-10 rounded-full object-cover border border-gray-200"
-                                                        />
-                                                    </div>
-                                                </td>
-                                                <td className="py-3 px-5 font-medium text-gray-700">{employee.fullName || "-"}</td>
-                                                <td className="py-3 px-5 text-gray-600">{employee.email || "-"}</td>
-                                                <td className="py-3 px-5 text-gray-600">{employee.phone || "-"}</td>
-                                                <td className="py-3 px-5">
-                                                    <span className="px-2 py-1 bg-[#fdf5e6] text-[#e0a030] rounded-full text-xs">
-                                                        {employee.userRoles && employee.userRoles.length > 0 
-                                                            ? employee.userRoles.map((role) => role.roleName).join(", ")
-                                                            : "-"}
-                                                    </span>
-                                                </td>
-                                                <td className="py-3 px-5 text-center">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                        employee.isStatus 
-                                                        ? "bg-green-100 text-green-700" 
-                                                        : "bg-red-100 text-red-700"
-                                                    }`}>
-                                                        {employee.isStatus ? "Hoạt động" : "Ngưng hoạt động"}
-                                                    </span>
-                                                </td>
-                                                <td className="py-3 px-5">
-                                                    <div className="flex justify-center gap-3">
-                                                        <button
-                                                            onClick={() => handleEdit(employee)}
-                                                            className="text-[#f0b040] hover:text-[#e0a030] transition-colors"
-                                                            title="Chỉnh sửa"
-                                                        >
-                                                            <i className="fas fa-edit"></i>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDelete(employee.userId)}
-                                                            className="text-red-500 hover:text-red-700 transition-colors"
-                                                            title="Xóa"
-                                                        >
-                                                            <i className="fas fa-trash-alt"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <td className="py-3 px-5 font-medium text-gray-700">{employee.fullName || "-"}</td>
-                                                <td className="py-3 px-5 text-gray-600">{employee.phone || "-"}</td>
-                                                <td className="py-3 px-5">
-                                                    <span className="px-2 py-1 bg-[#fdf5e6] text-[#e0a030] rounded-full text-xs">
-                                                        {employee.employeeType || "-"}
-                                                    </span>
-                                                </td>
-                                                <td className="py-3 px-5 text-center">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                        employee.isStatus 
-                                                        ? "bg-green-100 text-green-700" 
-                                                        : "bg-red-100 text-red-700"
-                                                    }`}>
-                                                        {employee.isStatus ? "Hoạt động" : "Ngưng hoạt động"}
-                                                    </span>
-                                                </td>
-                                                <td className="py-3 px-5">
-                                                    <div className="flex justify-center gap-3">
-                                                        <button
-                                                            onClick={() => handleEdit(employee)}
-                                                            className="text-[#f0b040] hover:text-[#e0a030] transition-colors"
-                                                            title="Chỉnh sửa"
-                                                        >
-                                                            <i className="fas fa-edit"></i>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDelete(employee.employeeId)}
-                                                            className="text-red-500 hover:text-red-700 transition-colors"
-                                                            title="Xóa"
-                                                        >
-                                                            <i className="fas fa-trash-alt"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </>
-                                        )}
+                                        <td className="py-3 px-5 text-center">
+                                            {employee.userId ? (
+                                                <div className="flex justify-center">
+                                                    <img
+                                                        src={employee.imageUrl || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"}
+                                                        alt="avatar"
+                                                        className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="flex justify-center">
+                                                    <span className="text-gray-400">-</span>
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="py-3 px-5 font-medium text-gray-700">{employee.fullName || "-"}</td>
+                                        <td className="py-3 px-5 text-gray-600">{employee.userId ? (employee.email || "-") : "-"}</td>
+                                        <td className="py-3 px-5 text-gray-600">{employee.phone || "-"}</td>
+                                        <td className="py-3 px-5">
+                                            <span className="px-2 py-1 bg-[#fdf5e6] text-[#e0a030] rounded-full text-xs">
+                                                {employee.userRoles && employee.userRoles.length > 0 
+                                                    ? employee.userRoles.map((role) => role.roleName).join(", ")
+                                                    : employee.employeeType || "-"}
+                                            </span>
+                                        </td>
+                                        <td className="py-3 px-5 text-center">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                employee.isStatus 
+                                                ? "bg-green-100 text-green-700" 
+                                                : "bg-red-100 text-red-700"
+                                            }`}>
+                                                {employee.isStatus ? "Hoạt động" : "Ngưng hoạt động"}
+                                            </span>
+                                        </td>
+                                        <td className="py-3 px-5">
+                                            <div className="flex justify-center gap-3">
+                                                <button
+                                                    onClick={() => handleEdit(employee)}
+                                                    className="text-[#f0b040] hover:text-[#e0a030] transition-colors"
+                                                    title="Chỉnh sửa"
+                                                >
+                                                    <i className="fas fa-edit"></i>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(employee.userId || employee.employeeId)}
+                                                    className="text-red-500 hover:text-red-700 transition-colors"
+                                                    title="Xóa"
+                                                >
+                                                    <i className="fas fa-trash-alt"></i>
+                                                </button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
                                     <td 
-                                        colSpan={activeTab === "STAFF" ? 7 : 5} 
+                                        colSpan={7}
                                         className="py-6 text-center text-gray-500"
                                     >
                                         <div className="flex flex-col items-center justify-center">
