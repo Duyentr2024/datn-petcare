@@ -1,33 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { IoSearchOutline, IoClose, IoCheckmark } from "react-icons/io5";
-import { getAllProductDetails, createOfflineOrder, getPointsByPhone, applyDiscount } from "../../service/orderOfflineService/OfflineService";
+import { getAllProductDetails, createOfflineOrder, getPointsByPhone, applyDiscount, addProductToOfflineCart, removeProductFromOfflineCart, getOfflineCartDetails } from "../../service/orderOfflineService/OfflineService";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import Cookies from "js-cookie";
+import { useCookies } from "react-cookie";
+import { decodeToken } from "../utils/jwt";
+import { useNavigate } from "react-router-dom";
 
-// Định nghĩa hàm isPaymentDisabled trước
 const isPaymentDisabled = (currentTab) => {
-  // Tính tổng tiền đơn hàng sau khi giảm giá
   const totalAmount = Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 10 * 30000));
-  // Lấy phương thức thanh toán hiện tại, mặc định là 'CASH' nếu không có lựa chọn nào
-  const paymentMethod = document.querySelector('input[name="payment"]:checked')?.value || 'CASH';
-
-  // Nếu không có sản phẩm trong giỏ hàng, vô hiệu hóa nút thanh toán
-  if (currentTab.products.length === 0) {
-    return true;
-  }
-
-  // Logic cho phương thức thanh toán 'CASH'
-  if (paymentMethod === 'CASH') {
-    // Nếu tổng tiền bằng 0 (sau khi giảm giá), kích hoạt nút thanh ytoán
-    if (totalAmount === 0) {
-      return false;
-    }
-    // Nếu tổng tiền > 0, kiểm tra xem số tiền khách đưa có đủ hay không
+  if (currentTab.products.length === 0) return true;
+  if (currentTab.paymentMethod === 'TRANSFER') return false;
+  if (currentTab.paymentMethod === 'CASH') {
+    if (totalAmount === 0) return false;
     return currentTab.customerPayment < totalAmount;
   }
-
-  // Đối với các phương thức thanh toán khác, chỉ cần có sản phẩm là kích hoạt nút thanh toán
-  return false;
+  return true;
 };
 
 const OrderOffline = () => {
@@ -39,9 +28,40 @@ const OrderOffline = () => {
       customerPayment: 0,
       inputPayment: '',
       change: 0,
+      paymentMethod: 'CASH',
       error: '',
       customerPhone: '',
-      customerName: 'Khách vãng lai',
+      customerName: 'Khách lẻ',
+      accumulatePoints: false,
+      totalPoints: 0,
+      pointsToUse: 0
+    },
+    {
+      id: 2,
+      title: "Hóa đơn 2",
+      products: [],
+      customerPayment: 0,
+      inputPayment: '',
+      change: 0,
+      paymentMethod: 'CASH',
+      error: '',
+      customerPhone: '',
+      customerName: 'Khách lẻ',
+      accumulatePoints: false,
+      totalPoints: 0,
+      pointsToUse: 0
+    },
+    {
+      id: 3,
+      title: "Hóa đơn 3",
+      products: [],
+      customerPayment: 0,
+      inputPayment: '',
+      change: 0,
+      paymentMethod: 'CASH',
+      error: '',
+      customerPhone: '',
+      customerName: 'Khách lẻ',
       accumulatePoints: false,
       totalPoints: 0,
       pointsToUse: 0
@@ -50,11 +70,32 @@ const OrderOffline = () => {
   const [activeTab, setActiveTab] = useState(1);
   const [productsFromApi, setProductsFromApi] = useState([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [staffId, setStaffId] = useState(2);
-  const [currentPage, setCurrentPage] = useState(1); // Nâng currentPage lên OrderOffline
-  const staffName = localStorage.getItem('staffName') || 'Nhân viên';
+  const [staffId, setStaffId] = useState(null);
+  const [staffName, setStaffName] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [cookies] = useCookies(["accessToken"]);
+  const navigate = useNavigate();
 
   useEffect(() => {
+    const token = cookies.accessToken;
+    if (token) {
+      const decoded = decodeToken(token);
+      if (decoded) {
+        setStaffId(decoded.userId);
+        setStaffName(decoded.fullName || "Nhân viên");
+        setIsAuthenticated(true);
+      } else {
+        navigate("/login");
+      }
+    } else {
+      navigate("/login");
+    }
+  }, [cookies.accessToken, navigate]);
+
+  useEffect(() => {
+    if (!staffId) return;
+
     const fetchProducts = async () => {
       try {
         const data = await getAllProductDetails();
@@ -63,8 +104,41 @@ const OrderOffline = () => {
         console.error('Không thể tải sản phẩm:', error);
       }
     };
+
+    const fetchInitialCart = async () => {
+      try {
+        for (const tab of tabs) {
+          await fetchOfflineCartDetails(staffId, tab.id);
+        }
+      } catch (error) {
+        console.error('Không thể tải giỏ hàng ban đầu:', error);
+      }
+    };
+
     fetchProducts();
-  }, []);
+    fetchInitialCart();
+  }, [staffId]);
+
+  const fetchOfflineCartDetails = async (userId, tabId) => {
+    try {
+      const cartDetails = await getOfflineCartDetails(userId, tabId);
+      const cartProducts = cartDetails.map(cart => ({
+        id: cart.productDetails.productDetailId,
+        name: cart.productDetails.products.productName,
+        variant: `${cart.productDetails.productSizes?.sizeValue || 'N/A'} | ${cart.productDetails.weights?.weightValue || 'N/A'}kg | ${cart.productDetails.productColors?.colorValue || 'N/A'}`,
+        quantity: cart.quantityItem,
+        price: cart.productDetails.price,
+        total: cart.quantityItem * cart.productDetails.price,
+        image: cart.productDetails.products?.image || '/images/default-image.jpg'
+      }));
+      setTabs(prevTabs => prevTabs.map(tab =>
+        tab.id === tabId ? { ...tab, products: cartProducts } : tab
+      ));
+    } catch (error) {
+      console.error(`Không thể lấy giỏ hàng cho tab ${tabId}:`, error);
+      toast.error(`Không thể lấy giỏ hàng cho tab ${tabId}`);
+    }
+  };
 
   const ProductLists = ({ products, handleAddProduct, selectedProducts, currentPage, setCurrentPage }) => {
     const [localSearchTerm, setLocalSearchTerm] = useState("");
@@ -81,19 +155,19 @@ const OrderOffline = () => {
 
     return (
       <>
-        <div className="flex items-center bg-white w-[500px] rounded px-1 sm:px-2 py-1 mb-4">
-          <IoSearchOutline className="text-gray-500 text-sm sm:text-base" />
+        <div className="flex items-center bg-white w-[500px] rounded px-1 sm:px-2 py-1 mb-4 border border-[#e59f1e]">
+          <IoSearchOutline className="text-[#e59f1e] text-sm sm:text-base" />
           <input
             type="text"
             placeholder="Tìm hàng hóa"
-            className="px-1 sm:px-2 outline-none sm:w-auto text-sm sm:text-base"
+            className="px-1 sm:px-2 outline-none sm:w-auto text-sm sm:text-base text-gray-700"
             value={localSearchTerm}
             onChange={(e) => setLocalSearchTerm(e.target.value)}
           />
         </div>
         <div className="overflow-auto" style={{ maxHeight: '500px' }}>
           <table className="w-full">
-            <thead className="bg-gray-200 sticky top-0">
+            <thead className="bg-[#e59f1e] text-white sticky top-0">
               <tr>
                 <th className="p-1 text-left text-xs">STT</th>
                 <th className="p-1 text-right text-xs">Ảnh</th>
@@ -108,8 +182,7 @@ const OrderOffline = () => {
               {currentProducts.map((product, index) => (
                 <tr
                   key={product.productDetailId}
-                  className={`border-b hover:bg-gray-100 cursor-pointer ${selectedProducts.some(p => p.id === product.productDetailId) ? 'bg-green-50' : ''
-                    }`}
+                  className={`border-b hover:bg-orange-50 cursor-pointer ${selectedProducts.some(p => p.id === product.productDetailId) ? 'bg-orange-100' : ''}`}
                   onClick={() => handleAddProduct(product)}
                 >
                   <td className="p-1 text-xs">{indexOfFirstProduct + index + 1}</td>
@@ -122,14 +195,13 @@ const OrderOffline = () => {
                   </td>
                   <td className="p-1 text-xs">{product.products?.productName || 'N/A'}</td>
                   <td className="p-1 text-xs">
-                    {`${product.productSizes?.sizeValue || 'N/A'} | ${product.weights?.weightValue || 'N/A'
-                      }kg | ${product.productColors?.colorValue || 'N/A'}`}
+                    {`${product.productSizes?.sizeValue || 'N/A'} | ${product.weights?.weightValue || 'N/A'}kg | ${product.productColors?.colorValue || 'N/A'}`}
                   </td>
                   <td className="p-1 text-right text-xs">{product.price?.toLocaleString() || '0'}đ</td>
                   <td className="p-1 text-right text-xs">{product.quantity || 0}</td>
                   <td className="p-1 text-right text-xs">
                     {selectedProducts.some(p => p.id === product.productDetailId) && (
-                      <IoCheckmark className="text-green-600" />
+                      <IoCheckmark className="text-[#e59f1e]" />
                     )}
                   </td>
                 </tr>
@@ -139,15 +211,15 @@ const OrderOffline = () => {
         </div>
         <div className="flex justify-center mt-4">
           <button
-            className="px-3 py-1 mx-1 text-sm bg-gray-200 rounded disabled:opacity-50"
+            className="px-3 py-1 mx-1 text-sm bg-[#e59f1e] text-white rounded hover:bg-[#d18e17] disabled:opacity-50"
             disabled={currentPage === 1}
             onClick={() => setCurrentPage(prev => prev - 1)}
           >
             Trước
           </button>
-          <span className="px-3 py-1 text-sm">{currentPage} / {totalPages}</span>
+          <span className="px-3 py-1 text-sm text-gray-700">{currentPage} / {totalPages}</span>
           <button
-            className="px-3 py-1 mx-1 text-sm bg-gray-200 rounded disabled:opacity-50"
+            className="px-3 py-1 mx-1 text-sm bg-[#e59f1e] text-white rounded hover:bg-[#d18e17] disabled:opacity-50"
             disabled={currentPage === totalPages}
             onClick={() => setCurrentPage(prev => prev + 1)}
           >
@@ -156,6 +228,126 @@ const OrderOffline = () => {
         </div>
       </>
     );
+  };
+
+  const handleAddProduct = async (product) => {
+    const userId = staffId;
+    const productDetailId = product.productDetailId;
+    const currentTab = tabs.find(tab => tab.id === activeTab);
+    const existingProduct = currentTab.products.find(p => p.id === productDetailId);
+
+    try {
+      if (existingProduct) {
+        await removeProductFromOfflineCart(userId, productDetailId, activeTab);
+        setTabs(tabs.map(tab =>
+          tab.id === activeTab
+            ? { ...tab, products: tab.products.filter(p => p.id !== productDetailId) }
+            : tab
+        ));
+      } else {
+        if (product.quantity < 1) {
+          toast.error(`Sản phẩm "${product.products.productName}" đã hết hàng!`);
+          return;
+        }
+        await addProductToOfflineCart(userId, productDetailId, 1, activeTab);
+        setTabs(tabs.map(tab =>
+          tab.id === activeTab
+            ? {
+              ...tab,
+              products: [...tab.products, {
+                id: product.productDetailId,
+                name: product.products.productName,
+                variant: `${product.productSizes?.sizeValue || 'N/A'} | ${product.weights?.weightValue || 'N/A'}kg | ${product.productColors?.colorValue || 'N/A'}`,
+                quantity: 1,
+                price: product.price,
+                total: product.price,
+                image: product.products?.image || '/images/default-image.jpg'
+              }]
+            }
+            : tab
+        ));
+      }
+    } catch (error) {
+      toast.error('Không thể cập nhật giỏ hàng offline: ' + (error.message || 'Lỗi không xác định'));
+    }
+  };
+
+  const handlePaymentMethodChange = (method) => {
+    setTabs(tabs.map(tab =>
+      tab.id === activeTab ? { ...tab, paymentMethod: method } : tab
+    ));
+  };
+
+  const handlePayment = async () => {
+    const currentTab = tabs.find(tab => tab.id === activeTab);
+    const totalAmount = Math.max(
+      0,
+      currentTab.products.reduce((sum, p) => sum + p.total, 0) -
+      (currentTab.pointsToUse / 10) * 30000
+    );
+
+    if (currentTab.paymentMethod === 'CASH' && currentTab.customerPayment < totalAmount) {
+      toast.warn('Số tiền khách đưa không đủ để thanh toán!');
+      return;
+    }
+
+    const orderData = {
+      userId: staffId,
+      items: currentTab.products.map((product) => ({
+        productDetailId: product.id,
+        quantity: product.quantity,
+      })),
+      paymentMethod: currentTab.paymentMethod,
+      customerPhone: currentTab.customerPhone || null,
+      customerName: currentTab.customerName || 'Khách lẻ',
+      accumulatePoints: !!currentTab.customerPhone,
+      pointsToUse: currentTab.pointsToUse,
+      tabId: activeTab
+    };
+
+    try {
+      let response;
+      if (currentTab.pointsToUse > 0) {
+        response = await applyDiscount(orderData);
+      } else {
+        response = await createOfflineOrder(orderData);
+      }
+
+      toast.success(
+        `Thanh toán thành công!\nMã đơn:${response.orderId}\nTổng tiền: ${response.totalAmount.toLocaleString()}đ`
+      );
+
+      setTabs(
+        tabs.map((tab) =>
+          tab.id === activeTab
+            ? {
+              ...tab,
+              products: [],
+              customerPayment: 0,
+              inputPayment: '',
+              change: 0,
+              error: '',
+              customerPhone: '',
+              customerName: 'Khách lẻ',
+              totalPoints: 0,
+              pointsToUse: 0,
+              paymentMethod: 'CASH'
+            }
+            : tab
+        )
+      );
+
+      const updatedProducts = await getAllProductDetails();
+      setProductsFromApi(updatedProducts);
+
+      await fetchOfflineCartDetails(staffId, activeTab);
+    } catch (error) {
+      console.error('Lỗi thanh toán:', error.response ? error.response.data : error.message);
+      toast.error(
+        'Thanh toán thất bại: ' +
+        (error.response?.data?.message || error.message || 'Lỗi không xác định')
+      );
+    }
   };
 
   const handlePointsToUseChange = (value) => {
@@ -170,76 +362,65 @@ const OrderOffline = () => {
     }));
   };
 
-  const currentTab = tabs.find(tab => tab.id === activeTab) || tabs[0];
-
-  const handleTabChange = (tabId) => setActiveTab(tabId);
-
-  const addNewTab = () => {
-    const newTab = {
-      id: tabs.length ? Math.max(...tabs.map(tab => tab.id)) + 1 : 1,
-      title: `Hóa đơn ${tabs.length + 1}`,
-      products: [],
-      customerPayment: 0,
-      inputPayment: '',
-      change: 0,
-      error: '',
-      customerPhone: '',
-      customerName: 'Khách vãng lai',
-      accumulatePoints: false,
-      totalPoints: 0,
-      pointsToUse: 0
-    };
-    setTabs([...tabs, newTab]);
-    setActiveTab(newTab.id);
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    if (staffId) fetchOfflineCartDetails(staffId, tabId);
   };
 
-  const closeTab = (tabId, e) => {
-    e.stopPropagation();
-    if (tabs.length === 1) return;
-    const newTabs = tabs.filter(tab => tab.id !== tabId);
-    setTabs(newTabs);
-    if (activeTab === tabId) setActiveTab(newTabs[newTabs.length - 1].id);
-  };
+  const handleIncrement = async (productId) => {
+    const currentTab = tabs.find(tab => tab.id === activeTab);
+    const product = currentTab.products.find(p => p.id === productId);
+    const productInStock = productsFromApi.find(p => p.productDetailId === productId);
+    const stockQuantity = productInStock?.quantity || 0;
+    const newQuantity = product.quantity + 1;
 
-  const handleIncrement = (productId) => {
-    setTabs(tabs.map(tab => {
-      if (tab.id === activeTab) {
-        const updatedProducts = tab.products.map(product => {
-          if (product.id === productId) {
-            const newQuantity = product.quantity + 1;
-            return { ...product, quantity: newQuantity, total: product.price * newQuantity };
+    if (newQuantity > stockQuantity) {
+      toast.error(`Số lượng vượt quá tồn kho (${stockQuantity})!`);
+      return;
+    }
+
+    try {
+      await addProductToOfflineCart(staffId, productId, 1, activeTab);
+      setTabs(tabs.map(tab =>
+        tab.id === activeTab
+          ? {
+            ...tab,
+            products: tab.products.map(p =>
+              p.id === productId ? { ...p, quantity: newQuantity, total: p.price * newQuantity } : p
+            )
           }
-          return product;
-        });
-        return { ...tab, products: updatedProducts };
-      }
-      return tab;
-    }));
+          : tab
+      ));
+    } catch (error) {
+      toast.error('Không thể tăng số lượng: ' + (error.message || 'Lỗi không xác định'));
+    }
   };
 
-  const handleDecrement = (productId) => {
-    setTabs(tabs.map(tab => {
-      if (tab.id === activeTab) {
-        const updatedProducts = tab.products.map(product => {
-          if (product.id === productId && product.quantity > 1) {
-            const newQuantity = product.quantity - 1;
-            return { ...product, quantity: newQuantity, total: product.price * newQuantity };
+  const handleDecrement = async (productId) => {
+    const currentTab = tabs.find(tab => tab.id === activeTab);
+    const product = currentTab.products.find(p => p.id === productId);
+
+    if (product.quantity <= 1) return;
+
+    try {
+      await addProductToOfflineCart(staffId, productId, -1, activeTab);
+      setTabs(tabs.map(tab =>
+        tab.id === activeTab
+          ? {
+            ...tab,
+            products: tab.products.map(p =>
+              p.id === productId ? { ...p, quantity: p.quantity - 1, total: p.price * (p.quantity - 1) } : p
+            )
           }
-          return product;
-        });
-        return { ...tab, products: updatedProducts };
-      }
-      return tab;
-    }));
+          : tab
+      ));
+    } catch (error) {
+      toast.error('Không thể giảm số lượng: ' + (error.message || 'Lỗi không xác định'));
+    }
   };
 
   const handleDelete = (productId) => {
-    setTabs(tabs.map(tab => {
-      if (tab.id === activeTab) {
-        return { ...tab, products: tab.products.filter(product => product.id !== productId) };
-      }
-      return tab;
-    }));
+    handleAddProduct(productsFromApi.find(p => p.productDetailId === productId));
   };
 
   const handleQuickAmount = (amount) => {
@@ -296,7 +477,7 @@ const OrderOffline = () => {
                     t.id === activeTab
                       ? {
                         ...t,
-                        customerName: pointInfo.name || 'Khách vãng lai',
+                        customerName: pointInfo.name || 'Khách lẻ',
                         totalPoints: pointInfo.totalPoints || 0,
                         accumulatePoints: true,
                       }
@@ -309,13 +490,13 @@ const OrderOffline = () => {
                 setTabs((tabs) =>
                   tabs.map((t) =>
                     t.id === activeTab
-                      ? { ...t, customerName: 'Khách vãng lai', totalPoints: 0, accumulatePoints: false, pointsToUse: 0 }
+                      ? { ...t, customerName: 'Khách lẻ', totalPoints: 0, accumulatePoints: false, pointsToUse: 0 }
                       : t
                   )
                 );
               });
           } else {
-            updatedTab.customerName = 'Khách vãng lai';
+            updatedTab.customerName = 'Khách lẻ';
             updatedTab.totalPoints = 0;
             updatedTab.accumulatePoints = false;
             updatedTab.pointsToUse = 0;
@@ -337,225 +518,135 @@ const OrderOffline = () => {
     }));
   };
 
-  const handleAccumulatePointsChange = (e) => {
-    const checked = e.target.checked;
-    setTabs(tabs.map(tab => {
-      if (tab.id === activeTab) {
-        return { ...tab, accumulatePoints: checked };
-      }
-      return tab;
-    }));
-  };
+  const currentTab = tabs.find(tab => tab.id === activeTab) || tabs[0];
 
-  const handleAddProduct = (product) => {
-    setTabs(tabs.map(tab => {
-      if (tab.id === activeTab) {
-        const existingProduct = tab.products.find(p => p.id === product.productDetailId);
-        if (existingProduct) {
-          return {
-            ...tab,
-            products: tab.products.filter(p => p.id !== product.productDetailId)
-          };
-        } else {
-          return {
-            ...tab,
-            products: [...tab.products, {
-              id: product.productDetailId,
-              code: product.productDetailId,
-              name: product.products?.productName || 'N/A',
-              variant: `${product.productSizes?.sizeValue || 'N/A'} | ${product.weights?.weightValue || 'N/A'}kg | ${product.productColors?.colorValue || 'N/A'}`,
-              variants: [`${product.productSizes?.sizeValue || 'N/A'} | ${product.weights?.weightValue || 'N/A'}kg | ${product.productColors?.colorValue || 'N/A'}`],
-              quantity: 1,
-              price: product.price || 0,
-              total: product.price || 0,
-              image: product.imageUrl || product.products?.image || '/images/default-image.jpg'
-            }]
-          };
-        }
-      }
-      return tab;
-    }));
-  };
-  const handlePayment = async () => {
-    const totalAmount = Math.max(
-      0,
-      currentTab.products.reduce((sum, p) => sum + p.total, 0) -
-        (currentTab.pointsToUse / 10) * 30000
-    );
-    const paymentMethod =
-      document.querySelector('input[name="payment"]:checked')?.value || 'CASH';
-
-    // Kiểm tra số tiền khách đưa nếu dùng tiền mặt
-    if (paymentMethod === 'CASH' && currentTab.customerPayment < totalAmount) {
-      toast.warn('Số tiền khách đưa không đủ để thanh toán!');
-      return;
-    }
-
-
-    const orderData = {
-      userId: staffId,
-      items: currentTab.products.map((product) => ({
-        productDetailId: product.id,
-        quantity: product.quantity,
-      })),
-      paymentMethod: paymentMethod,
-      customerPhone: currentTab.customerPhone || null,
-      customerName: currentTab.customerName || 'Khách vãng lai',
-      accumulatePoints: !!currentTab.customerPhone,
-      pointsToUse: currentTab.pointsToUse,
-    };
-
-    try {
-      let response;
-      if (currentTab.pointsToUse > 0) {
-        response = await applyDiscount(orderData);
-      } else {
-        response = await createOfflineOrder(orderData);
-      }
-
-      // Thông báo thanh toán thành công
-      toast.success(
-        `Thanh toán thành công!\n Mã đơn:${response.orderId}\nTổng tiền: ${response.totalAmount.toLocaleString()}đ`
-      );
-
-      // Reset tab sau khi thanh toán thành công
-      setTabs(
-        tabs.map((tab) =>
-          tab.id === activeTab
-            ? {
-                ...tab,
-                products: [],
-                customerPayment: 0,
-                inputPayment: '',
-                change: 0,
-                error: '',
-                customerPhone: '',
-                customerName: 'Khách vãng lai',
-                totalPoints: 0,
-                pointsToUse: 0,
-              }
-            : tab
-        )
-      );
-
-      // Cập nhật danh sách sản phẩm
-      const updatedProducts = await getAllProductDetails();
-      setProductsFromApi(updatedProducts);
-    } catch (error) {
-      console.error('Lỗi thanh toán:', error.response ? error.response.data : error.message);
-      // Thông báo lỗi khi thanh toán thất bại
-      toast.error(
-        'Thanh toán thất bại: ' +
-          (error.response?.data?.message || error.message || 'Lỗi không xác định')
-      );
-    }
-  };
   return (
     <div className="flex flex-col h-screen">
-      <div className="bg-[#fbb321] p-1 sm:p-2 fixed top-0 left-0 right-0 z-20">
+      <header className="bg-[#e59f1e] p-1 sm:p-2 fixed top-0 left-0 right-0 z-20 flex justify-between items-center">
         <div className="flex items-center gap-1 sm:gap-2">
           <div className="flex overflow-x-auto hide-scrollbar">
             {tabs.map(tab => (
               <div
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
-                className={`flex items-center bg-[#e59f1e] text-white px-2 sm:px-3 py-1 rounded-t border-b-2 
+                className={`flex items-center bg-[#d18e17] text-white px-2 sm:px-3 py-1 rounded-t border-b-2 
                             ${activeTab === tab.id ? 'border-white' : 'border-transparent hover:border-white'} 
-                            cursor-pointer min-w-max`}
+                            cursor-pointer min-w-max mr-2`}
               >
                 <span className="text-xs sm:text-sm">{tab.title}</span>
-                <IoClose
-                  className="ml-1 sm:ml-2 hover:bg-red-600 rounded text-sm sm:text-base"
-                  onClick={(e) => closeTab(tab.id, e)}
-                />
               </div>
             ))}
           </div>
-          <div className="flex gap-1 ml-auto">
-            <button className="bg-[#e59f1e] text-white rounded p-1 text-sm sm:text-base">
-              <span>◀</span>
-            </button>
-            <button
-              className="bg-[#e59f1e] text-white rounded p-1 text-sm sm:text-base"
-              onClick={addNewTab}
-            >
-              <span>+</span>
-            </button>
-          </div>
         </div>
-      </div>
+        {isAuthenticated && (
+          <div className="text-white text-sm mr-4">
+            <span>Nhân viên: {staffName}</span>
+          </div>
+        )}
+      </header>
 
       {currentTab && (
         <div className="flex flex-1 min-h-0 pt-12">
           <div className="w-2/3 p-2 sm:p-4 border-r overflow-auto flex flex-col relative">
-            <div className="mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-sm font-medium">Giỏ hàng</h3>
+            <div className="mb-4 flex-1 flex flex-col">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-base font-semibold text-gray-900">Giỏ hàng</h3>
                 <button
-                  className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600"
+                  className="bg-[#e59f1e] text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-[#d18e17] transition-all duration-200 shadow-sm"
                   onClick={() => setIsDrawerOpen(true)}
                 >
-                  Thêm
+                  Thêm sản phẩm
                 </button>
               </div>
-              <table className="w-full">
-                <thead className="bg-green-600 text-white">
-                  <tr>
-                    <th className="p-1 sm:p-2 text-left text-xs sm:text-sm">STT</th>
-                    <th className="p-1 sm:p-2 text-left text-xs sm:text-sm">Ảnh</th>
-                    <th className="p-1 sm:p-2 text-left text-xs sm:text-sm">Tên sản phẩm</th>
-                    <th className="p-1 sm:p-2 text-left text-xs sm:text-sm">Biến thể</th>
-                    <th className="p-1 sm:p-2 text-center text-xs sm:text-sm">SL</th>
-                    <th className="p-1 sm:p-2 text-right text-xs sm:text-sm">Đơn giá</th>
-                    <th className="p-1 sm:p-2 text-right text-xs sm:text-sm">Thành tiền</th>
-                    <th className="p-1 sm:p-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentTab.products.map((product, index) => (
-                    <tr key={product.id} className="border-b hover:bg-gray-50">
-                      <td className="p-1 sm:p-2 text-xs sm:text-sm">{index + 1}</td>
-                      <td className="p-1 sm:p-2 text-xs sm:text-sm">
-                        <img
-                          src={product.image || '/images/default-image.jpg'}
-                          alt={product.name || 'Sản phẩm'}
-                          className="w-12 h-12 object-cover rounded"
-                        />
-                      </td>
-                      <td className="p-1 sm:p-2 text-xs sm:text-sm">{product.name}</td>
-                      <td className="p-1 sm:p-2 text-xs sm:text-sm">{product.variant}</td>
-                      <td className="p-1 sm:p-2">
-                        <div className="flex items-center justify-center gap-1 sm:gap-2">
-                          <button
-                            onClick={() => handleDecrement(product.id)}
-                            className="px-1 sm:px-2 py-0.5 sm:py-1 text-gray-600 hover:bg-gray-100 rounded text-xs sm:text-sm"
-                            disabled={product.quantity <= 1}
-                          >
-                            -
-                          </button>
-                          <span className="w-6 sm:w-8 text-center text-xs sm:text-sm">{product.quantity}</span>
-                          <button
-                            onClick={() => handleIncrement(product.id)}
-                            className="px-1 sm:px-2 py-0.5 sm:py-1 text-gray-600 hover:bg-gray-100 rounded text-xs sm:text-sm"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </td>
-                      <td className="p-1 sm:p-2 text-right text-xs sm:text-sm">{product.price.toLocaleString()}đ</td>
-                      <td className="p-1 sm:p-2 text-right text-xs sm:text-sm">{product.total.toLocaleString()}đ</td>
-                      <td className="p-1 sm:p-2 text-center">
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className="text-gray-500 hover:text-red-600 text-xs sm:text-base"
-                        >
-                          <IoClose />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              {currentTab.products.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-white rounded-xl shadow-sm p-8 border border-[#e59f1e]/20">
+                  <svg
+                    className="w-20 h-20 mb-6 text-[#e59f1e]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.5"
+                      d="M3 3h18l-2 13H5L3 3zm0 0l2 13m4-5h6m-6 4h6"
+                    />
+                  </svg>
+                  <h4 className="text-xl font-bold text-gray-800 mb-2">Chưa có sản phẩm nào</h4>
+                  <p className="text-sm text-gray-600 text-center max-w-xs">
+                    Thêm sản phẩm vào giỏ để bắt đầu tạo hóa đơn bán hàng nhé!
+                  </p>
+                  <button
+                    className="mt-6 bg-[#e59f1e] text-white px-6 py-2 rounded-full text-sm font-medium hover:bg-[#d18e17] transition-all duration-200 shadow-md hover:shadow-lg"
+                    onClick={() => setIsDrawerOpen(true)}
+                  >
+                    Thêm sản phẩm ngay
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl shadow-sm border border-[#e59f1e]/20">
+                  <table className="w-full">
+                    <thead className="bg-[#e59f1e] text-white">
+                      <tr>
+                        <th className="p-2 sm:p-3 text-left text-xs sm:text-sm font-semibold">STT</th>
+                        <th className="p-2 sm:p-3 text-left text-xs sm:text-sm font-semibold">Ảnh</th>
+                        <th className="p-2 sm:p-3 text-left text-xs sm:text-sm font-semibold">Tên sản phẩm</th>
+                        <th className="p-2 sm:p-3 text-left text-xs sm:text-sm font-semibold">Biến thể</th>
+                        <th className="p-2 sm:p-3 text-center text-xs sm:text-sm font-semibold">SL</th>
+                        <th className="p-2 sm:p-3 text-right text-xs sm:text-sm font-semibold">Đơn giá</th>
+                        <th className="p-2 sm:p-3 text-right text-xs sm:text-sm font-semibold">Thành tiền</th>
+                        <th className="p-2 sm:p-3"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentTab.products.map((product, index) => (
+                        <tr key={product.id} className="border-b hover:bg-orange-50 transition-colors duration-100">
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm text-gray-700">{index + 1}</td>
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm">
+                            <img
+                              src={product.image || '/images/default-image.jpg'}
+                              alt={product.name || 'Sản phẩm'}
+                              className="w-12 h-12 object-cover rounded-md shadow-sm"
+                            />
+                          </td>
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm text-gray-800">{product.name}</td>
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm text-gray-600">{product.variant}</td>
+                          <td className="p-2 sm:p-3">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => handleDecrement(product.id)}
+                                className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-[#e59f1e]/20 rounded-full transition-colors duration-200 disabled:opacity-50"
+                                disabled={product.quantity <= 1}
+                              >
+                                -
+                              </button>
+                              <span className="w-8 text-center text-sm font-medium text-gray-800">{product.quantity}</span>
+                              <button
+                                onClick={() => handleIncrement(product.id)}
+                                className="w-8 h-8 flex items-center justify-center text-gray-600 hover:bg-[#e59f1e]/20 rounded-full transition-colors duration-200"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </td>
+                          <td className="p-2 sm:p-3 text-right text-xs sm:text-sm text-gray-800">{product.price.toLocaleString()}đ</td>
+                          <td className="p-2 sm:p-3 text-right text-xs sm:text-sm text-gray-800 font-medium">{product.total.toLocaleString()}đ</td>
+                          <td className="p-2 sm:p-3 text-center">
+                            <button
+                              onClick={() => handleDelete(product.id)}
+                              className="text-gray-500 hover:text-[#e59f1e] transition-colors duration-200"
+                            >
+                              <IoClose size={18} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <div
@@ -564,9 +655,9 @@ const OrderOffline = () => {
             >
               <div className="p-4">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-sm font-medium">Danh sách sản phẩm</h3>
+                  <h3 className="text-sm font-medium text-gray-900">Danh sách sản phẩm</h3>
                   <button
-                    className="text-gray-500 hover:text-gray-700"
+                    className="text-gray-500 hover:text-[#e59f1e]"
                     onClick={() => setIsDrawerOpen(false)}
                   >
                     <IoClose size={24} />
@@ -585,54 +676,54 @@ const OrderOffline = () => {
             </div>
           </div>
 
-          <div className="w-1/3 p-3 bg-gray-50 flex flex-col h-full">
+          <div className="w-1/3 p-2 bg-gray-50 flex flex-col h-full">
             {/* Thông tin khách hàng */}
-            <div className="bg-white rounded-lg shadow p-3 mb-3 flex flex-col">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold text-sm text-gray-800">Thông tin khách hàng</span>
+            <div className="bg-white rounded-lg shadow p-2 mb-2 flex flex-col">
+              <div className="flex justify-between items-center mb-1">
+                <span className="font-semibold text-xs text-gray-800">Thông tin khách hàng</span>
                 <span className="text-xs text-gray-500">{new Date().toLocaleString('vi-VN')}</span>
               </div>
-              <div className="relative mb-2">
+
+              <div className="relative mb-1">
                 <input
                   type="tel"
                   inputMode="numeric"
                   value={currentTab.customerPhone}
                   onChange={handlePhoneChange}
-                  placeholder="Số điện thoại khách hàng"
-                  className="w-full px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  placeholder="Số ĐT khách hàng"
+                  className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-[#e59f1e] text-xs"
                   maxLength="10"
                 />
                 {currentTab.customerPhone && (
                   <button
                     onClick={() => setTabs(tabs.map(tab => tab.id === activeTab ? { ...tab, customerPhone: '', totalPoints: 0, pointsToUse: 0 } : tab))}
-                    className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#e59f1e]"
                   >
-                    <IoClose />
+                    <IoClose size={14} />
                   </button>
                 )}
               </div>
-              <div className="relative mb-2">
+
+              <div className="relative mb-1">
                 <input
                   type="text"
                   value={currentTab.customerName}
                   onChange={handleNameChange}
                   placeholder="Tên khách hàng"
-                  className="w-full px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-[#e59f1e] text-xs"
                 />
               </div>
+
               {currentTab.customerPhone && currentTab.totalPoints >= 10 && (
-                <div className="mb-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Sử dụng điểm tích lũy</label>
+                <div className="mb-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-0.5">Dùng điểm tích lũy</label>
                   <select
                     value={currentTab.pointsToUse}
                     onChange={(e) => handlePointsToUseChange(e.target.value)}
-                    className="w-full px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-[#e59f1e] text-xs"
                   >
                     <option value={0}>Không sử dụng</option>
-                    {Array.from(
-                      { length: Math.floor(currentTab.totalPoints / 10) },
-                      (_, i) => (i + 1) * 10
-                    ).map(points => (
+                    {Array.from({ length: Math.floor(currentTab.totalPoints / 10) }, (_, i) => (i + 1) * 10).map(points => (
                       <option key={points} value={points}>
                         {points} điểm (-{(points / 10 * 30000).toLocaleString()}đ)
                       </option>
@@ -640,15 +731,16 @@ const OrderOffline = () => {
                   </select>
                 </div>
               )}
+
               {currentTab.customerPhone && (
-                <div className="text-sm text-green-600">Điểm tích lũy: {currentTab.totalPoints}</div>
+                <div className="text-xs text-[#e59f1e]">Điểm tích lũy: {currentTab.totalPoints}</div>
               )}
             </div>
 
             {/* Tóm tắt đơn hàng */}
-            <div className="bg-white rounded-lg shadow p-3 mb-3 flex flex-col">
-              <h3 className="text-sm font-semibold mb-2 text-gray-800">Tóm tắt đơn hàng</h3>
-              <div className="space-y-1 text-sm">
+            <div className="bg-white rounded-lg shadow p-2 mb-2 flex flex-col">
+              <h3 className="text-xs font-semibold mb-1 text-gray-800">Tóm tắt đơn hàng</h3>
+              <div className="space-y-0.5 text-xs">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Tổng tiền hàng</span>
                   <span>{currentTab.products.reduce((sum, p) => sum + p.total, 0).toLocaleString()}đ</span>
@@ -657,7 +749,7 @@ const OrderOffline = () => {
                   <span className="text-gray-600">Giảm giá</span>
                   <span>{(currentTab.pointsToUse / 10 * 30000).toLocaleString()}đ</span>
                 </div>
-                <div className="flex justify-between font-semibold text-green-600 border-t pt-1">
+                <div className="flex justify-between font-semibold text-[#e59f1e] border-t pt-0.5">
                   <span>Khách cần trả</span>
                   <span>{Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 10 * 30000)).toLocaleString()}đ</span>
                 </div>
@@ -665,88 +757,75 @@ const OrderOffline = () => {
             </div>
 
             {/* Thanh toán */}
-            <div className="bg-white rounded-lg shadow p-3 flex flex-col flex-grow">
-              <h3 className="text-sm font-semibold mb-2 text-gray-800">Thanh toán</h3>
+            <div className="bg-white rounded-lg shadow p-3 flex-grow flex flex-col">
+              <h3 className="text-sm font-bold mb-2 text-gray-800">Thanh toán</h3>
               <div className="mb-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phương thức thanh toán</label>
-                <div className="flex flex-wrap gap-1">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Phương thức thanh toán</label>
+                <div className="flex gap-1">
                   {[
                     { value: "CASH", label: "Tiền mặt" },
                     { value: "TRANSFER", label: "Chuyển khoản" },
-                    { value: "CARD", label: "Thẻ" },
-                    { value: "WALLET", label: "Ví" }
                   ].map(method => (
-                    <label key={method.value} className="flex items-center cursor-pointer">
-                      <input
-                        type="radio"
-                        name="payment"
-                        value={method.value}
-                        className="mr-1 accent-green-600"
-                        defaultChecked={method.value === "CASH"}
-                      />
-                      <span className="text-sm text-gray-700">{method.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div className="mb-2">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm text-gray-700">Tổng tiền cần trả:</span>
-                  <span className="text-sm font-semibold text-green-600">
-                    {Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 10 * 30000)).toLocaleString()}đ
-                  </span>
-                </div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Số tiền khách đưa</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={currentTab.inputPayment}
-                    onChange={handleInputChange}
-                    placeholder="Nhập số tiền"
-                    className={`w-full px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${currentTab.error ? 'border-red-500' : ''}`}
-                  />
-                  {currentTab.inputPayment && (
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">
-                      {parseInt(currentTab.inputPayment).toLocaleString()}đ
-                    </span>
-                  )}
-                </div>
-                {currentTab.error && (
-                  <p className="text-red-500 text-xs mt-1">{currentTab.error}</p>
-                )}
-              </div>
-              <div className="mb-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Chọn nhanh</label>
-                <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
-                  {[50000, 100000, 200000, 500000].map((amount) => (
                     <button
-                      key={amount}
-                      className={`py-1 border rounded-md text-sm transition-colors
-              ${currentTab.customerPayment === amount
-                          ? currentTab.error
-                            ? 'bg-red-100 border-red-500 text-red-700'
-                            : 'bg-blue-100 border-blue-500 text-blue-700'
-                          : 'bg-gray-100 hover:bg-gray-200 border-gray-300 text-gray-700'
-                        }`}
-                      onClick={() => handleQuickAmount(amount)}
+                      key={method.value}
+                      className={`px-2 py-1 rounded text-xs ${currentTab.paymentMethod === method.value ? 'bg-[#e59f1e] text-white' : 'bg-gray-100 text-gray-700 hover:bg-[#e59f1e]/20'}`}
+                      onClick={() => handlePaymentMethodChange(method.value)}
                     >
-                      {amount.toLocaleString()}
+                      {method.label}
                     </button>
                   ))}
                 </div>
               </div>
+
+              {currentTab.paymentMethod === 'CASH' && (
+                <>
+                  <div className="mb-2">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs text-gray-700">Tổng tiền cần trả:</span>
+                      <span className="text-xs font-bold text-[#e59f1e]">
+                        {Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 10 * 30000)).toLocaleString()}đ
+                      </span>
+                    </div>
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">Số tiền khách đưa</label>
+                    <input
+                      type="text"
+                      value={currentTab.inputPayment}
+                      onChange={handleInputChange}
+                      placeholder="Nhập số tiền"
+                      className={`w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-[#e59f1e] text-xs ${currentTab.error ? 'border-red-500' : ''}`}
+                    />
+                    {currentTab.error && <p className="text-red-500 text-xs mt-1">{currentTab.error}</p>}
+                  </div>
+
+                  <div className="mb-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-0.5">Chọn nhanh</label>
+                    <div className="grid grid-cols-4 gap-1">
+                      {[50000, 100000, 200000, 500000, 1000000].map(amount => (
+                        <button
+                          key={amount}
+                          className={`py-1 border rounded text-xs transition-colors ${currentTab.customerPayment === amount ? 'bg-[#e59f1e] text-white' : 'bg-gray-100 hover:bg-[#e59f1e] hover:text-white'}`}
+                          onClick={() => handleQuickAmount(amount)}
+                        >
+                          {amount.toLocaleString()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
               <div className="flex flex-col justify-end flex-grow">
-                {currentTab.change > 0 && (
-                  <div className="mb-2 bg-blue-50 p-1 rounded-md">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-blue-700 font-medium">Tiền thối</span>
-                      <span className="text-blue-700 font-semibold">{currentTab.change.toLocaleString()}đ</span>
+                {currentTab.paymentMethod === 'CASH' && currentTab.change > 0 && (
+                  <div className="mb-2 bg-[#e59f1e]/10 p-1 rounded">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-[#e59f1e] font-medium">Tiền thối</span>
+                      <span className="text-[#e59f1e] font-bold">{currentTab.change.toLocaleString()}đ</span>
                     </div>
                   </div>
                 )}
+
                 <button
-                  className={`w-full py-2 rounded-md text-base font-semibold text-white transition-colors
-          ${isPaymentDisabled(currentTab) ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}`}
+                  className={`w-full py-1.5 rounded text-sm font-semibold text-white ${isPaymentDisabled(currentTab) ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#e59f1e] hover:bg-[#d18e17]'}`}
                   disabled={isPaymentDisabled(currentTab)}
                   onClick={handlePayment}
                 >
