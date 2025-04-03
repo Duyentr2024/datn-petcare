@@ -34,7 +34,22 @@ const ServiceModal = memo(
           {pets.map((pet, index) => (
             <div key={pet.id} className="mb-6 last:mb-0">
               <div className="flex justify-between items-center mb-3">
-                <h3 className="font-medium text-gray-700">Thú cưng {index + 1}</h3>
+                <div className="flex items-center gap-3">
+                  <h3 className="font-medium text-gray-700">Thú cưng {index + 1}</h3>
+                  <input
+                    type="text"
+                    value={pet.name || ''}
+                    onChange={(e) => handlePetChange(index, 'name', e.target.value)}
+                    placeholder="Nhập tên thú cưng"
+                    className={`px-2 py-1 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#026AC7] ${
+                      !pet.name && serviceErrors.petInfo ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    required
+                  />
+                  {!pet.name && serviceErrors.petInfo && (
+                    <span className="text-red-500 text-sm">Vui lòng nhập tên thú cưng</span>
+                  )}
+                </div>
                 {pets.length > 1 && (
                   <button
                     onClick={() => removePet(index)}
@@ -141,7 +156,7 @@ const ServiceModal = memo(
               onClick={handleServiceConfirm}
               className={`px-6 py-2 rounded-lg font-medium transition-colors ${
                 pets.length === selectedSlots.length &&
-                pets.every((pet) => pet.petType && pet.service && pet.weight)
+                pets.every((pet) => pet.name && pet.petType && pet.service && pet.weight)
                   ? 'bg-[#026AC7] text-white hover:bg-[#0253a0]'
                   : 'bg-gray-200 text-gray-500 cursor-not-allowed'
               }`}

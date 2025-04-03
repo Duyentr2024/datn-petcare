@@ -65,3 +65,44 @@
 .modal-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #0253a0;
 }
+
+/* Toast Animation */
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeOutRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+}
+
+.animate-fade-in-right {
+  animation: fadeInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.animate-fade-out-right {
+  animation: fadeOutRight 0.3s cubic-bezier(0.6, -0.28, 0.735, 0.045) forwards;
+}
+
+/* Toast timer animation */
+@keyframes toast-timer {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}

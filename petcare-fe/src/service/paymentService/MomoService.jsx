@@ -4,39 +4,44 @@ import Swal from "sweetalert2";
 const MomoService = {
     async createPayment(amount, returnUrl) {
         try {
+            // Đảm bảo amount là số nguyên (không có phần thập phân)
             const paymentRequest = { 
                 amount: String(Math.round(amount)),
-                returnUrl: returnUrl
+                returnUrl: returnUrl,
+                orderId: `PETCARESPA_${Date.now()}` // Thêm orderId để dễ tracking
             };
+            
+            console.log("MoMo payment request:", paymentRequest);
+            
             const response = await axios.post("http://localhost:8080/api/momo", paymentRequest, {
                 headers: { "Content-Type": "application/json" },
             });
             
-            // Check if response contains error property
-            if (response.data.error) {
+            console.log("MoMo API response:", response.data);
+            
+            // Handle response based on its structure
+            if (response.data.resultCode && response.data.resultCode !== 0) {
                 throw new Error(response.data.message || "MoMo payment creation failed");
             }
             
-            // Parse the response from JSON string to object
-            const responseData = typeof response.data === 'string' 
-                ? JSON.parse(response.data) 
-                : response.data;
-                
-            if (responseData.error) {
-                throw new Error(responseData.error || "MoMo payment creation failed");
+            // Check if response contains payUrl directly
+            if (response.data.payUrl) {
+                return response.data.payUrl;
             }
             
-            if (!responseData.payUrl) {
-                throw new Error("Invalid MoMo response: Missing payment URL");
+            // If payUrl is nested in a data property
+            if (response.data.data && response.data.data.payUrl) {
+                return response.data.data.payUrl;
             }
             
-            return responseData.payUrl;
+            throw new Error("Invalid MoMo response: Missing payment URL");
         } catch (error) {
             console.error("MoMo payment error:", error);
             if (error.response && error.response.data) {
+                console.error("MoMo API error details:", error.response.data);
                 throw new Error(error.response.data.message || "Lỗi khi tạo thanh toán MoMo");
             }
-            throw new Error(error.message || "Lỗi khi tạo thanh toán MoMo");
+            throw error; // Throw the original error to maintain the stack trace
         }
     },
 
