@@ -8,6 +8,7 @@ import Cookies from "js-cookie";
 import { useCookies } from "react-cookie";
 import { decodeToken } from "../utils/jwt";
 import { useNavigate } from "react-router-dom";
+import QRImage from '/src/assets/images/QR.jpg'; 
 
 const isPaymentDisabled = (currentTab) => {
   const totalAmount = Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 100 * 30000));
@@ -835,6 +836,23 @@ const OrderOffline = () => {
                 </>
               )}
 
+
+              {currentTab.paymentMethod === 'TRANSFER' && (
+                <>
+                  {/* Thêm thông tin chuyển khoản và hình ảnh QR */}
+                  <div className="mb-2 p-3 border rounded bg-gray-50">
+                    <h3 className="text-sm font-bold text-gray-700 mb-2">Thông tin chuyển khoản</h3>
+                    <div className="flex justify-center mb-3">
+                      <img
+                        src={QRImage} // Sử dụng biến đã import
+                        alt="QR Code for Payment"
+                        className="w-55 h-65"
+                      />
+                    </div>
+                   
+                  </div>
+                </>
+              )}
               <div className="flex flex-col justify-end flex-grow">
                 {currentTab.paymentMethod === 'CASH' && currentTab.change > 0 && (
                   <div className="mb-2 bg-[#e59f1e]/10 p-1 rounded">
