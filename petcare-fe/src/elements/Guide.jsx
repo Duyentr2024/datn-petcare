@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
 const Guide = () => {
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Breadcrumb */}
