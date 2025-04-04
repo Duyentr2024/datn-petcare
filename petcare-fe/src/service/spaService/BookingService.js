@@ -609,43 +609,30 @@ const BookingService = {
 
   getPendingAppointments: async () => {
     let retries = 0;
-    const maxRetries = 3;
-    const timeout = 10000; // 10 seconds
-    
+    const maxRetries = 5;
+    const timeout = 10000;
+    const retryDelay = 2000;
+
     const fetchWithRetry = async () => {
       try {
-        console.log(`Attempt ${retries + 1}/${maxRetries} to fetch PAID appointments`);
-        
-        // Thêm timeout cho request để tránh treo quá lâu
+        console.log(`Fetching PAID appointments (attempt ${retries + 1}/${maxRetries})`);
         const response = await axios.get(`${API_BASE_URL}/appointments`, {
           params: { status: 'PAID' },
-          timeout: timeout
+          timeout,
         });
-        
-        console.log('Appointments API response:', response.status, response.headers);
-        console.log('Appointments with PAID status:', response.data);
-        
-        // Kiểm tra cấu trúc dữ liệu trả về và điều chỉnh nếu cần
-        if (!response.data) {
-          return { data: [] };
-        }
-        
-        // Nếu response.data là mảng trực tiếp (không có thuộc tính data)
+        console.log('PAID appointments response:', response.data);
+
+        // Kiểm tra response.data có phải là mảng không
         if (Array.isArray(response.data)) {
           return { data: response.data };
-        }
-        
-        // Nếu response.data.data tồn tại và là mảng
-        if (response.data.data && Array.isArray(response.data.data)) {
+        } else if (response.data && Array.isArray(response.data.data)) {
           return response.data;
+        } else {
+          console.warn('Response is not an array:', response.data);
+          throw new Error('Dữ liệu trả về không đúng định dạng (không phải mảng)');
         }
-        
-        // Mặc định trả về dữ liệu gốc
-        return response.data;
       } catch (error) {
         console.error(`Error fetching PAID appointments (attempt ${retries + 1}/${maxRetries}):`, error);
-        
-        // Kiểm tra và ghi log chi tiết lỗi để debug
         if (error.response) {
           console.error('Error response:', error.response.status, error.response.data);
         } else if (error.request) {
@@ -653,22 +640,20 @@ const BookingService = {
         } else {
           console.error('Error setting up request:', error.message);
         }
-        
-        // Nếu còn cơ hội retry, thử lại
+
         retries++;
         if (retries < maxRetries) {
-          console.log(`Retrying in ${retries * 1000}ms...`);
-          await new Promise(resolve => setTimeout(resolve, retries * 1000));
+          console.log(`Retrying in ${retryDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
           return fetchWithRetry();
         }
-        
-        // Hết số lần retry, trả về mảng rỗng
-        const errorMessage = error.response?.data?.message || 'Lỗi khi lấy danh sách lịch hẹn đã thanh toán';
-        console.error('All retry attempts failed:', errorMessage);
+
+        // Nếu hết số lần retry, trả về mảng rỗng
+        console.warn('All retries failed, returning empty array...');
         return { data: [] };
       }
     };
-    
+
     return fetchWithRetry();
   },
 
@@ -754,7 +739,19 @@ const BookingService = {
       const errorMessage = error.response?.data?.message || 'Lỗi khi cập nhật lịch hẹn';
       throw new Error(errorMessage);
     }
-  }
+  },
+  getConfirmedAppointmentsByDate: async (date) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/appointments`, {
+        params: { date, status: 'CONFIRMED' },
+      });
+      console.log('Confirmed appointments response:', response.data);
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      console.error('Error fetching confirmed appointments:', error);
+      return [];
+    }
+  },
 };
 
 export default BookingService;

@@ -8,8 +8,8 @@ if (import.meta.env.VITE_API_BASE_URL) {
   // Check for a global variable that might be set in index.html
   API_BASE_URL = window.API_BASE_URL;
 } else {
-  // Default fallback
-  API_BASE_URL = 'http://localhost:8080/api';
+  // Default fallback - sử dụng URL tương đối để tránh CORS
+  API_BASE_URL = '/api';
   console.warn(`Warning: No API_BASE_URL provided, using default: ${API_BASE_URL}`);
 }
 
