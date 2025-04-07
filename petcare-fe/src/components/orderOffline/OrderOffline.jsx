@@ -10,6 +10,7 @@ import { decodeToken } from "../utils/jwt";
 import { useNavigate } from "react-router-dom";
 import QRImage from '/src/assets/images/QR.jpg';
 
+
 const isPaymentDisabled = (currentTab) => {
   const totalAmount = Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 100 * 30000));
   if (currentTab.products.length === 0) return true;
