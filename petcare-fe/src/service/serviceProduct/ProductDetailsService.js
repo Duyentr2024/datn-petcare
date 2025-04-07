@@ -110,7 +110,7 @@ const ProductDetailsService = {
             return [];
         }
     },
-    
+
 
     createProductDetail: async (data) => {
         try {
@@ -134,7 +134,7 @@ const ProductDetailsService = {
             throw error;
         }
     },
-    
+
 
     deleteProductDetail: async (id) => {
         try {
@@ -144,8 +144,34 @@ const ProductDetailsService = {
             console.error("Error deleting product detail:", error);
             throw error;
         }
-    }
+    },
 
+    // hàm sửa
+    toggleProductDetailStatus: async (id) => {
+        try {
+            const response = await axios.put(`${API_BASE_URL}/toggle-status/${id}`);
+            return response.data;
+        } catch (error) {
+            console.error(`Lỗi khi thay đổi trạng thái ProductDetail ID=${id}:`, error);
+            throw error;
+        }
+    },
+
+
+    /**
+ * Lấy tất cả ProductDetailsDTO theo productId (bao gồm cả status true và false).
+ * @param {number} productId
+ * @returns {Promise<Array>}
+ */
+    getAllProductDetailsDTOByProductId: async (productId) => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/dto/all-by-product/${productId}`);
+            return response.data;
+        } catch (error) {
+            console.error(`Lỗi khi lấy tất cả ProductDetailsDTO cho ProductID=${productId}:`, error);
+            throw error;
+        }
+    },
 }
 
 

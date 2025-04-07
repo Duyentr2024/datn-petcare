@@ -8,7 +8,7 @@ import Cookies from "js-cookie";
 import { useCookies } from "react-cookie";
 import { decodeToken } from "../utils/jwt";
 import { useNavigate } from "react-router-dom";
-import QRImage from '/src/assets/images/QR.jpg'; 
+import QRImage from '/src/assets/images/QR.jpg';
 
 const isPaymentDisabled = (currentTab) => {
   const totalAmount = Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 100 * 30000));
@@ -146,15 +146,33 @@ const OrderOffline = () => {
     const [localSearchTerm, setLocalSearchTerm] = useState("");
     const productsPerPage = 10;
 
-    const filteredProducts = products.filter(product =>
-      product.products?.status === true &&
-      (product.products?.productName?.toLowerCase().includes(localSearchTerm.toLowerCase()) || false)
-    );
+    // Lọc sản phẩm: Ẩn productDetails.status = false và lọc theo tên
+    const filteredProducts = products.filter(product => {
+      const isProductActive = product.products?.status === true; // Kiểm tra sản phẩm chính
+      const isDetailActive = product.status !== false; // Kiểm tra biến thể (nếu có trường status)
+      const matchesSearch = product.products?.productName?.toLowerCase().includes(localSearchTerm.toLowerCase()) || false;
+      return isProductActive && isDetailActive && matchesSearch;
+    });
 
-    const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+    // Sắp xếp sản phẩm để các biến thể cùng productId nằm gần nhau
+    const sortedProducts = filteredProducts.sort((a, b) => {
+      // Chuyển productId thành chuỗi, mặc định là '0' nếu không tồn tại
+      const productIdA = String(a.products?.productId ?? '0');
+      const productIdB = String(b.products?.productId ?? '0');
+
+      if (productIdA === productIdB) {
+        // Nếu cùng productId, sắp xếp theo biến thể (size, weight, color)
+        const variantA = `${a.productSizes?.sizeValue || ''}${a.weights?.weightValue || ''}${a.productColors?.colorValue || ''}`;
+        const variantB = `${b.productSizes?.sizeValue || ''}${b.weights?.weightValue || ''}${b.productColors?.colorValue || ''}`;
+        return variantA.localeCompare(variantB);
+      }
+      return productIdA.localeCompare(productIdB); // Sắp xếp theo productId
+    });
+
+    const totalPages = Math.ceil(sortedProducts.length / productsPerPage);
     const indexOfLastProduct = currentPage * productsPerPage;
     const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
-    const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
+    const currentProducts = sortedProducts.slice(indexOfFirstProduct, indexOfLastProduct);
 
     return (
       <>
@@ -840,7 +858,7 @@ const OrderOffline = () => {
               {currentTab.paymentMethod === 'TRANSFER' && (
                 <>
                   {/* Thêm thông tin chuyển khoản và hình ảnh QR */}
-                  <div className="mb-2 p-3 border rounded bg-gray-50">
+                  <div className="mb-1 p-2 border rounded bg-gray-50">
                     <h3 className="text-sm font-bold text-gray-700 mb-2">Thông tin chuyển khoản</h3>
                     <div className="flex justify-center mb-3">
                       <img
@@ -849,7 +867,6 @@ const OrderOffline = () => {
                         className="w-55 h-65"
                       />
                     </div>
-                   
                   </div>
                 </>
               )}
