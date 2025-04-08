@@ -572,6 +572,18 @@ const Appointment = () => {
         updatedPet.price = 0;
       }
 
+      // Nếu thay đổi tên và thú cưng đã có ID trong DB, cập nhật lên server
+      if (field === 'name' && updatedPet.id && !isNaN(updatedPet.id) && updatedPet.id > 0) {
+        // Gọi API cập nhật tên thú cưng nếu có ID
+        try {
+          BookingService.updatePetName(updatedPet.id, value)
+            .then(() => console.log(`Đã cập nhật tên thú cưng ID ${updatedPet.id} thành ${value}`))
+            .catch(err => console.error('Lỗi khi cập nhật tên thú cưng:', err));
+        } catch (error) {
+          console.error('Lỗi khi gọi API cập nhật tên thú cưng:', error);
+        }
+      }
+
       newPets[index] = updatedPet;
       return newPets;
     });
@@ -693,6 +705,7 @@ const Appointment = () => {
             paymentType: customerInfo.paymentType,
             depositAmount: calculateDeposit(),
             pets: pets.map((pet) => ({
+                name: pet.name || `Thú cưng ${pets.indexOf(pet) + 1}`,
                 petType: pet.petType.toUpperCase(),
                 petService: { id: parseInt(pet.service, 10) },
                 petWeight: { petWeightId: parseInt(pet.weight, 10) },

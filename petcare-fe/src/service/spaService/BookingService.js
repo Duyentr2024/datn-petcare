@@ -46,6 +46,16 @@ if (envApiUrl && isValidUrl(envApiUrl)) {
 console.log('Final API_BASE_URL:', API_BASE_URL);
 
 const BookingService = {
+  getPetsByAppointmentId: async (appointmentId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/appointments/${appointmentId}/pets`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching pets for appointment:', error);
+      throw error;
+    }
+  },
+  
   getEmployees: async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/employees`);
@@ -750,6 +760,30 @@ const BookingService = {
     } catch (error) {
       console.error('Error fetching confirmed appointments:', error);
       return [];
+    }
+  },
+  removePetFromAppointment: async (appointmentId, petId) => {
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/appointments/${appointmentId}/pets/${petId}`);
+      return response.data;
+    } catch (error) {
+      const errorMessage = error.response
+        ? `Error ${error.response.status}: ${error.response.data?.message || error.response.statusText}`
+        : error.message || 'Unknown error';
+      console.error('Error removing pet from appointment:', errorMessage);
+      throw new Error(errorMessage);
+    }
+  },
+  
+  updatePetName: async (petId, name) => {
+    try {
+      const response = await axios.put(`${API_BASE_URL}/pets/${petId}/update-name`, null, { 
+        params: { name }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error updating pet name:', error);
+      throw error;
     }
   },
 };

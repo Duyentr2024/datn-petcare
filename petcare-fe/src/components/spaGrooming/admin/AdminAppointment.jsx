@@ -1,7 +1,7 @@
 // AdminAppointment.js
 import React, { useState, useEffect } from 'react';
-import { Select, Input, DatePicker, Button, Radio, Badge, message, notification } from 'antd';
-import { PlusOutlined, SearchOutlined, LeftOutlined, RightOutlined, BellOutlined } from '@ant-design/icons';
+import { Select, Input, DatePicker, Button, Radio, Badge, message, notification, Tabs } from 'antd';
+import { PlusOutlined, SearchOutlined, LeftOutlined, RightOutlined, BellOutlined, HistoryOutlined, CalendarOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import './AdminAppointment.css';
@@ -10,6 +10,9 @@ import webSocketService from "../../../service/WebSocketService";
 import AddAppointmentModal from './AddAppointmentModal';
 import OnlineBookingModal from './OnlineBookingModal';
 import Calendar from './Calendar';
+import AppointmentHistory from './AppointmentHistory';
+
+const { TabPane } = Tabs;
 
 dayjs.locale('vi');
 
@@ -22,6 +25,7 @@ const AdminAppointment = () => {
   const [isOnlineBookingModalVisible, setIsOnlineBookingModalVisible] = useState(false);
   const [onlineBookings, setOnlineBookings] = useState([]);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [activeTab, setActiveTab] = useState("1");
 
   const fetchOnlineBookings = async () => {
     try {
@@ -126,8 +130,9 @@ const AdminAppointment = () => {
     }
   };
 
-  return (
-    <div className="p-6">
+  // Render the appointment management content
+  const renderAppointmentContent = () => (
+    <div className="tab-content-container">
       <div className="mb-6 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4 flex-1">
@@ -216,6 +221,95 @@ const AdminAppointment = () => {
         onConfirm={handleConfirmBookings}
         refreshBookings={fetchOnlineBookings}
       />
+    </div>
+  );
+
+  // CSS for tabs
+  const tabBarStyle = {
+    marginBottom: '24px',
+    padding: '0 4px',
+  };
+
+  return (
+    <div className="p-6">
+      <Tabs 
+        activeKey={activeTab} 
+        onChange={setActiveTab}
+        tabBarStyle={tabBarStyle}
+        className="appointment-tabs"
+        tabBarGutter={24}
+      >
+        <TabPane 
+          tab={
+            <span className="tab-label flex items-center">
+              <CalendarOutlined className="mr-2" />
+              <span>Quản lý lịch hẹn</span>
+              {notificationCount > 0 && (
+                <Badge count={notificationCount} className="ml-2" />
+              )}
+            </span>
+          } 
+          key="1"
+        >
+          {renderAppointmentContent()}
+        </TabPane>
+        <TabPane 
+          tab={
+            <span className="tab-label flex items-center">
+              <HistoryOutlined className="mr-2" />
+              <span>Lịch sử chỉnh sửa</span>
+            </span>
+          } 
+          key="2"
+        >
+          <div className="tab-content-container">
+            <AppointmentHistory />
+          </div>
+        </TabPane>
+      </Tabs>
+
+      <style jsx>{`
+        .appointment-tabs .ant-tabs-nav {
+          background-color: white;
+          padding: 12px 16px 0;
+          border-radius: 8px 8px 0 0;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+          margin-bottom: 0 !important;
+        }
+        
+        .appointment-tabs .ant-tabs-tab {
+          padding: 12px 16px;
+          transition: all 0.3s;
+        }
+        
+        .appointment-tabs .ant-tabs-tab:hover {
+          color: #fbb321;
+        }
+        
+        .appointment-tabs .ant-tabs-tab-active {
+          background-color: rgba(251, 179, 33, 0.1);
+          border-radius: 8px;
+        }
+        
+        .appointment-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+          color: #fbb321 !important;
+          font-weight: 600;
+        }
+        
+        .appointment-tabs .ant-tabs-ink-bar {
+          background-color: #fbb321;
+          height: 3px;
+          border-radius: 3px 3px 0 0;
+        }
+        
+        .tab-label {
+          font-size: 15px;
+        }
+        
+        .tab-content-container {
+          padding-top: 20px;
+        }
+      `}</style>
     </div>
   );
 };

@@ -1,7 +1,7 @@
 // OnlineBookingModal.jsx
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Input, Checkbox, Select, message } from 'antd';
-import { SearchOutlined, CheckOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Modal, Button, Input, Checkbox, Select, message, Tooltip, Dropdown, Space, Badge, Drawer, Tag, Popconfirm, Avatar } from 'antd';
+import { SearchOutlined, CheckOutlined, EditOutlined, DeleteOutlined, CaretDownOutlined, MoreOutlined, PlusOutlined, UserOutlined, ExclamationCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import UpdatePetServiceModal from './UpdatePetServiceModal';
 import BookingService from "../../../service/spaService/BookingService";
 import dayjs from 'dayjs';
@@ -16,6 +16,9 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
   const [searchValue, setSearchValue] = useState('');
   const [selectedBookings, setSelectedBookings] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [petDrawerVisible, setPetDrawerVisible] = useState(false);
+  const [selectedAppointmentPets, setSelectedAppointmentPets] = useState([]);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
 
   // Sắp xếp danh sách lịch hẹn theo thời gian (tương lai trước)
   const sortedBookings = onlineBookings?.length 
@@ -117,6 +120,52 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
     }
   };
 
+  const showPetDetails = async (appointmentId) => {
+    try {
+      const pets = await BookingService.getPetsByAppointmentId(appointmentId);
+      setSelectedAppointmentPets(pets);
+      setSelectedAppointmentId(appointmentId);
+      setPetDrawerVisible(true);
+    } catch (error) {
+      console.error('Error fetching pet details:', error);
+      message.error('Không thể tải thông tin thú cưng');
+    }
+  };
+
+  const handleDeletePet = async (appointmentId, petId) => {
+    try {
+      setLoading(true);
+      await BookingService.removePetFromAppointment(appointmentId, petId);
+      message.success(`Đã xóa thú cưng khỏi lịch hẹn #${appointmentId}`);
+      
+      // Cập nhật UI
+      setSelectedAppointmentPets(prev => prev.filter(pet => pet.id !== petId));
+      
+      // Refresh danh sách lịch hẹn
+      refreshBookings();
+    } catch (error) {
+      console.error('Error removing pet from appointment:', error);
+      message.error('Không thể xóa thú cưng khỏi lịch hẹn');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePetNameChange = async (petId, name) => {
+    try {
+      await BookingService.updatePetName(petId, name);
+      message.success('Đã cập nhật tên thú cưng');
+      
+      // Cập nhật UI
+      setSelectedAppointmentPets(prev => 
+        prev.map(pet => pet.id === petId ? {...pet, name} : pet)
+      );
+    } catch (error) {
+      console.error('Error updating pet name:', error);
+      message.error('Không thể cập nhật tên thú cưng');
+    }
+  };
+
   console.log('Online bookings displayed in OnlineBookingModal.jsx:', filteredBookings);
 
   return (
@@ -138,7 +187,7 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
             Xác nhận lịch đã chọn
           </Button>,
         ]}
-        width={900}
+        width={1000}
       >
         <div className="py-4">
           <Input
@@ -162,60 +211,164 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
             </thead>
             <tbody>
               {filteredBookings.length > 0 ? (
-                filteredBookings.map((booking) => (
-                  <tr key={booking.appointmentId} className="border-b">
-                    <td className="p-3"><Checkbox checked={selectedBookings.includes(booking.appointmentId)} onChange={() => toggleSelectBooking(booking.appointmentId)} /></td>
-                    <td className="p-3">{booking.appointmentId}</td>
-                    <td className="p-3"><div>{booking.customerName}</div><div className="text-green-500">{booking.phone}</div></td>
-                    <td className="p-3"><div>{formatDate(booking.date)}</div><div>{formatTime(booking.time)}</div></td>
-                    <td className="p-3">
-                      <div>
-                        {booking.paidAmount > 0 ? (
-                          <div className="text-sm font-medium">Đã thanh toán: {booking.paidAmount.toLocaleString('vi-VN')}đ</div>
-                        ) : booking.depositAmount > 0 ? (
-                          <div className="text-sm font-medium">Đã cọc: {booking.depositAmount.toLocaleString('vi-VN')}đ</div>
-                        ) : (
-                          <div className="text-sm font-medium">-</div>
-                        )}
-                        {booking.totalAmount && (
-                          <div className="text-xs text-gray-500">Tổng: {booking.totalAmount.toLocaleString('vi-VN')}đ</div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-3">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {booking.petCount || 1} thú cưng
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex gap-2">
+                filteredBookings.map((booking) => {
+                  const petCount = booking.petCount || 1;
+                  
+                  return (
+                    <tr key={booking.appointmentId} className="border-b hover:bg-gray-50">
+                      <td className="p-3"><Checkbox checked={selectedBookings.includes(booking.appointmentId)} onChange={() => toggleSelectBooking(booking.appointmentId)} /></td>
+                      <td className="p-3">
+                        <div className="font-medium">#{booking.appointmentId}</div>
+                        <div className="text-xs text-gray-500">Online booking</div>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center">
+                          <Avatar size="small" icon={<UserOutlined />} className="mr-2 bg-blue-500" />
+                          <div>
+                            <div className="font-medium">{booking.customerName}</div>
+                            <div className="text-green-500 text-sm">{booking.phone}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center">
+                          <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center mr-2 text-orange-500">
+                            {dayjs(booking.date).format('D')}
+                          </div>
+                          <div>
+                            <div>{formatDate(booking.date)}</div>
+                            <div className="text-sm text-gray-500">{formatTime(booking.time)}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div>
+                          {booking.paidAmount > 0 ? (
+                            <Tag color="green" className="rounded-full px-2">
+                              Đã thanh toán: {booking.paidAmount.toLocaleString('vi-VN')}đ
+                            </Tag>
+                          ) : booking.depositAmount > 0 ? (
+                            <Tag color="blue" className="rounded-full px-2">
+                              Đã cọc: {booking.depositAmount.toLocaleString('vi-VN')}đ
+                            </Tag>
+                          ) : (
+                            <Tag color="default" className="rounded-full px-2">Chưa thanh toán</Tag>
+                          )}
+                          {booking.totalAmount && (
+                            <div className="text-xs text-gray-500 mt-1">Tổng: {booking.totalAmount.toLocaleString('vi-VN')}đ</div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3">
                         <Button 
-                          type="text" 
-                          icon={<CheckOutlined />}
-                          title="Xác nhận lịch hẹn" 
-                          onClick={() => {
-                            const defaultStaffId = staffOptions.length > 0 ? staffOptions[0].value : null;
-                            if (defaultStaffId) {
-                              onConfirm([{ appointmentId: booking.appointmentId, staffId: defaultStaffId }])
-                                .then(() => {
-                                  message.success('Đã xác nhận lịch hẹn thành công');
-                                  refreshBookings();
-                                })
-                                .catch(err => {
-                                  console.error('Error confirming appointment:', err);
-                                  message.error('Không thể xác nhận lịch hẹn');
-                                });
-                            } else {
-                              message.warning('Không có nhân viên nào trong hệ thống');
-                            }
-                          }}
-                        />
-                        <Button type="text" icon={<EditOutlined />} onClick={() => handleEditClick(booking)} />
-                        <Button type="text" icon={<DeleteOutlined />} onClick={() => handleCancelAppointment(booking.appointmentId)} />
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          type="primary" 
+                          size="small" 
+                          ghost 
+                          className="rounded-full border-blue-500 text-blue-500 hover:text-blue-600 hover:border-blue-600"
+                          onClick={() => showPetDetails(booking.appointmentId)}
+                        >
+                          <span className="mr-1">{petCount}</span>
+                          <span>thú cưng</span>
+                        </Button>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex gap-2">
+                          <Tooltip title="Xác nhận lịch hẹn">
+                            <Button 
+                              type="primary"
+                              size="small"
+                              icon={<CheckOutlined />}
+                              className="bg-green-500 hover:bg-green-600" 
+                              onClick={() => {
+                                const defaultStaffId = staffOptions.length > 0 ? staffOptions[0].value : null;
+                                if (defaultStaffId) {
+                                  onConfirm([{ appointmentId: booking.appointmentId, staffId: defaultStaffId }])
+                                    .then(() => {
+                                      message.success('Đã xác nhận lịch hẹn thành công');
+                                      refreshBookings();
+                                    })
+                                    .catch(err => {
+                                      console.error('Error confirming appointment:', err);
+                                      message.error('Không thể xác nhận lịch hẹn');
+                                    });
+                                } else {
+                                  message.warning('Không có nhân viên nào trong hệ thống');
+                                }
+                              }}
+                            />
+                          </Tooltip>
+                          <Tooltip title="Chỉnh sửa lịch hẹn">
+                            <Button 
+                              type="default" 
+                              size="small"
+                              icon={<EditOutlined />} 
+                              onClick={() => handleEditClick(booking)}
+                            />
+                          </Tooltip>
+                          
+                          {petCount > 1 ? (
+                            <Dropdown
+                              menu={{
+                                items: [
+                                  {
+                                    key: '1',
+                                    label: 'Xóa toàn bộ lịch hẹn',
+                                    icon: <DeleteOutlined />,
+                                    danger: true,
+                                    onClick: () => {
+                                      Modal.confirm({
+                                        title: 'Xác nhận hủy lịch hẹn',
+                                        icon: <ExclamationCircleOutlined />,
+                                        content: `Bạn có chắc chắn muốn hủy toàn bộ lịch hẹn #${booking.appointmentId} của khách hàng ${booking.customerName}?`,
+                                        okText: 'Hủy lịch',
+                                        cancelText: 'Đóng',
+                                        okButtonProps: { danger: true },
+                                        onOk: () => handleCancelAppointment(booking.appointmentId)
+                                      });
+                                    }
+                                  },
+                                  {
+                                    key: '2',
+                                    label: 'Xóa bớt thú cưng',
+                                    icon: <DeleteOutlined />,
+                                    onClick: () => showPetDetails(booking.appointmentId)
+                                  },
+                                ]
+                              }}
+                              placement="bottomRight"
+                              trigger={["click"]}
+                            >
+                              <Button 
+                                type="default" 
+                                size="small"
+                                danger
+                                icon={<MoreOutlined />} 
+                              />
+                            </Dropdown>
+                          ) : (
+                            <Popconfirm
+                              title="Xác nhận hủy lịch hẹn"
+                              description={`Bạn có chắc chắn muốn hủy lịch hẹn #${booking.appointmentId}?`}
+                              onConfirm={() => handleCancelAppointment(booking.appointmentId)}
+                              okText="Hủy lịch"
+                              cancelText="Đóng"
+                              okButtonProps={{ danger: true }}
+                            >
+                              <Tooltip title="Hủy lịch hẹn">
+                                <Button 
+                                  type="default" 
+                                  size="small"
+                                  danger
+                                  icon={<DeleteOutlined />}
+                                />
+                              </Tooltip>
+                            </Popconfirm>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr><td colSpan={7} className="p-3 text-center text-gray-500">{searchValue ? 'Không tìm thấy lịch hẹn phù hợp' : 'Không có lịch hẹn nào chờ xác nhận'}</td></tr>
               )}
@@ -232,6 +385,113 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
           onSuccess={refreshBookings}
         />
       )}
+
+      <Drawer
+        title={<div className="flex items-center justify-between">
+          <span>Chi tiết thú cưng - Lịch hẹn #{selectedAppointmentId}</span>
+          <Space>
+            <Badge count={selectedAppointmentPets.length} style={{ backgroundColor: '#1890ff' }} />
+            <span>Thú cưng</span>
+          </Space>
+        </div>}
+        placement="right"
+        width={500}
+        onClose={() => setPetDrawerVisible(false)}
+        open={petDrawerVisible}
+      >
+        {selectedAppointmentPets.map((pet, index) => (
+          <div key={pet.id} className="mb-6 bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+            <div className="flex justify-between items-start mb-3">
+              <div className="flex items-center">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3 text-blue-600 font-medium">
+                  {pet.name ? pet.name.charAt(0) : 'P'}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={pet.name || ''}
+                      placeholder="Nhập tên thú cưng"
+                      size="small"
+                      className="font-medium text-base mb-1 max-w-[150px]"
+                      onChange={(e) => {
+                        const newName = e.target.value;
+                        setSelectedAppointmentPets(prev => 
+                          prev.map(p => p.id === pet.id ? {...p, name: newName} : p)
+                        );
+                      }}
+                      onBlur={(e) => {
+                        if (pet.name && pet.name.trim() !== '') {
+                          handlePetNameChange(pet.id, pet.name);
+                        }
+                      }}
+                      onPressEnter={(e) => {
+                        e.target.blur();
+                      }}
+                    />
+                    <Tooltip title="Tên thú cưng sẽ tự động lưu khi bạn nhấn Enter hoặc click ra ngoài">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<InfoCircleOutlined />}
+                        className="text-gray-400"
+                      />
+                    </Tooltip>
+                  </div>
+                  <p className="text-gray-500 text-sm">{pet.type}</p>
+                </div>
+              </div>
+              {selectedAppointmentPets.length > 1 && (
+                <Popconfirm
+                  title="Xóa thú cưng khỏi lịch hẹn"
+                  description={`Bạn có chắc chắn muốn xóa ${pet.name || 'thú cưng này'} khỏi lịch hẹn?`}
+                  onConfirm={() => handleDeletePet(selectedAppointmentId, pet.id)}
+                  okText="Xóa"
+                  cancelText="Hủy"
+                  okButtonProps={{ danger: true }}
+                >
+                  <Button 
+                    size="small" 
+                    type="text" 
+                    danger
+                    icon={<DeleteOutlined />}
+                  />
+                </Popconfirm>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="bg-gray-50 p-2 rounded">
+                <span className="text-gray-500 text-xs">Tuổi:</span>
+                <span className="block font-medium">{pet.age ? `${pet.age} tuổi` : 'Không có thông tin'}</span>
+              </div>
+              <div className="bg-gray-50 p-2 rounded">
+                <span className="text-gray-500 text-xs">Cân nặng:</span>
+                <span className="block font-medium">{pet.weight ? `${pet.weight} kg` : 'Không có thông tin'}</span>
+              </div>
+            </div>
+            
+            <div className="mb-3">
+              <span className="text-gray-500 text-xs block mb-1">Dịch vụ đã đặt:</span>
+              <div className="flex flex-wrap gap-2">
+                {pet.service ? (
+                  <Tag color="blue">{pet.service}</Tag>
+                ) : (
+                  <Tag color="default">Không có dịch vụ</Tag>
+                )}
+              </div>
+            </div>
+            
+            <div className="bg-orange-50 p-3 rounded-lg">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700">Thành tiền:</span>
+                <span className="font-bold text-orange-500">{pet.price ? pet.price.toLocaleString('vi-VN') : '0'}đ</span>
+              </div>
+            </div>
+            
+            {index < selectedAppointmentPets.length - 1 && <div className="border-b my-6"></div>}
+          </div>
+        ))}
+      </Drawer>
     </>
   );
 };

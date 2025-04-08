@@ -88,6 +88,9 @@ const CheckoutPayment = () => {
       // Chỉ xử lý nếu có tham số trong URL
       if (urlParams.size === 0) return;
       
+      // Ghi log các tham số URL để debug
+      console.log('URL Params:', Object.fromEntries(urlParams.entries()));
+      
       // Lấy bookingData từ sessionStorage
       const savedBookingData = JSON.parse(sessionStorage.getItem('spaBookingData') || '{}');
       
@@ -100,6 +103,7 @@ const CheckoutPayment = () => {
       
       // Kiểm tra callback từ VNPay
       if (urlParams.get("vnp_ResponseCode")) {
+        console.log('VNPay callback detected:', urlParams.get("vnp_ResponseCode"));
         const vnpResponseCode = urlParams.get("vnp_ResponseCode");
         if (vnpResponseCode === "00") {
           try {
@@ -344,14 +348,14 @@ const CheckoutPayment = () => {
       // Tạo orderId riêng cho từng giao dịch
       const orderId = `PETCARE_SPA_${Date.now()}`;
       
-      let paymentUrl;
+      let paymentResult;
       
       if (selectedPayment === 'momo') {
         console.log("Creating MoMo payment...");
         
         try {
           // Thêm orderId vào request
-          paymentUrl = await MomoService.createPayment(amount, returnUrl);
+          const paymentUrl = await MomoService.createPayment(amount, returnUrl);
           console.log("MoMo payment URL:", paymentUrl);
           
           if (paymentUrl) {
@@ -365,21 +369,97 @@ const CheckoutPayment = () => {
           alert(`Lỗi tạo thanh toán MoMo: ${error.message || "Đã xảy ra lỗi"}`);
         }
       } else if (selectedPayment === 'vnpay') {
-        console.log("Creating VNPay payment...");
+        // Kiểm tra xem môi trường có phải là development hay không
+        const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost';
         
-        try {
-          paymentUrl = await VNPayService.createPayment(amount, returnUrl);
-          console.log("VNPay payment URL:", paymentUrl);
+        // Trong môi trường development, sử dụng direct payment hoặc mock payment để tránh lỗi VNPay
+        if (isDevelopment) {
+          console.log("Using direct payment in development mode...");
           
-          if (paymentUrl) {
-            // Redirect to VNPay payment page
-            window.location.href = paymentUrl;
-          } else {
-            throw new Error("Không nhận được URL thanh toán từ VNPay");
+          try {
+            // Ưu tiên dùng mock để test nhanh
+            paymentResult = await VNPayService.mockPayment(amount, bookingData);
+            console.log("Mock payment result:", paymentResult);
+            
+            if (paymentResult.success) {
+              // Tạo payload với trạng thái thanh toán thành công
+              const payloadWithStatus = { 
+                ...bookingData, 
+                paymentStatus: "SUCCESS",
+                paymentMethod: "VNPAY",
+                transactionId: paymentResult.transactionId
+              };
+              
+              // Xử lý chuyển đổi format dữ liệu nếu cần
+              if (payloadWithStatus.selectedSlots && !payloadWithStatus.appointmentSlots) {
+                payloadWithStatus.appointmentSlots = payloadWithStatus.selectedSlots.map(slotId => {
+                  const [time, slotIndex] = slotId.split('-');
+                  return {
+                    time: time,
+                    slotIndex: parseInt(slotIndex, 10)
+                  };
+                });
+                
+                delete payloadWithStatus.selectedSlots;
+              }
+              
+              // Lưu thông tin slot đã đặt để hiển thị trên giao diện
+              if (bookingData.selectedSlots && bookingData.selectedSlots.length > 0) {
+                BookingService.saveBookedSlots(
+                  bookingData.selectedSlots, 
+                  bookingData.date
+                );
+              }
+              
+              // Gọi API để lưu thông tin lịch hẹn
+              const savedAppointment = await BookingService.bookAppointment(payloadWithStatus);
+              console.log("Appointment saved successfully:", savedAppointment);
+              
+              // Xóa dữ liệu từ sessionStorage sau khi lưu thành công
+              sessionStorage.removeItem('spaBookingData');
+              sessionStorage.removeItem('pendingBookingSlots');
+              sessionStorage.removeItem('pendingBookingDate');
+              sessionStorage.removeItem('tempAppointmentId');
+              
+              // Hiển thị thông báo thành công
+              showSuccessAndRedirect(
+                "Thanh toán thành công! Lịch hẹn đã được xác nhận.",
+                bookingData.date
+              );
+            } else {
+              throw new Error(paymentResult.message || "Thanh toán không thành công");
+            }
+          } catch (error) {
+            console.error("Direct/mock payment error:", error);
+            alert(`Lỗi thanh toán: ${error.message || "Đã xảy ra lỗi"}`);
           }
-        } catch (error) {
-          console.error("VNPay payment error:", error);
-          alert(`Lỗi tạo thanh toán VNPay: ${error.message || "Đã xảy ra lỗi"}`);
+        } else {
+          // Trong môi trường production, vẫn sử dụng redirect để thanh toán thật
+          console.log("Creating VNPay payment with redirect...");
+          
+          try {
+            const paymentUrl = await VNPayService.createPayment(amount, returnUrl);
+            console.log("VNPay payment URL:", paymentUrl);
+            
+            if (paymentUrl) {
+              // Trước khi redirect, thêm script fix VNPay vào localStorage
+              const vnpayFix = `
+                var timer = null;
+                window.timer = null;
+                function updateTime() { return true; }
+                window.updateTime = function() { return true; };
+              `;
+              localStorage.setItem('vnpay_fix_script', vnpayFix);
+              
+              // Redirect đến trang thanh toán VNPay
+              window.location.href = paymentUrl;
+            } else {
+              throw new Error("Không nhận được URL thanh toán từ VNPay");
+            }
+          } catch (error) {
+            console.error("VNPay payment error:", error);
+            alert(`Lỗi tạo thanh toán VNPay: ${error.message || "Đã xảy ra lỗi"}`);
+          }
         }
       }
     } catch (error) {
