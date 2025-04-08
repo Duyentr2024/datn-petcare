@@ -1,43 +1,9 @@
+// TimeSlotService.js
 import axios from 'axios';
 
-// Function to validate URL
-const isValidUrl = (string) => {
-  try {
-    new URL(string);
-    return true;
-  } catch (_) {
-    return false;
-  }
-};
-
-// Get environment variable
-const envApiUrl = import.meta.env.VITE_API_BASE_URL;
-
-// Determine the API base URL with fallbacks and validation
-let API_BASE_URL;
-if (envApiUrl && isValidUrl(envApiUrl)) {
-  // Use environment variable if valid
-  API_BASE_URL = `${envApiUrl}/api`;
-} else if (envApiUrl && !isValidUrl(envApiUrl)) {
-  // Try to fix common issues if URL is not valid
-  if (envApiUrl === 'api') {
-    // Correct the missing protocol and host
-    API_BASE_URL = 'http://localhost:8080/api';
-    console.warn('Warning: Fixed invalid API_BASE_URL "api" to "http://localhost:8080/api"');
-  } else if (!envApiUrl.startsWith('http')) {
-    // Add protocol if missing
-    API_BASE_URL = `http://${envApiUrl}/api`;
-    console.warn(`Warning: Added missing protocol to API_BASE_URL: ${API_BASE_URL}`);
-  } else {
-    // Use default if we can't fix it
-    API_BASE_URL = 'http://localhost:8080/api';
-    console.warn(`Warning: Invalid API_BASE_URL "${envApiUrl}", using default: ${API_BASE_URL}`);
-  }
-} else {
-  // Default fallback
-  API_BASE_URL = 'http://localhost:8080/api';
-  console.warn(`Warning: No API_BASE_URL provided, using default: ${API_BASE_URL}`);
-}
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+  ? `${import.meta.env.VITE_API_BASE_URL}/api`
+  : 'http://localhost:8080/api';
 
 const TimeSlotService = {
   getTimeSlots: async (date) => {
@@ -58,77 +24,53 @@ const TimeSlotService = {
     }
   },
 
-  getAllSlotAdjustmentsInMonth: async (year, month) => {
+  bookAppointment: async (payload) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/time-slots/adjustments`, {
-        params: { year, month },
-      });
+      const response = await axios.post(`${API_BASE_URL}/appointments`, payload);
       return response.data;
     } catch (error) {
       const errorMessage = error.response
         ? `Error ${error.response.status}: ${error.response.data?.message || error.response.statusText}`
         : error.message || 'Unknown error';
-      console.error('Error fetching slot adjustments:', errorMessage);
+      console.error('Error booking appointment:', errorMessage);
       throw new Error(errorMessage);
     }
   },
 
-  addSlots: async (date, time, quantity) => {
+  getBookingStatus: async () => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/time-slots/add`, null, {
-        params: { date, time, quantity },
-      });
-      return response.data;
+      const response = await axios.get(`${API_BASE_URL}/booking-enabled`);
+      return response.data; // Trả về trực tiếp response.data (true/false)
     } catch (error) {
       const errorMessage = error.response
         ? `Error ${error.response.status}: ${error.response.data?.message || error.response.statusText}`
         : error.message || 'Unknown error';
-      console.error('Error adding slots:', errorMessage);
+      console.error('Error fetching booking status:', errorMessage);
       throw new Error(errorMessage);
     }
   },
 
-  removeSlots: async (date, time, quantity) => {
+  updateBookingStatus: async (status, token) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/time-slots/remove`, null, {
-        params: { date, time, quantity },
-      });
+      const response = await axios.put(
+        `${API_BASE_URL}/staff/booking-enabled`,
+        null,
+        {
+          params: { status },
+          headers: {
+            Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
+          },
+        }
+      );
       return response.data;
     } catch (error) {
       const errorMessage = error.response
-        ? `Error ${error.response.status}: ${error.response.data?.message || error.response.statusText}`
+        ? `Error ${error.response.status}: ${error.response.data || error.response.statusText}`
         : error.message || 'Unknown error';
-      console.error('Error removing slots:', errorMessage);
-      throw new Error(errorMessage);
-    }
-  },
-
-  resetToDefault: async (date, time) => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/time-slots/reset`, null, {
-        params: { date, time },
-      });
-      return response.data;
-    } catch (error) {
-      const errorMessage = error.response
-        ? `Error ${error.response.status}: ${error.response.data?.message || error.response.statusText}`
-        : error.message || 'Unknown error';
-      console.error('Error resetting slot to default:', errorMessage);
-      throw new Error(errorMessage);
-    }
-  },
-
-  toggleSlotVisibility: async (time, isActive) => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/time-slots/toggle-visibility`, null, {
-        params: { time, isActive },
-      });
-      return response.data;
-    } catch (error) {
-      const errorMessage = error.response
-        ? `Error ${error.response.status}: ${error.response.data?.message || error.response.statusText}`
-        : error.message || 'Unknown error';
-      console.error('Error toggling slot visibility:', errorMessage);
+      console.error('Error updating booking status:', errorMessage, error);
+      if (error.response?.status === 401) {
+        throw new Error("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại");
+      }
       throw new Error(errorMessage);
     }
   },

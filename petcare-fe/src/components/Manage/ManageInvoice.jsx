@@ -112,7 +112,7 @@ const Invoice = () => {
                     </div>
                     <button
                         onClick={handleSearchByDateRange}
-                        className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm self-end"
+                        className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm self-end"
                     >
                         Tìm
                     </button>
@@ -123,7 +123,7 @@ const Invoice = () => {
                 {paginatedOrders.length > 0 ? (
                     <>
                         <table className="w-full [table-layout:fixed] overflow-x-hidden">
-                            <thead className="bg-gray-100">
+                            <thead className="bg-gray-200">
                                 <tr>
                                     <th className="p-1 text-left text-[10px] font-semibold text-gray-600">Mã HD</th>
                                     <th className="p-1 text-left text-[10px] font-semibold text-gray-600">Nhân viên</th>

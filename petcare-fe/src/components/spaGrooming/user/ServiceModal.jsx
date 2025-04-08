@@ -9,14 +9,14 @@ const ServiceModal = memo(
       setPets((prevPets) => {
         const newPets = [...prevPets];
         const updatedPet = { ...newPets[index], [field]: value };
-        
+
         // Xử lý reset các trường khi thay đổi loại thú cưng
         if (field === "petType") {
           updatedPet.service = "";
           updatedPet.weight = "";
           updatedPet.price = 0;
         }
-        
+
         // Tính toán giá dựa trên loại thú cưng, dịch vụ và cân nặng
         if (updatedPet.petType && updatedPet.service && updatedPet.weight) {
           const selectedService = serviceOptions[updatedPet.petType.toLowerCase()]?.find(
@@ -25,7 +25,7 @@ const ServiceModal = memo(
           const selectedWeight = weightOptions[updatedPet.petType.toLowerCase()]?.find(
             (w) => w.value === updatedPet.weight
           );
-          
+
           if (selectedService && selectedWeight) {
             updatedPet.price = selectedService.price * selectedWeight.priceMultiplier;
           } else {
@@ -34,10 +34,10 @@ const ServiceModal = memo(
         } else {
           updatedPet.price = 0;
         }
-        
+
         // Cập nhật giá trị trong mảng
         newPets[index] = updatedPet;
-        
+
         // Nếu thay đổi tên và thú cưng đã có ID trong DB, cập nhật lên server
         if (field === 'name' && updatedPet.id && !isNaN(updatedPet.id) && updatedPet.id > 0) {
           // Gọi API cập nhật tên thú cưng nếu có ID
@@ -49,7 +49,7 @@ const ServiceModal = memo(
             console.error('Lỗi khi gọi API cập nhật tên thú cưng:', error);
           }
         }
-        
+
         return newPets;
       });
 

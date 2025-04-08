@@ -62,7 +62,7 @@ export default function Header() {
   // Xử lý tìm kiếm
   const handleSearch = () => {
     if (searchTerm.trim() !== "") {
-      navigate(`/search?query=${encodeURIComponent(searchTerm)}`);
+      navigate(`/search?query=${encodeURIComponent(searchTerm)}&status=true`);
     }
   };
 
@@ -442,11 +442,10 @@ export default function Header() {
 
                                   setIsOpen(false); // Đóng dropdown
                                 }}
-                                className={`flex items-start space-x-3 p-4 rounded-lg transition-all duration-200 ease-in-out cursor-pointer hover:shadow-md ${
-                                  notif.isRead
+                                className={`flex items-start space-x-3 p-4 rounded-lg transition-all duration-200 ease-in-out cursor-pointer hover:shadow-md ${notif.isRead
                                     ? "bg-gray-100 text-gray-600"
                                     : "bg-yellow-50 hover:bg-yellow-100 text-gray-800"
-                                }`}
+                                  }`}
                               >
                                 <div className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow">
                                   <FaBell
@@ -511,7 +510,7 @@ export default function Header() {
                   to="/"
                   className="menu-item font-bold flex items-center space-x-1 relative"
                 >
-                  Trang chủ 
+                  Trang chủ
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
                 </Link>
                 <Link
@@ -560,9 +559,8 @@ export default function Header() {
 
       {/* Mobile Menu */}
       <div
-        className={`fixed z-50 top-0 left-0 w-[250px] h-full bg-white transform ${
-          isMenuOpen ? "translate-x-0" : "-translate-x-full"
-        } transition-all duration-300 ease-in-out shadow-lg lg:hidden`}
+        className={`fixed z-50 top-0 left-0 w-[250px] h-full bg-white transform ${isMenuOpen ? "translate-x-0" : "-translate-x-full"
+          } transition-all duration-300 ease-in-out shadow-lg lg:hidden`}
       >
         <div className="flex justify-between items-center pl-3 mt-10">
           <span className="text-lg font-bold">Menu</span>
@@ -577,9 +575,8 @@ export default function Header() {
           <div className="border-b w-full">
             <Link
               to="/login"
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "home" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "home" ? "text-yellow-500" : ""
+                }`}
               onClick={() => {
                 setActiveMenuItem("home");
                 toggleMobileMenu();
@@ -591,9 +588,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "about" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "about" ? "text-yellow-500" : ""
+                }`}
               href="#about"
               onClick={() => {
                 setActiveMenuItem("about");
@@ -606,9 +602,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "products" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "products" ? "text-yellow-500" : ""
+                }`}
               href="#products"
               onClick={() => {
                 setActiveMenuItem("products");
@@ -621,9 +616,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "services" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "services" ? "text-yellow-500" : ""
+                }`}
               href="#services"
               onClick={() => {
                 setActiveMenuItem("services");
@@ -636,9 +630,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "news" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "news" ? "text-yellow-500" : ""
+                }`}
               href="#news"
               onClick={() => {
                 setActiveMenuItem("news");
@@ -651,9 +644,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "policy" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "policy" ? "text-yellow-500" : ""
+                }`}
               href="#policy"
               onClick={() => {
                 setActiveMenuItem("policy");
@@ -666,9 +658,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "guides" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "guides" ? "text-yellow-500" : ""
+                }`}
               href="#guides"
               onClick={() => {
                 setActiveMenuItem("guides");
@@ -681,9 +672,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "contact" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "contact" ? "text-yellow-500" : ""
+                }`}
               href="#contact"
               onClick={() => {
                 setActiveMenuItem("contact");

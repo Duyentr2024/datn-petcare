@@ -90,17 +90,17 @@ const CheckoutPayment = () => {
       
       // Ghi log các tham số URL để debug
       console.log('URL Params:', Object.fromEntries(urlParams.entries()));
-      
+
       // Lấy bookingData từ sessionStorage
       const savedBookingData = JSON.parse(sessionStorage.getItem('spaBookingData') || '{}');
-      
+
       if (Object.keys(savedBookingData).length === 0) {
         console.error("Không tìm thấy thông tin đặt lịch trong sessionStorage");
         alert("Không tìm thấy thông tin đặt lịch. Vui lòng thử lại!");
         navigate('/appointment');
         return;
       }
-      
+
       // Kiểm tra callback từ VNPay
       if (urlParams.get("vnp_ResponseCode")) {
         console.log('VNPay callback detected:', urlParams.get("vnp_ResponseCode"));
@@ -108,23 +108,23 @@ const CheckoutPayment = () => {
         if (vnpResponseCode === "00") {
           try {
             // Tạo payload với trạng thái thanh toán thành công
-            const payloadWithStatus = { 
-              ...savedBookingData, 
+            const payloadWithStatus = {
+              ...savedBookingData,
               paymentStatus: "SUCCESS",
-              paymentMethod: "VNPAY" 
+              paymentMethod: "VNPAY"
             };
-            
+
             console.log("Saving appointment with data:", payloadWithStatus);
-            
+
             // Lưu thông tin slot đã đặt để hiển thị trên giao diện sau khi redirect
             if (savedBookingData.selectedSlots && savedBookingData.selectedSlots.length > 0) {
               // Lưu slots vào localStorage để duy trì sau khi reload trang
               BookingService.saveBookedSlots(
-                savedBookingData.selectedSlots, 
+                savedBookingData.selectedSlots,
                 savedBookingData.date
               );
             }
-            
+
             // Đảm bảo chuyển định dạng slot phù hợp với backend
             if (payloadWithStatus.selectedSlots && !payloadWithStatus.appointmentSlots) {
               // Chuyển đổi từ selectedSlots thành appointmentSlots
@@ -135,28 +135,28 @@ const CheckoutPayment = () => {
                   slotIndex: parseInt(slotIndex, 10)
                 };
               });
-              
+
               // Xóa selectedSlots để không gửi dữ liệu thừa
               delete payloadWithStatus.selectedSlots;
             }
-            
+
             // Lấy ID lịch hẹn tạm thời (nếu có)
             const tempAppointmentId = sessionStorage.getItem('tempAppointmentId');
             if (tempAppointmentId) {
               // Thêm ID lịch hẹn tạm thời vào payload để backend có thể chuyển đổi từ tạm thời sang chính thức
               payloadWithStatus.tempAppointmentId = tempAppointmentId;
             }
-            
+
             // Gọi API để lưu thông tin lịch hẹn
             const savedAppointment = await BookingService.bookAppointment(payloadWithStatus);
             console.log("Appointment saved successfully:", savedAppointment);
-            
+
             // Xóa dữ liệu từ sessionStorage sau khi lưu thành công
             sessionStorage.removeItem('spaBookingData');
             sessionStorage.removeItem('pendingBookingSlots');
             sessionStorage.removeItem('pendingBookingDate');
             sessionStorage.removeItem('tempAppointmentId');
-            
+
             // Hiển thị thông báo thành công
             showSuccessAndRedirect(
               "Thanh toán thành công! Lịch hẹn đã được xác nhận.",
@@ -170,40 +170,40 @@ const CheckoutPayment = () => {
         } else {
           // Thanh toán thất bại - hủy lịch hẹn tạm thời
           await BookingService.cancelTempAppointment();
-          
+
           // Xóa thông tin booking đang chờ
           sessionStorage.removeItem('pendingBookingSlots');
           sessionStorage.removeItem('pendingBookingDate');
           sessionStorage.removeItem('tempAppointmentId');
-          
+
           alert("Thanh toán không thành công! Vui lòng thử lại.");
           navigate('/appointment');
         }
-      } 
+      }
       // Kiểm tra callback từ MoMo tương tự
       else if (urlParams.get("orderId") || urlParams.get("partnerCode")) {
         const resultCode = urlParams.get("resultCode");
-        
+
         if (resultCode === "0") {
           try {
             // Tạo payload với trạng thái thanh toán thành công
-            const payloadWithStatus = { 
-              ...savedBookingData, 
+            const payloadWithStatus = {
+              ...savedBookingData,
               paymentStatus: "SUCCESS",
-              paymentMethod: "MOMO" 
+              paymentMethod: "MOMO"
             };
-            
+
             console.log("Saving appointment with data:", payloadWithStatus);
-            
+
             // Lưu thông tin slot đã đặt để hiển thị trên giao diện sau khi redirect
             if (savedBookingData.selectedSlots && savedBookingData.selectedSlots.length > 0) {
               // Lưu slots vào localStorage để duy trì sau khi reload trang
               BookingService.saveBookedSlots(
-                savedBookingData.selectedSlots, 
+                savedBookingData.selectedSlots,
                 savedBookingData.date
               );
             }
-            
+
             // Đảm bảo chuyển định dạng slot phù hợp với backend
             if (payloadWithStatus.selectedSlots && !payloadWithStatus.appointmentSlots) {
               // Chuyển đổi từ selectedSlots thành appointmentSlots
@@ -214,28 +214,28 @@ const CheckoutPayment = () => {
                   slotIndex: parseInt(slotIndex, 10)
                 };
               });
-              
+
               // Xóa selectedSlots để không gửi dữ liệu thừa
               delete payloadWithStatus.selectedSlots;
             }
-            
+
             // Lấy ID lịch hẹn tạm thời (nếu có)
             const tempAppointmentId = sessionStorage.getItem('tempAppointmentId');
             if (tempAppointmentId) {
               // Thêm ID lịch hẹn tạm thời vào payload để backend có thể chuyển đổi từ tạm thời sang chính thức
               payloadWithStatus.tempAppointmentId = tempAppointmentId;
             }
-            
+
             // Gọi API để lưu thông tin lịch hẹn
             const savedAppointment = await BookingService.bookAppointment(payloadWithStatus);
             console.log("Appointment saved successfully:", savedAppointment);
-            
+
             // Xóa dữ liệu từ sessionStorage sau khi lưu thành công
             sessionStorage.removeItem('spaBookingData');
             sessionStorage.removeItem('pendingBookingSlots');
             sessionStorage.removeItem('pendingBookingDate');
             sessionStorage.removeItem('tempAppointmentId');
-            
+
             // Hiển thị thông báo thành công
             showSuccessAndRedirect(
               "Thanh toán thành công! Lịch hẹn đã được xác nhận.",
@@ -249,12 +249,12 @@ const CheckoutPayment = () => {
         } else {
           // Thanh toán thất bại - hủy lịch hẹn tạm thời
           await BookingService.cancelTempAppointment();
-          
+
           // Xóa thông tin booking đang chờ
           sessionStorage.removeItem('pendingBookingSlots');
           sessionStorage.removeItem('pendingBookingDate');
           sessionStorage.removeItem('tempAppointmentId');
-          
+
           alert("Thanh toán không thành công! Vui lòng thử lại.");
           navigate('/appointment');
         }
@@ -273,10 +273,10 @@ const CheckoutPayment = () => {
         try {
           const pendingSlots = sessionStorage.getItem('pendingBookingSlots');
           const pendingDate = sessionStorage.getItem('pendingBookingDate');
-          
+
           if (pendingSlots && pendingDate) {
             console.log('User is leaving page, cancelling temporary appointment...');
-            
+
             // Sử dụng API mới để hủy lịch hẹn tạm thời
             navigator.sendBeacon(
               `${window.location.origin}/api/appointments/cancel-reservation`,
@@ -285,7 +285,7 @@ const CheckoutPayment = () => {
                 slots: JSON.parse(pendingSlots)
               })
             );
-            
+
             console.log('Sent cancellation request on page unload');
           }
         } catch (error) {
@@ -296,11 +296,11 @@ const CheckoutPayment = () => {
 
     // Đăng ký event listener
     window.addEventListener('beforeunload', handleBeforeUnload);
-    
+
     // Cleanup khi component unmount
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      
+
       // Khi component unmount mà không phải do callback từ payment gateway
       // thì cũng nên hủy lịch hẹn tạm thời
       if (!isPaymentCallback()) {
@@ -310,26 +310,26 @@ const CheckoutPayment = () => {
       }
     };
   }, []);
-  
+
   // Xử lý khi người dùng nhấn nút "Quay lại"
   const handleGoBack = async () => {
     try {
       // Hiển thị thông báo loading
       setLoading(true);
-      
+
       // Hủy lịch hẹn tạm thời
       await BookingService.cancelTempAppointment();
-      
+
       // Xóa thông tin pending booking
       sessionStorage.removeItem('pendingBookingSlots');
       sessionStorage.removeItem('pendingBookingDate');
       sessionStorage.removeItem('tempAppointmentId');
-      
+
       // Chuyển về trang appointment
       navigate('/appointment');
     } catch (error) {
       console.error('Error when going back:', error);
-      
+
       // Vẫn chuyển về trang appointment ngay cả khi có lỗi
       navigate('/appointment');
     } finally {
@@ -340,24 +340,24 @@ const CheckoutPayment = () => {
   const handlePayment = async () => {
     try {
       setLoading(true);
-      
+
       const { depositAmount, totalPrice, paymentType } = bookingData;
       const returnUrl = `${window.location.origin}/checkout-payment`;
       const amount = paymentType === "full" ? totalPrice : depositAmount;
 
       // Tạo orderId riêng cho từng giao dịch
       const orderId = `PETCARE_SPA_${Date.now()}`;
-      
+
       let paymentResult;
-      
+
       if (selectedPayment === 'momo') {
         console.log("Creating MoMo payment...");
-        
+
         try {
           // Thêm orderId vào request
           const paymentUrl = await MomoService.createPayment(amount, returnUrl);
           console.log("MoMo payment URL:", paymentUrl);
-          
+
           if (paymentUrl) {
             // Redirect to MoMo payment page
             window.location.href = paymentUrl;
@@ -371,25 +371,25 @@ const CheckoutPayment = () => {
       } else if (selectedPayment === 'vnpay') {
         // Kiểm tra xem môi trường có phải là development hay không
         const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost';
-        
+
         // Trong môi trường development, sử dụng direct payment hoặc mock payment để tránh lỗi VNPay
         if (isDevelopment) {
           console.log("Using direct payment in development mode...");
-          
+
           try {
             // Ưu tiên dùng mock để test nhanh
             paymentResult = await VNPayService.mockPayment(amount, bookingData);
             console.log("Mock payment result:", paymentResult);
-            
+
             if (paymentResult.success) {
               // Tạo payload với trạng thái thanh toán thành công
-              const payloadWithStatus = { 
-                ...bookingData, 
+              const payloadWithStatus = {
+                ...bookingData,
                 paymentStatus: "SUCCESS",
                 paymentMethod: "VNPAY",
                 transactionId: paymentResult.transactionId
               };
-              
+
               // Xử lý chuyển đổi format dữ liệu nếu cần
               if (payloadWithStatus.selectedSlots && !payloadWithStatus.appointmentSlots) {
                 payloadWithStatus.appointmentSlots = payloadWithStatus.selectedSlots.map(slotId => {
@@ -399,28 +399,28 @@ const CheckoutPayment = () => {
                     slotIndex: parseInt(slotIndex, 10)
                   };
                 });
-                
+
                 delete payloadWithStatus.selectedSlots;
               }
-              
+
               // Lưu thông tin slot đã đặt để hiển thị trên giao diện
               if (bookingData.selectedSlots && bookingData.selectedSlots.length > 0) {
                 BookingService.saveBookedSlots(
-                  bookingData.selectedSlots, 
+                  bookingData.selectedSlots,
                   bookingData.date
                 );
               }
-              
+
               // Gọi API để lưu thông tin lịch hẹn
               const savedAppointment = await BookingService.bookAppointment(payloadWithStatus);
               console.log("Appointment saved successfully:", savedAppointment);
-              
+
               // Xóa dữ liệu từ sessionStorage sau khi lưu thành công
               sessionStorage.removeItem('spaBookingData');
               sessionStorage.removeItem('pendingBookingSlots');
               sessionStorage.removeItem('pendingBookingDate');
               sessionStorage.removeItem('tempAppointmentId');
-              
+
               // Hiển thị thông báo thành công
               showSuccessAndRedirect(
                 "Thanh toán thành công! Lịch hẹn đã được xác nhận.",
@@ -436,11 +436,11 @@ const CheckoutPayment = () => {
         } else {
           // Trong môi trường production, vẫn sử dụng redirect để thanh toán thật
           console.log("Creating VNPay payment with redirect...");
-          
+
           try {
             const paymentUrl = await VNPayService.createPayment(amount, returnUrl);
             console.log("VNPay payment URL:", paymentUrl);
-            
+
             if (paymentUrl) {
               // Trước khi redirect, thêm script fix VNPay vào localStorage
               const vnpayFix = `
@@ -450,7 +450,7 @@ const CheckoutPayment = () => {
                 window.updateTime = function() { return true; };
               `;
               localStorage.setItem('vnpay_fix_script', vnpayFix);
-              
+
               // Redirect đến trang thanh toán VNPay
               window.location.href = paymentUrl;
             } else {

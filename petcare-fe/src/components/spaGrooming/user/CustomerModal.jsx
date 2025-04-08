@@ -3,16 +3,17 @@ import React, { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const CustomerModal = memo(
-  ({ isCustomerModalOpen, setIsCustomerModalOpen, customerInfo, setCustomerInfo, errors, setErrors, handleCustomerInfoChange, fullNameRef, phoneRef, handleApiBooking, totalPrice, calculateDeposit }) => {
+  ({ isCustomerModalOpen, setIsCustomerModalOpen, customerInfo, setCustomerInfo, errors, setErrors, handleCustomerInfoChange, fullNameRef, phoneRef, handleApiBooking }) => {
     const navigate = useNavigate();
     
-    const handleConfirm = () => {
-      // Đóng modal
-      setIsCustomerModalOpen(false);
-      
-      // Sử dụng hàm handleApiBooking được truyền từ component cha để xử lý đặt lịch
-      if (handleApiBooking) {
-        handleApiBooking();
+    const handleConfirm = async () => {
+      try {
+        await handleApiBooking(); // Gọi hàm đặt lịch
+        setIsCustomerModalOpen(false); // Đóng modal sau khi đặt lịch thành công
+        navigate('/checkout-payment'); // Chuyển hướng đến trang thanh toán
+      } catch (error) {
+        console.error('Error during confirmation:', error);
+        alert('Xác nhận thất bại! Vui lòng thử lại.');
       }
     };
 
@@ -58,42 +59,22 @@ const CustomerModal = memo(
                   />
                   {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
                 </div>
-                <div className="space-y-3">
-                  <div className="text-sm font-medium text-gray-700 mb-1">
-                    Hình thức thanh toán <span className="text-red-500">*</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="paymentType"
-                      id="depositPayment"
-                      value="deposit"
-                      checked={customerInfo.paymentType === 'deposit'}
-                      onChange={handleCustomerInfoChange}
-                      className="text-[#026AC7] focus:ring-[#026AC7]"
-                    />
-                    <label htmlFor="depositPayment" className="text-sm text-gray-600">
-                      Thanh toán tiền cọc
-                    </label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="paymentType"
-                      id="fullPayment"
-                      value="full"
-                      checked={customerInfo.paymentType === 'full'}
-                      onChange={handleCustomerInfoChange}
-                      className="text-[#026AC7] focus:ring-[#026AC7]"
-                    />
-                    <label htmlFor="fullPayment" className="text-sm text-gray-600">
-                      Thanh toán toàn bộ dịch vụ
-                    </label>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    name="acceptTerms"
+                    id="acceptTerms"
+                    checked={customerInfo.acceptTerms}
+                    onChange={handleCustomerInfoChange}
+                    className="rounded text-[#026AC7] focus:ring-[#026AC7]"
+                  />
+                  <label htmlFor="acceptTerms" className="text-sm text-gray-600">
+                    Tôi đồng ý với các điều khoản dịch vụ
+                  </label>
                 </div>
               </div>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="text-md font-bold text-blue-800 mb-3 border-b border-blue-200 pb-2">ĐIỀU KHOẢN LƯU Ý</h3>
+              <div>
+                <h3 className="text-md font-medium text-gray-700 mb-3">ĐIỀU KHOẢN LƯU Ý</h3>
                 <div className="space-y-2 text-sm text-gray-600">
                   <p>
                     Quý khách vui lòng đến đúng giờ đã đặt. Trong trường hợp đến trễ quá 15 phút, chúng tôi
@@ -103,19 +84,6 @@ const CustomerModal = memo(
                     Vui lòng cung cấp đầy đủ thông tin về tình trạng sức khỏe của thú cưng để chúng tôi có thể
                     phục vụ tốt nhất.
                   </p>
-                  <div className="flex items-center gap-2 mt-3 pt-2 border-t border-blue-200">
-                    <input
-                      type="checkbox"
-                      name="acceptTerms"
-                      id="acceptTerms"
-                      checked={customerInfo.acceptTerms}
-                      onChange={handleCustomerInfoChange}
-                      className="rounded text-[#026AC7] focus:ring-[#026AC7]"
-                    />
-                    <label htmlFor="acceptTerms" className="text-sm font-medium text-gray-700">
-                      Tôi đồng ý với các điều khoản dịch vụ
-                    </label>
-                  </div>
                 </div>
               </div>
             </div>
@@ -127,13 +95,13 @@ const CustomerModal = memo(
                 Hủy
               </button>
               <button
+                onClick={handleConfirm}
                 className={`px-6 py-2.5 bg-[#026AC7] text-white rounded-md ${
                   !customerInfo.acceptTerms ||
                   errors.fullName ||
                   errors.phone ||
                   !customerInfo.fullName ||
-                  !customerInfo.phone ||
-                  !customerInfo.paymentType
+                  !customerInfo.phone
                     ? 'opacity-50 cursor-not-allowed'
                     : 'hover:bg-[#0253a0]'
                 }`}
@@ -142,10 +110,8 @@ const CustomerModal = memo(
                   errors.fullName ||
                   errors.phone ||
                   !customerInfo.fullName ||
-                  !customerInfo.phone ||
-                  !customerInfo.paymentType
+                  !customerInfo.phone
                 }
-                onClick={handleConfirm}
               >
                 Xác nhận
               </button>

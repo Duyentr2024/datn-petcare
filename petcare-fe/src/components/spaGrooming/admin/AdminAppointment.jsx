@@ -232,14 +232,14 @@ const AdminAppointment = () => {
 
   return (
     <div className="p-6">
-      <Tabs 
-        activeKey={activeTab} 
+      <Tabs
+        activeKey={activeTab}
         onChange={setActiveTab}
         tabBarStyle={tabBarStyle}
         className="appointment-tabs"
         tabBarGutter={24}
       >
-        <TabPane 
+        <TabPane
           tab={
             <span className="tab-label flex items-center">
               <CalendarOutlined className="mr-2" />
@@ -248,18 +248,18 @@ const AdminAppointment = () => {
                 <Badge count={notificationCount} className="ml-2" />
               )}
             </span>
-          } 
+          }
           key="1"
         >
           {renderAppointmentContent()}
         </TabPane>
-        <TabPane 
+        <TabPane
           tab={
             <span className="tab-label flex items-center">
               <HistoryOutlined className="mr-2" />
               <span>Lịch sử chỉnh sửa</span>
             </span>
-          } 
+          }
           key="2"
         >
           <div className="tab-content-container">

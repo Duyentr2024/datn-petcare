@@ -180,14 +180,14 @@ const ManageProductCategories = () => {
                                             setEditingCategory(category);
                                             setCategoryInput(category.categoryName);
                                         }}
-                                        className="bg-yellow-500 text-white px-3 py-1 rounded flex items-center gap-1 hover:bg-yellow-600"
+                                        className="bg-green-500 text-white px-3 py-1 rounded flex items-center gap-1 hover:bg-green-600"
                                     >
                                         <FiEdit /> Sửa
                                     </button>
                                 )}
                                 <button
                                     onClick={() => handleChangeCategoryStatus(category)}
-                                    className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
+                                    className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
                                 >
                                     Thay đổi trạng thái
                                 </button>
