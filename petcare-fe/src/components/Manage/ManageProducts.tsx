@@ -39,6 +39,8 @@ const ManageProducts = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(5);
+    const [isAddingLoading, setIsAddingLoading] = useState(false);
+    const [isUpdatingLoading, setIsUpdatingLoading] = useState(false);
 
     useEffect(() => {
         fetchProducts();
@@ -49,7 +51,8 @@ const ManageProducts = () => {
     const fetchProducts = async () => {
         try {
             const response = await ProductsService.getAllProducts();
-            const filteredProducts = response.filter((product) =>
+            const sortedProducts = response.sort((a, b) => b.productId - a.productId);
+            const filteredProducts = sortedProducts.filter((product) =>
                 product.productName.toLowerCase().includes(searchQuery.toLowerCase())
             );
             setProducts(filteredProducts);
@@ -80,9 +83,10 @@ const ManageProducts = () => {
     };
 
     const paginateProducts = () => {
+        const sortedProducts = [...products].sort((a, b) => b.productId - a.productId);
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
-        return products.slice(startIndex, endIndex);
+        return sortedProducts.slice(startIndex, endIndex);
     };
 
     const totalPages = Math.ceil(products.length / itemsPerPage);
@@ -149,6 +153,7 @@ const ManageProducts = () => {
         if (!isValid) return;
 
         try {
+            setIsUpdatingLoading(true);
             let imageUrl = editProduct.image;
             if (typeof editProduct.image === "object") {
                 imageUrl = await uploadImageToFirebase(editProduct.image);
@@ -169,6 +174,9 @@ const ManageProducts = () => {
             fetchProducts();
         } catch (error) {
             console.error("Lỗi khi cập nhật sản phẩm:", error);
+            toast.error("Đã xảy ra lỗi khi cập nhật sản phẩm!");
+        } finally {
+            setIsUpdatingLoading(false);
         }
     };
 
@@ -204,6 +212,7 @@ const ManageProducts = () => {
         if (!isValid) return;
 
         try {
+            setIsAddingLoading(true);
             let imageUrl = "";
             if (newProduct.image) {
                 imageUrl = await uploadImageToFirebase(newProduct.image);
@@ -224,6 +233,9 @@ const ManageProducts = () => {
             fetchProducts();
         } catch (error) {
             console.error("Lỗi khi tạo sản phẩm:", error.response?.data || error.message);
+            toast.error("Đã xảy ra lỗi khi thêm sản phẩm!");
+        } finally {
+            setIsAddingLoading(false);
         }
     };
 
@@ -264,7 +276,7 @@ const ManageProducts = () => {
 
     return (
         <div className="p-4 bg-white shadow rounded-md">
-            <ToastContainer 
+            <ToastContainer
                 position="top-right"
                 autoClose={3000}
                 hideProgressBar={false}
@@ -298,16 +310,16 @@ const ManageProducts = () => {
             </div>
 
             <div className="overflow-x-auto">
-                <table className="w-full text-left bg-white rounded-md shadow-md">
+                <table className="w-full text-left bg-white rounded-md shadow-md table-fixed">
                     <thead className="bg-gray-50 text-gray-700 text-xs uppercase tracking-wide">
                         <tr>
-                            <th className="p-3 whitespace-nowrap">ID</th>
-                            <th className="p-3 whitespace-nowrap">Tên sản phẩm</th>
-                            <th className="p-3 whitespace-nowrap">Mô tả</th>
-                            <th className="p-3 whitespace-nowrap">Thương hiệu</th>
-                            <th className="p-3 whitespace-nowrap">Danh mục</th>
-                            <th className="p-3 text-center whitespace-nowrap">Hình ảnh</th>
-                            <th className="p-3 text-center whitespace-nowrap">Hành động</th>
+                            <th className="w-[80px] p-3 whitespace-nowrap">ID</th>
+                            <th className="w-[200px] p-3 whitespace-nowrap">Tên sản phẩm</th>
+                            <th className="w-[400px] p-3 whitespace-nowrap">Mô tả</th>
+                            <th className="w-[100px] p-3 whitespace-nowrap">Thương hiệu</th>
+                            <th className="w-[100px] p-3 whitespace-nowrap">Danh mục</th>
+                            <th className="w-[120px] p-3 text-center whitespace-nowrap">Hình ảnh</th>
+                            <th className="w-[200px] p-3 text-center whitespace-nowrap">Hành động</th>
                         </tr>
                     </thead>
                     <tbody className="text-gray-600 text-sm">
@@ -317,11 +329,21 @@ const ManageProducts = () => {
                                     key={product.productId}
                                     className="border-b border-gray-100 hover:bg-gray-50 transition duration-150"
                                 >
-                                    <td className="p-3 font-medium">{product.productId}</td>
-                                    <td className="p-3 font-medium">{product.productName}</td>
-                                    <td className="p-3">{product.description}</td>
-                                    <td className="p-3">{product.brandName || "N/A"}</td>
-                                    <td className="p-3">{product.categoryName || "N/A"}</td>
+                                    <td className="p-3 font-medium truncate">{product.productId}</td>
+                                    <td className="p-3 font-medium" title={product.productName}>
+                                        {product.productName}
+                                    </td>
+                                    <td className="p-3 max-h-[60px] overflow-hidden" title={product.description}>
+                                        {product.description.length > 150
+                                            ? `${product.description.substring(0, 150)}...`
+                                            : product.description}
+                                    </td>
+                                    <td className="p-3 truncate" title={product.brandName}>
+                                        {product.brandName || "N/A"}
+                                    </td>
+                                    <td className="p-3 truncate" title={product.categoryName}>
+                                        {product.categoryName || "N/A"}
+                                    </td>
                                     <td className="p-3">
                                         <div className="flex justify-center">
                                             <img
@@ -490,9 +512,21 @@ const ManageProducts = () => {
                         <div className="mt-8 flex justify-end gap-4">
                             <button
                                 onClick={handleUpdateProduct}
-                                className="px-5 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+                                disabled={isUpdatingLoading}
+                                className={`px-5 py-2 bg-green-500 text-white rounded-lg transition ${isUpdatingLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600'
+                                    }`}
                             >
-                                Cập nhật
+                                {isUpdatingLoading ? (
+                                    <span className="flex items-center">
+                                        <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        Đang cập nhật...
+                                    </span>
+                                ) : (
+                                    'Cập nhật'
+                                )}
                             </button>
                         </div>
                     </div>
@@ -608,15 +642,28 @@ const ManageProducts = () => {
                         <div className="mt-8 flex justify-end gap-4">
                             <button
                                 onClick={resetForm}
+                                disabled={isAddingLoading}
                                 className="px-5 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
                             >
                                 Hủy bỏ
                             </button>
                             <button
                                 onClick={handleAddProduct}
-                                className="px-5 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+                                disabled={isAddingLoading}
+                                className={`px-5 py-2 bg-green-500 text-white rounded-lg transition ${isAddingLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600'
+                                    }`}
                             >
-                                Lưu
+                                {isAddingLoading ? (
+                                    <span className="flex items-center">
+                                        <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        Đang tải sản phẩm lên...
+                                    </span>
+                                ) : (
+                                    'Lưu'
+                                )}
                             </button>
                         </div>
                     </div>
