@@ -124,7 +124,7 @@ const OrderManage = () => {
               ? {
                   ...order,
                   statusId: parseInt(newStatus),
-                  statusUpdateDate: new Date().toISOString(), // Thêm thời gian cập nhật trạng thái
+                  statusUpdateDate: new Date().toISOString(),
                   paymentStatus:
                     parseInt(newStatus) === statusMap["completed"]
                       ? "Đã thanh toán"
@@ -133,6 +133,11 @@ const OrderManage = () => {
               : order
           )
         );
+
+        // Nếu là hủy đơn hàng, chuyển sang tab "Đã hủy"
+        if (newStatus === statusMap["cancelled"]) {
+          setActiveTab("cancelled");
+        }
 
         setIsLoading(false);
         Swal.fire({
@@ -156,11 +161,14 @@ const OrderManage = () => {
 
   const filteredOrders = orders
     .filter((order) => {
-      return (
-        (activeTab === "all" || order.statusId === statusMap[activeTab]) &&
-        (searchTerm === "" || order.orderId.toString().includes(searchTerm)) &&
-        (filterStatus === "" || order.statusId === parseInt(filterStatus))
-      );
+      if (activeTab === "all") return true;
+      if (activeTab === "pending") return order.statusId === statusMap["pending"];
+      if (activeTab === "shipping") return order.statusId === statusMap["shipping"];
+      if (activeTab === "waiting") return order.statusId === statusMap["waiting"];
+      if (activeTab === "completed") return order.statusId === statusMap["completed"];
+      if (activeTab === "cancelled") return order.statusId === statusMap["cancelled"];
+      if (activeTab === "returned") return order.statusId === statusMap["returned"];
+      return false;
     })
     .sort((a, b) => {
       if (activeTab === "all" || activeTab === "pending") {

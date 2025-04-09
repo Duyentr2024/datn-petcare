@@ -2,12 +2,19 @@ import axios from "axios";
 import Swal from "sweetalert2";
 
 const MomoService = {
-    async createPayment(amount, returnUrl) {
+    async createPayment(amount, returnUrl, orderId = null) {
         try {
             const paymentRequest = { 
                 amount: String(Math.round(amount)),
                 returnUrl: returnUrl
             };
+            
+            // Thêm orderId vào request nếu được cung cấp
+            if (orderId) {
+                paymentRequest.orderId = orderId;
+                console.log(`[FE] Including orderId in MoMo payment request: ${orderId}`);
+            }
+            
             const response = await axios.post("http://localhost:8080/api/momo", paymentRequest, {
                 headers: { "Content-Type": "application/json" },
             });
