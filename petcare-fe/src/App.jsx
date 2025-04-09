@@ -8,7 +8,7 @@ import AppointmentPage from "./page/AppointmentPage.jsx";
 import ChatBot from "./components/ChatBot";
 import PrivateRoute from "./context/PrivateRoute.jsx";
 import AdminSpa from "./components/spaGrooming/admin/AdminAppointment.jsx";
-
+import HospitalPage from "./page/HospitalPage.jsx";
 import OrderOffline from "./components/orderOffline/OrderOffline.jsx";
 
 function App() {
@@ -27,7 +27,10 @@ function App() {
           <Route element={<PrivateRoute requiredRoles={["ADMIN", "STAFF"]} />}>
             <Route path="/orderOffline" element={<OrderOffline />} />
             <Route path="/admin/*" element={<Admin />} />
+            <Route path="/hospital/*" element={<HospitalPage />} />
           </Route>
+
+
         </Routes>
         <ChatBot />
         <TopButton />
