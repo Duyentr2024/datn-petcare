@@ -52,6 +52,7 @@ const Checkout = () => {
   const totalAmount = (totalBeforeDiscount - discountAmount).toLocaleString();
   const [hasProcessed, setHasProcessed] = useState(false); // State để kiểm soát xử lý
   const [processedTxnRef, setProcessedTxnRef] = useState(null); // Lưu vnp_TxnRef đã xử lý
+  const [processedOrders, setProcessedOrders] = useState(new Set());
   const handlePaymentMethodChange = (method) => {
     setPaymentMethod(method);
   };
@@ -579,11 +580,11 @@ const Checkout = () => {
           );
           
           // Lưu thông tin đơn hàng vào localStorage nhưng chưa tạo đơn hàng trong DB
-          localStorage.setItem(
+        localStorage.setItem(
             "pendingVNPayOrder",
-            JSON.stringify({
-              orderDetails,
-              voucherId: selectedVoucher,
+          JSON.stringify({
+            orderDetails,
+            voucherId: selectedVoucher,
               paymentMethod: "VNPay"
             })
           );
@@ -603,16 +604,24 @@ const Checkout = () => {
           const fullReturnUrl = `${window.location.origin}/checkout`;
           console.log(`[FE] Setting MoMo return URL to: ${fullReturnUrl}`);
           
+          // Tạo một orderID duy nhất cho MoMo payment trước khi gửi request
+          const uniqueMomoOrderId = `MOMO_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+          console.log(`[FE] Generated unique MoMo order ID: ${uniqueMomoOrderId}`);
+          
           const paymentUrl = await MomoService.createPayment(
             String(amount),
-            fullReturnUrl
+            fullReturnUrl,
+            uniqueMomoOrderId  // Truyền orderID duy nhất
           );
           
           // Lưu thông tin đơn hàng vào localStorage nhưng chưa tạo đơn hàng trong DB
           localStorage.setItem(
             "pendingMomoOrder",
             JSON.stringify({
-              orderDetails,
+              orderDetails: {
+                ...orderDetails,
+                momoOrderId: uniqueMomoOrderId  // Lưu momoOrderId vào orderDetails
+              },
               voucherId: selectedVoucher,
               paymentMethod: "MoMo"
             })
@@ -720,195 +729,236 @@ const Checkout = () => {
 
   useEffect(() => {
     const handlePaymentResult = async () => {
+      try {
+        // Xử lý kết quả thanh toán VNPay
       const urlParams = new URLSearchParams(window.location.search);
-      const pendingVNPayOrder = JSON.parse(localStorage.getItem("pendingVNPayOrder"));
-      const pendingMomoOrder = JSON.parse(localStorage.getItem("pendingMomoOrder"));
-      const vnpTxnRef = urlParams.get("vnp_TxnRef");
+        const vnpayStatus = urlParams.get("vnp_ResponseCode");
+        const vnpayOrderId = urlParams.get("vnp_TxnRef");
+        const pendingVnpayOrder = localStorage.getItem("pendingVnpayOrder");
+
+        // Xử lý MoMo
       const momoOrderId = urlParams.get("orderId");
-      const resultCode = urlParams.get("resultCode");
-      const vnpResponseCode = urlParams.get("vnp_ResponseCode");
-      // Lấy thêm mã giao dịch MoMo để sử dụng khi hoàn tiền
-      const momoTransId = urlParams.get("transId");
+        const resultCode = urlParams.get("resultCode");
+        const momoTransId = urlParams.get("transId");
+        const pendingMomoOrder = localStorage.getItem("pendingMomoOrder");
 
-      // Nếu không có query params nhưng có pending order, bỏ qua xử lý này
-      // vì đã được xử lý bởi detectBackFromPayment
-      if (!window.location.search && (pendingMomoOrder || pendingVNPayOrder)) {
-        return;
-      }
+        console.log(`[FE] Processing payment result. VNPay: ${vnpayStatus}, MoMo: ${resultCode}`);
 
-      // Kiểm tra thanh toán MoMo
-      if (momoOrderId && pendingMomoOrder) {
-        console.log(`[FE] Processing MoMo payment result: momoOrderId=${momoOrderId}, resultCode=${resultCode}, transId=${momoTransId}`);
-        
-        // Đặt cờ để tránh xử lý trùng lặp
-        localStorage.setItem(`processed_${momoOrderId}`, "true");
-        setHasProcessed(true);
-
-        try {
-          if (resultCode === "0") { // Thanh toán thành công
-            console.log(`[FE] MoMo payment successful, creating order in DB`);
-            
-            // Chỉ tạo đơn hàng trong database khi thanh toán thành công
-            const response = await axios.post(
-              "http://localhost:8080/api/orders/checkout",
-              pendingMomoOrder.orderDetails,
-              {
-                headers: { "Content-Type": "application/json" },
+        // Xử lý VNPay
+        if (vnpayOrderId && pendingVnpayOrder) {
+          console.log(`[FE] Processing VNPay payment: vnp_TxnRef=${vnpayOrderId}, vnp_ResponseCode=${vnpayStatus}`);
+          
+          try {
+            if (vnpayStatus === "00") {
+              // Đảm bảo chỉ xử lý giao dịch này một lần
+              if (processedTxnRef === vnpayOrderId) {
+                console.log(`[FE] VNPay transaction ${vnpayOrderId} already processed`);
+                return;
               }
-            );
-            
-            const orderId = response.data.orderId;
-            
-            // Lưu thông tin giao dịch MoMo để sử dụng khi hoàn tiền
-            const momoPaymentInfo = {
-              orderId: orderId,
-              momoOrderId: momoOrderId,
-              momoTransId: momoTransId,
-              amount: Math.round(totalBeforeDiscount - discountAmount)
-            };
-            localStorage.setItem(`momo_payment_${orderId}`, JSON.stringify(momoPaymentInfo));
-            
-            // Cập nhật trạng thái đơn hàng thành "Chờ xác nhận"
-            await axios.put(
-              `http://localhost:8080/api/orders/${orderId}/status`,
-              { paymentStatus: "Chờ xác nhận" },
-              { headers: { "Content-Type": "application/json" } }
-            );
+              setProcessedTxnRef(vnpayOrderId);
 
-            // Giảm số lượng voucher nếu có
-            if (pendingMomoOrder.voucherId) {
-              console.log(`[FE] Decrementing voucher quantity for voucherId: ${pendingMomoOrder.voucherId}`);
-              await VoucherService.decrementVoucherQuantity(pendingMomoOrder.voucherId);
-            }
-            
-            // Xóa giỏ hàng
-            await clearCart();
-            
-            // Hiển thị thông báo thành công
-            Swal.fire({
-              title: "Thành công!",
-              text: "Thanh toán MoMo thành công!",
-              icon: "success",
-            }).then(() => {
-              navigate("/my-account/history");
-            });
-            
-            // Xóa dữ liệu đơn hàng MoMo khỏi localStorage
-            localStorage.removeItem("pendingMomoOrder");
-          } else if (resultCode === "1006") { // Người dùng hủy
-            console.log(`[FE] MoMo payment cancelled by user`);
-            Swal.fire({
-              title: "Thông báo",
-              text: "Bạn đã hủy thanh toán MoMo.",
-              icon: "info",
-            });
-            localStorage.removeItem("pendingMomoOrder");
-          } else { // Lỗi khác
-            console.log(`[FE] MoMo payment failed with resultCode: ${resultCode}`);
-            Swal.fire({
-              title: "Thông báo",
-              text: `Thanh toán MoMo không thành công. Mã lỗi: ${resultCode}`,
-              icon: "error",
-            });
-            localStorage.removeItem("pendingMomoOrder");
-          }
-          
-          // Xóa query params khỏi URL
-          window.history.replaceState({}, document.title, window.location.pathname);
-        } catch (error) {
-          console.error(`[FE] Error handling MoMo payment result: ${error.message}`);
-          Swal.fire(
-            "Lỗi!",
-            "Không thể xử lý kết quả thanh toán MoMo: " +
-            (error.response?.data?.message || error.message),
-            "error"
-          );
-        }
-      }
-      
-      // Kiểm tra thanh toán VNPay
-      else if (vnpTxnRef && pendingVNPayOrder) {
-        console.log(`[FE] Processing VNPay payment result: vnpTxnRef=${vnpTxnRef}, vnpResponseCode=${vnpResponseCode}`);
-        
-        // Đặt cờ để tránh xử lý trùng lặp
-        localStorage.setItem(`processed_${vnpTxnRef}`, "true");
-        setHasProcessed(true);
-        setProcessedTxnRef(vnpTxnRef);
-        
-        try {
-          let message, icon;
-          
-          switch (vnpResponseCode) {
-            case "00": // Thanh toán thành công
-              console.log(`[FE] VNPay payment successful, creating order in DB`);
+              // Tạo đơn hàng mới với trạng thái thanh toán thành công
+              const orderDetailsWithSuccessStatus = {
+                ...pendingVnpayOrder.orderDetails,
+                paymentStatus: "Chờ xác nhận" // Đặt trạng thái trực tiếp thành "Chờ xác nhận"
+              };
               
-              // Chỉ tạo đơn hàng trong database khi thanh toán thành công
               const response = await axios.post(
                 "http://localhost:8080/api/orders/checkout",
-                pendingVNPayOrder.orderDetails,
-                {
-                  headers: { "Content-Type": "application/json" },
-                }
+                orderDetailsWithSuccessStatus,
+                { headers: { "Content-Type": "application/json" } }
               );
               
               const orderId = response.data.orderId;
               
-              // Cập nhật trạng thái đơn hàng thành "Chờ xác nhận"
-              await axios.put(
-                `http://localhost:8080/api/orders/${orderId}/status`,
-                { paymentStatus: "Chờ xác nhận" },
-                { headers: { "Content-Type": "application/json" } }
-              );
-              
               // Giảm số lượng voucher nếu có
-              if (pendingVNPayOrder.voucherId) {
-                console.log(`[FE] Decrementing voucher quantity for voucherId: ${pendingVNPayOrder.voucherId}`);
-                await VoucherService.decrementVoucherQuantity(pendingVNPayOrder.voucherId);
+              if (pendingVnpayOrder.voucherId) {
+                await VoucherService.decrementVoucherQuantity(pendingVnpayOrder.voucherId);
               }
               
-              // Xóa giỏ hàng
+              // Xóa giỏ hàng ngay sau khi tạo đơn hàng thành công
               await clearCart();
-              
-              message = "Thanh toán VNPay thành công!";
-              icon = "success";
-              break;
-              
-            case "24": // Người dùng hủy
-              message = "Bạn đã hủy thanh toán VNPay.";
-              icon = "info";
-              break;
-              
-            default: // Các lỗi khác
-              message = `Thanh toán VNPay không thành công. Mã lỗi: ${vnpResponseCode}, Mã tra cứu: ${vnpTxnRef}`;
-              icon = "error";
-              break;
-          }
-          
-          // Hiển thị thông báo
+
           Swal.fire({
-            title: vnpResponseCode === "00" ? "Thành công!" : "Thông báo",
-            text: message,
-            icon,
+                title: "Thành công!",
+                text: "Thanh toán VNPay thành công!",
+                icon: "success",
           }).then(() => {
-            if (vnpResponseCode === "00") {
               navigate("/my-account/history");
+              });
+            } else if (vnpayStatus === "24") {
+              Swal.fire({
+                title: "Thông báo",
+                text: "Bạn đã hủy thanh toán VNPay.",
+                icon: "info",
+              });
+            } else {
+              Swal.fire({
+                title: "Thông báo",
+                text: `Thanh toán VNPay không thành công. Mã lỗi: ${vnpayStatus}`,
+                icon: "error",
+              });
             }
-          });
-          
-          // Xóa dữ liệu đơn hàng VNPay khỏi localStorage
-          localStorage.removeItem("pendingVNPayOrder");
-          
-          // Xóa query params khỏi URL
-          window.history.replaceState({}, document.title, window.location.pathname);
         } catch (error) {
           console.error(`[FE] Error handling VNPay payment result: ${error.message}`);
           Swal.fire(
             "Lỗi!",
-            "Không thể xử lý kết quả thanh toán VNPay: " +
-            (error.response?.data?.message || error.message),
+              "Không thể xử lý kết quả thanh toán VNPay: " + error.message,
             "error"
           );
+          } finally {
+            localStorage.removeItem("pendingVNPayOrder");
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
         }
+
+        // Xử lý MoMo
+        if (momoOrderId && pendingMomoOrder && resultCode) {
+          console.log(`[FE] Processing MoMo payment: orderId=${momoOrderId}, resultCode=${resultCode}`);
+          
+          try {
+            // Đầu tiên, kiểm tra đơn hàng này đã tồn tại trong database chưa
+            const orderExistsResponse = await axios.get(
+              `http://localhost:8080/api/orders/check-momo-order?momoOrderId=${momoOrderId}`
+            );
+            
+            if (orderExistsResponse.data.exists) {
+              console.log(`[FE] MoMo order ${momoOrderId} already exists in database, skipping order creation`);
+              
+              // Xóa dữ liệu trên URL và localStorage
+              localStorage.removeItem("pendingMomoOrder");
+              window.history.replaceState({}, document.title, window.location.pathname);
+              
+              // Thông báo cho người dùng và chuyển hướng
+              Swal.fire({
+                title: "Thông báo",
+                text: "Đơn hàng của bạn đã được tạo thành công trước đó",
+                icon: "success",
+              }).then(() => {
+                navigate("/my-account/history");
+              });
+              
+              return;
+            }
+            
+            // Tiếp tục kiểm tra localStorage để tránh xử lý trùng lặp
+            const processedMomoOrders = JSON.parse(localStorage.getItem('processedMomoOrders') || '[]');
+            if (processedMomoOrders.includes(momoOrderId)) {
+              console.log(`[FE] MoMo order ${momoOrderId} already processed locally, skipping`);
+              // Xóa dữ liệu trên URL và localStorage
+              localStorage.removeItem("pendingMomoOrder");
+              window.history.replaceState({}, document.title, window.location.pathname);
+              return;
+            }
+            
+            // Xử lý kết quả thanh toán
+            if (resultCode === "0") {
+              // Đánh dấu đã xử lý TRƯỚC khi tạo đơn hàng
+              processedMomoOrders.push(momoOrderId);
+              localStorage.setItem('processedMomoOrders', JSON.stringify(processedMomoOrders));
+              
+              try {
+                // Kiểm tra trạng thái thanh toán với MoMo
+                console.log(`[FE] Verifying MoMo payment status with MoMo API`);
+                const paymentStatus = await MomoService.checkPaymentStatus(momoOrderId);
+                const statusData = typeof paymentStatus === 'string' ? JSON.parse(paymentStatus) : paymentStatus;
+                
+                if (statusData.resultCode !== 0) {
+                  throw new Error(`Payment status check failed: ${statusData.message}`);
+                }
+                
+                // Parse dữ liệu đơn hàng
+                const parsedOrder = JSON.parse(pendingMomoOrder);
+                const orderDetails = {
+                  ...parsedOrder.orderDetails,
+                  paymentStatus: "Chờ xác nhận",
+                  momoOrderId: momoOrderId, // Thêm momoOrderId vào request để backend có thể ngăn chặn trùng lặp
+                };
+                
+                console.log(`[FE] Creating order from MoMo payment with momoOrderId: ${momoOrderId}`);
+                
+                // Tạo đơn hàng
+                const response = await axios.post(
+                  "http://localhost:8080/api/orders/checkout",
+                  orderDetails,
+                { headers: { "Content-Type": "application/json" } }
+              );
+                
+                console.log(`[FE] Order created successfully with ID: ${response.data.orderId}`);
+                
+                // Lưu thông tin thanh toán MoMo để sử dụng cho hoàn tiền sau này
+                const momoPaymentInfo = {
+                  orderId: response.data.orderId,
+                  momoOrderId: momoOrderId,
+                  momoTransId: momoTransId,
+                  amount: Math.round(totalBeforeDiscount - discountAmount)
+                };
+                localStorage.setItem(`momo_payment_${response.data.orderId}`, JSON.stringify(momoPaymentInfo));
+                
+                // Giảm số lượng voucher nếu có
+                if (parsedOrder.voucherId) {
+                  try {
+                    await VoucherService.decrementVoucherQuantity(parsedOrder.voucherId);
+                    console.log(`[FE] Voucher ${parsedOrder.voucherId} decremented`);
+                  } catch (error) {
+                    console.error(`[FE] Error decrementing voucher: ${error.message}`);
+                  }
+                }
+                
+                // Xóa giỏ hàng
+                await clearCart();
+                
+                // Thông báo thành công và chuyển hướng
+          Swal.fire({
+                  title: "Thành công!",
+                  text: "Thanh toán MoMo thành công!",
+                  icon: "success",
+          }).then(() => {
+              navigate("/my-account/history");
+                });
+              } catch (error) {
+                console.error(`[FE] Error processing MoMo payment: ${error.message}`);
+                Swal.fire(
+                  "Lỗi!",
+                  "Không thể xử lý thanh toán MoMo: " + error.message,
+                  "error"
+                );
+              }
+            } else if (resultCode === "1006") {
+              // Người dùng hủy thanh toán
+              Swal.fire({
+                title: "Thông báo",
+                text: "Bạn đã hủy thanh toán MoMo.",
+                icon: "info",
+              });
+            } else {
+              // Thanh toán thất bại
+              Swal.fire({
+                title: "Thông báo",
+                text: `Thanh toán MoMo không thành công. Mã lỗi: ${resultCode}`,
+                icon: "error",
+              });
+            }
+        } catch (error) {
+          console.error(`[FE] Error handling MoMo payment result: ${error.message}`);
+          Swal.fire(
+            "Lỗi!",
+              "Không thể xử lý kết quả thanh toán MoMo: " + error.message,
+            "error"
+          );
+          } finally {
+            // Luôn xóa dữ liệu tạm và tham số truy vấn
+            localStorage.removeItem("pendingMomoOrder");
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }
+      } catch (error) {
+        console.error(`[FE] Error in handlePaymentResult: ${error.message}`);
+        Swal.fire(
+          "Lỗi!",
+          "Không thể xử lý kết quả thanh toán: " + error.message,
+          "error"
+        );
       }
     };
 
@@ -935,7 +985,19 @@ const Checkout = () => {
   // Hàm hoàn tiền MoMo
   const refundMomoPayment = async (orderId, amount, transId) => {
     try {
-      console.log(`[FE] Initiating MoMo refund for orderId: ${orderId}, amount: ${amount}, transId: ${transId}`);
+      console.log(`[FE] Bắt đầu quá trình hoàn tiền MoMo: orderId=${orderId}, amount=${amount}, transId=${transId}`);
+      
+      // Hiển thị thông báo loading
+      Swal.fire({
+        title: "Đang xử lý...",
+        text: "Đang yêu cầu hoàn tiền từ MoMo, vui lòng đợi...",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+      
+      // Gọi API hoàn tiền MoMo
       const response = await axios.post(
         "http://localhost:8080/api/payment/momo/refund",
         {
@@ -949,18 +1011,32 @@ const Checkout = () => {
         }
       );
 
-      if (response.status === 200) {
-        console.log(`[FE] MoMo refund successful for orderId: ${orderId}`);
-        return { success: true, message: "Đã hoàn tiền thành công qua MoMo" };
+      // Đóng thông báo loading
+      Swal.close();
+      
+      console.log(`[FE] Kết quả hoàn tiền MoMo:`, response.data);
+      
+      if (response.data.success) {
+        console.log(`[FE] Hoàn tiền MoMo thành công cho orderId: ${orderId}`);
+        return { 
+          success: true, 
+          message: "Đã hoàn tiền thành công qua MoMo",
+          details: response.data
+        };
       } else {
-        console.error(`[FE] MoMo refund failed for orderId: ${orderId}`, response.data);
-        return { success: false, message: "Không thể hoàn tiền. Vui lòng liên hệ hỗ trợ." };
+        console.error(`[FE] Hoàn tiền MoMo thất bại cho orderId: ${orderId}`, response.data);
+        return { 
+          success: false, 
+          message: `Không thể hoàn tiền: ${response.data.message || "Vui lòng liên hệ hỗ trợ"}`,
+          details: response.data
+        };
       }
     } catch (error) {
-      console.error(`[FE] Error in MoMo refund for orderId: ${orderId}`, error);
+      console.error(`[FE] Lỗi gọi API hoàn tiền MoMo:`, error);
       return { 
         success: false, 
-        message: `Lỗi hoàn tiền: ${error.response?.data?.message || error.message}` 
+        message: `Lỗi hoàn tiền: ${error.response?.data?.message || error.message}`,
+        details: error.response?.data || {}
       };
     }
   };
@@ -968,64 +1044,134 @@ const Checkout = () => {
   // Thêm hàm hủy đơn và hoàn tiền MoMo
   const cancelAndRefundMomoOrder = async (orderId) => {
     try {
-      // Kiểm tra xem đơn hàng đã bị hủy chưa
-      const orderResponse = await axios.get(
-        `http://localhost:8080/api/orders/${orderId}`
-      );
+      console.log(`[FE] Bắt đầu quy trình hủy đơn và hoàn tiền cho đơn hàng ${orderId}`);
       
+      // Kiểm tra xem đơn hàng đã bị hủy chưa
+      const orderResponse = await axios.get(`http://localhost:8080/api/orders/${orderId}`);
       const orderData = orderResponse.data;
       
-      // Nếu đơn hàng đã có statusId là 5 (Đã hủy), không thực hiện lại việc hủy
       if (orderData.statusId === 5) {
+        console.log(`[FE] Đơn hàng ${orderId} đã được hủy trước đó`);
         return { success: false, message: "Đơn hàng này đã được hủy trước đó" };
       }
       
       // Lấy thông tin thanh toán MoMo từ localStorage
-      const momoPaymentInfo = JSON.parse(localStorage.getItem(`momo_payment_${orderId}`));
+      const momoPaymentInfoStr = localStorage.getItem(`momo_payment_${orderId}`);
+      console.log(`[FE] Thông tin thanh toán MoMo từ localStorage:`, momoPaymentInfoStr);
       
-      if (!momoPaymentInfo) {
-        console.error(`[FE] No MoMo payment info found for orderId: ${orderId}`);
+      if (!momoPaymentInfoStr) {
+        console.error(`[FE] Không tìm thấy thông tin thanh toán MoMo cho đơn hàng ${orderId}`);
         
-        // Vẫn hủy đơn hàng nhưng không hoàn tiền
-        await axios.put(
-          `http://localhost:8080/api/orders/${orderId}/status`,
-          { 
-            statusId: 5,
-            paymentStatus: "Đã hủy thanh toán" 
-          },
-          { headers: { "Content-Type": "application/json" } }
-        );
+        Swal.fire({
+          title: "Cảnh báo",
+          text: "Không tìm thấy thông tin thanh toán MoMo. Vẫn tiếp tục hủy đơn hàng nhưng không thể hoàn tiền tự động.",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonText: "Vẫn hủy đơn",
+          cancelButtonText: "Quay lại"
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            await axios.put(
+              `http://localhost:8080/api/orders/${orderId}/status`,
+              { 
+                statusId: 5,
+                paymentStatus: "Đã hủy thanh toán",
+                cancelReason: "Hủy đơn theo yêu cầu người dùng (không có thông tin hoàn tiền)"
+              },
+              { headers: { "Content-Type": "application/json" } }
+            );
+            
+            Swal.fire("Thành công", "Đã hủy đơn hàng", "success").then(() => {
+              window.location.reload();
+            });
+          }
+        });
         
-        return { success: true, message: "Đã hủy đơn hàng, không tìm thấy thông tin thanh toán MoMo để hoàn tiền" };
+        return { 
+          success: false, 
+          message: "Không tìm thấy thông tin thanh toán MoMo để hoàn tiền" 
+        };
       }
       
+      const momoPaymentInfo = JSON.parse(momoPaymentInfoStr);
+      
+      // Hiển thị thông tin đang xử lý
+      Swal.fire({
+        title: "Đang xử lý...",
+        text: "Đang hủy đơn hàng và yêu cầu hoàn tiền từ MoMo",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+      
       // Yêu cầu hoàn tiền MoMo
+      console.log(`[FE] Gửi yêu cầu hoàn tiền MoMo: momoOrderId=${momoPaymentInfo.momoOrderId}, transId=${momoPaymentInfo.momoTransId}`);
       const refundResult = await refundMomoPayment(
         momoPaymentInfo.momoOrderId,
         momoPaymentInfo.amount,
         momoPaymentInfo.momoTransId
       );
       
-      // Hủy đơn hàng và cập nhật cả statusId và paymentStatus trong một request
-      await axios.put(
+      console.log(`[FE] Kết quả hoàn tiền MoMo:`, refundResult);
+      
+      // Cập nhật trạng thái đơn hàng và payment_status dựa trên kết quả hoàn tiền
+      const paymentStatus = refundResult.success ? "Đã hoàn tiền" : "Đã hủy thanh toán";
+      console.log(`[FE] Cập nhật trạng thái đơn hàng thành: ${paymentStatus}`);
+      
+      const updateResponse = await axios.put(
         `http://localhost:8080/api/orders/${orderId}/status`,
         { 
           statusId: 5,
-          paymentStatus: refundResult.success ? "Đã hoàn tiền" : "Đã hủy thanh toán"
+          paymentStatus: paymentStatus,
+          cancelReason: refundResult.success 
+            ? "Hủy đơn hàng và hoàn tiền thành công" 
+            : `Hủy đơn hàng, hoàn tiền không thành công: ${refundResult.message}`
         },
         { headers: { "Content-Type": "application/json" } }
       );
       
+      console.log(`[FE] Kết quả cập nhật trạng thái đơn hàng:`, updateResponse.data);
+      
+      // Hiển thị thông báo dựa trên kết quả hoàn tiền
+      Swal.close();
+      
       if (refundResult.success) {
-        return { success: true, message: "Đã hủy đơn hàng và hoàn tiền thành công" };
-      } else {
+        localStorage.removeItem(`momo_payment_${orderId}`);
+        Swal.fire({
+          title: "Thành công!",
+          text: "Đã hủy đơn hàng và gửi yêu cầu hoàn tiền thành công qua MoMo. Tiền sẽ được hoàn về tài khoản của bạn trong vòng 24 giờ.",
+          icon: "success"
+        }).then(() => {
+          window.location.reload();
+        });
+        
         return { 
-          success: false, 
-          message: `Đã hủy đơn hàng nhưng không thể hoàn tiền: ${refundResult.message}` 
+          success: true, 
+          message: "Đã hủy đơn hàng và hoàn tiền thành công qua MoMo" 
+        };
+      } else {
+        Swal.fire({
+          title: "Đã hủy đơn",
+          text: `Đơn hàng đã được hủy nhưng gặp vấn đề khi hoàn tiền tự động: ${refundResult.message}. Vui lòng liên hệ nhân viên hỗ trợ.`,
+          icon: "warning"
+        }).then(() => {
+          window.location.reload();
+        });
+        
+        return { 
+          success: true, 
+          message: `Đã hủy đơn hàng nhưng gặp vấn đề khi hoàn tiền: ${refundResult.message}` 
         };
       }
     } catch (error) {
-      console.error(`[FE] Error in cancelAndRefundMomoOrder for orderId: ${orderId}`, error);
+      console.error(`[FE] Lỗi trong quá trình hủy đơn và hoàn tiền:`, error);
+      Swal.fire({
+        title: "Lỗi!",
+        text: `Không thể hủy đơn hàng và hoàn tiền: ${error.response?.data?.message || error.message}`,
+        icon: "error"
+      });
+      
       return { 
         success: false, 
         message: `Lỗi khi hủy đơn hàng và hoàn tiền: ${error.response?.data?.message || error.message}` 
@@ -1038,7 +1184,12 @@ const Checkout = () => {
     try {
       // Đánh dấu đơn hàng đang được xử lý để tránh người dùng nhấn nút nhiều lần
       if (localStorage.getItem(`cancelling_order_${orderId}`)) {
-        console.log(`[FE] Order ${orderId} is already being cancelled`);
+        console.log(`[FE] Đơn hàng ${orderId} đang được xử lý, vui lòng đợi`);
+        Swal.fire({
+          title: "Đang xử lý",
+          text: "Yêu cầu của bạn đang được xử lý, vui lòng đợi",
+          icon: "info"
+        });
         return;
       }
       
@@ -1053,30 +1204,74 @@ const Checkout = () => {
           showCancelButton: true,
           confirmButtonColor: "#3085d6",
           cancelButtonColor: "#d33",
-          confirmButtonText: "Đồng ý",
-          cancelButtonText: "Hủy bỏ"
+          confirmButtonText: "Đồng ý hủy đơn",
+          cancelButtonText: "Quay lại"
         });
         
         if (result.isConfirmed) {
+          // Gọi API hủy đơn và hoàn tiền
+          const cancelResult = await cancelAndRefundMomoOrder(orderId);
+          
+          // Kết quả đã được xử lý trong hàm cancelAndRefundMomoOrder
+          // Chỉ xử lý nếu có lỗi
+          if (!cancelResult.success) {
+            Swal.fire("Thông báo", cancelResult.message, "info");
+          }
+        }
+      } else if (paymentMethod === "VNPay") {
+        // Xử lý hủy đơn VNPay tương tự MoMo
+        const result = await Swal.fire({
+          title: "Xác nhận hủy đơn hàng",
+          text: "Bạn có chắc muốn hủy đơn hàng này? Tiền sẽ được hoàn về tài khoản của bạn.",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonColor: "#3085d6",
+          cancelButtonColor: "#d33",
+          confirmButtonText: "Đồng ý hủy đơn",
+          cancelButtonText: "Quay lại"
+        });
+        
+        if (result.isConfirmed) {
+          // Hiển thị thông báo loading
           Swal.fire({
             title: "Đang xử lý...",
-            text: "Vui lòng đợi trong khi chúng tôi hủy đơn hàng và yêu cầu hoàn tiền",
+            text: "Vui lòng đợi trong khi chúng tôi hủy đơn hàng",
             allowOutsideClick: false,
             didOpen: () => {
               Swal.showLoading();
             }
           });
           
-          const cancelResult = await cancelAndRefundMomoOrder(orderId);
-          
-          if (cancelResult.success) {
-            Swal.fire("Thành công!", cancelResult.message, "success");
-          } else {
-            Swal.fire("Thông báo", cancelResult.message, "info");
+          try {
+            // Cập nhật trạng thái đơn và payment_status
+            await axios.put(
+              `http://localhost:8080/api/orders/${orderId}/status`,
+              { 
+                statusId: 5,
+                paymentStatus: "Đã hoàn tiền",  // Giả định VNPay tự động hoàn tiền
+                cancelReason: "Hủy đơn hàng theo yêu cầu của khách hàng"
+              },
+              { headers: { "Content-Type": "application/json" } }
+            );
+            
+            Swal.fire({
+              title: "Thành công!",
+              text: "Đơn hàng đã được hủy. Số tiền sẽ được hoàn trả vào tài khoản của bạn.",
+              icon: "success"
+            }).then(() => {
+              window.location.reload();
+            });
+          } catch (error) {
+            console.error(`[FE] Lỗi khi hủy đơn hàng VNPay ${orderId}:`, error);
+            Swal.fire({
+              title: "Lỗi!",
+              text: `Không thể hủy đơn hàng: ${error.response?.data?.message || error.message}`,
+              icon: "error"
+            });
           }
         }
       } else {
-        // Xử lý hủy đơn thông thường cho các phương thức thanh toán khác
+        // Xử lý hủy đơn COD
         const result = await Swal.fire({
           title: "Xác nhận hủy đơn hàng",
           text: "Bạn có chắc muốn hủy đơn hàng này?",
@@ -1084,22 +1279,52 @@ const Checkout = () => {
           showCancelButton: true,
           confirmButtonColor: "#3085d6",
           cancelButtonColor: "#d33",
-          confirmButtonText: "Đồng ý",
-          cancelButtonText: "Hủy bỏ"
+          confirmButtonText: "Đồng ý hủy đơn",
+          cancelButtonText: "Quay lại"
         });
         
         if (result.isConfirmed) {
-          await axios.put(
-            `http://localhost:8080/api/orders/${orderId}/cancel`,
-            {},
-            { headers: { "Content-Type": "application/json" } }
-          );
+          // Hiển thị thông báo loading
+          Swal.fire({
+            title: "Đang xử lý...",
+            text: "Vui lòng đợi trong khi chúng tôi hủy đơn hàng",
+            allowOutsideClick: false,
+            didOpen: () => {
+              Swal.showLoading();
+            }
+          });
           
-          Swal.fire("Thành công!", "Đơn hàng đã được hủy", "success");
+          try {
+            // Gọi API hủy đơn
+            await axios.put(
+              `http://localhost:8080/api/orders/${orderId}/status`,
+              { 
+                statusId: 5,
+                paymentStatus: "Đã hủy thanh toán",
+                cancelReason: "Hủy đơn hàng theo yêu cầu của khách hàng"
+              },
+              { headers: { "Content-Type": "application/json" } }
+            );
+            
+            Swal.fire({
+              title: "Thành công!",
+              text: "Đơn hàng đã được hủy thành công",
+              icon: "success"
+            }).then(() => {
+              window.location.reload();
+            });
+          } catch (error) {
+            console.error(`[FE] Lỗi khi hủy đơn hàng COD ${orderId}:`, error);
+            Swal.fire({
+              title: "Lỗi!",
+              text: `Không thể hủy đơn hàng: ${error.response?.data?.message || error.message}`,
+              icon: "error"
+            });
+          }
         }
       }
     } catch (error) {
-      console.error(`[FE] Error in handleCancelOrder for orderId: ${orderId}`, error);
+      console.error(`[FE] Lỗi trong handleCancelOrder cho đơn hàng ${orderId}:`, error);
       Swal.fire(
         "Lỗi!",
         `Không thể hủy đơn hàng: ${error.response?.data?.message || error.message}`,
