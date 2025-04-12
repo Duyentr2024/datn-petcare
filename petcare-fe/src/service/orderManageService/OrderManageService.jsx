@@ -21,16 +21,26 @@ const OrderManageService = {
 
     updateOrderStatus: async (orderId, statusId, reason = null) => {
         try {
+            const payload = { 
+                statusId: statusId
+            };
+            
+            // Chỉ thêm paymentStatus khi chuyển sang trạng thái Hoàn thành
+            if (statusId === 4) {
+                payload.paymentStatus = "Đã thanh toán";
+            }
+            
+            // Thêm lý do hủy nếu có
+            if (reason) {
+                payload.cancelReason = reason;
+            }
+            
             const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/status`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ 
-                    statusId: statusId,
-                    paymentStatus: statusId === 4 ? "Đã thanh toán" : null,
-                    cancelReason: reason
-                }),
+                body: JSON.stringify(payload),
             });
 
             if (!response.ok) {

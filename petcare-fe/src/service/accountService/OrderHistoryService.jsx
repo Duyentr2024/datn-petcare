@@ -43,6 +43,32 @@ const OrderHistoryService = {
     }
   },
 
+  refundMomoPayment: async (orderId, description) => {
+    try {
+      const url = `${API_BASE_URL}/api/momo/refund/order/${orderId}`;
+      console.log("Requesting MoMo refund for order:", orderId, "with reason:", description);
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          description: `Hoàn tiền cho đơn hàng #${orderId}: ${description}`
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Không thể hoàn tiền MoMo: ${errorText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Lỗi khi hoàn tiền MoMo:", error);
+      throw error;
+    }
+  },
 
 };
 

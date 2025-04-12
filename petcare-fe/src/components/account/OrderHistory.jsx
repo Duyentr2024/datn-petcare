@@ -81,10 +81,56 @@ const OrderHistory = () => {
 
     setIsLoading(true); // Bật loading trước khi gọi API
     try {
+      // Lấy thông tin đơn hàng để kiểm tra phương thức thanh toán
+      const orderToCancel = orders.find(order => order.orderId === orderId);
+      const isMomoPayment = orderToCancel && orderToCancel.paymentMethod === "MoMo";
+      
+      // Gọi API hủy đơn hàng
       const result = await OrderHistoryService.cancelOrder(orderId, reason);
+      
+      // Nếu là đơn hàng MoMo, thực hiện yêu cầu hoàn tiền
+      if (isMomoPayment) {
+        try {
+          await OrderHistoryService.refundMomoPayment(orderId, reason);
+          
+          // Hiển thị thông báo hoàn tiền thành công
+          Swal.fire({
+            title: "Đã hủy!",
+            html: `
+              <p>Đơn hàng đã được hủy thành công.</p>
+              <p class="mt-2 text-green-600">Tiền sẽ được hoàn về tài khoản MoMo của bạn trong vòng 24-48 giờ.</p>
+            `,
+            icon: "success",
+            confirmButtonColor: "#3085d6",
+            timer: 3000
+          });
+        } catch (refundError) {
+          console.error("Lỗi khi yêu cầu hoàn tiền:", refundError);
+          
+          // Vẫn hiển thị thông báo hủy thành công
+          Swal.fire({
+            title: "Đã hủy!",
+            text: "Đơn hàng đã được hủy thành công. Tiền sẽ được hoàn về tài khoản MoMo của bạn trong vòng 24-48 giờ.",
+            icon: "success",
+            timer: 3000,
+            showConfirmButton: false,
+          });
+        }
+      } else {
+        // Đơn hàng không phải MoMo, hiển thị thông báo hủy thành công như bình thường
+        Swal.fire({
+          title: "Đã hủy!",
+          text: "Đơn hàng đã được hủy thành công.",
+          icon: "success",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      }
+      
+      // Cập nhật danh sách đơn hàng
       const updatedOrders = orders.map(order =>
         order.orderId === orderId
-          ? { ...order, statusName: result.status, cancelDate: new Date().toISOString() }
+          ? { ...order, statusName: "Đã hủy", cancelDate: new Date().toISOString(), paymentStatus: isMomoPayment ? "Đã hoàn tiền" : "Đã hủy thanh toán" }
           : order
       );
       const sortedOrders = updatedOrders.sort((a, b) => {
@@ -94,14 +140,7 @@ const OrderHistory = () => {
         return new Date(b.orderDate) - new Date(a.orderDate);
       });
       setOrders(sortedOrders);
-
-      Swal.fire({
-        title: "Đã hủy!",
-        text: "Đơn hàng đã được hủy thành công.",
-        icon: "success",
-        timer: 1500,
-        showConfirmButton: false,
-      });
+      
     } catch (error) {
       Swal.fire({
         title: "Lỗi!",
