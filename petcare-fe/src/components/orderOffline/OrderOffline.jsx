@@ -8,8 +8,7 @@ import Cookies from "js-cookie";
 import { useCookies } from "react-cookie";
 import { decodeToken } from "../utils/jwt";
 import { useNavigate } from "react-router-dom";
-import QRImage from '/src/assets/images/QR.jpg';
-
+import QRImage from '/src/assets/images/QR.jpg'; 
 
 const isPaymentDisabled = (currentTab) => {
   const totalAmount = Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 100 * 30000));
