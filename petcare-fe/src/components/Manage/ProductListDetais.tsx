@@ -202,7 +202,7 @@ const ProductListDetails = () => {
         try {
             const data = await ProductDetailsService.getAllProductDetailsDTOByProductId(productId);
             setProductDetails(data);
-            console.log("Dữ liệu API:", data);
+            console.log("Dữ liệu productDetails từ API:", data); // Kiểm tra cấu trúc dữ liệu
         } catch (err) {
             setError("Lỗi khi tải dữ liệu sản phẩm.");
             console.error(err);
@@ -234,10 +234,9 @@ const ProductListDetails = () => {
     const handleAddProductDetail = async () => {
         let newErrors = {};
 
+        // Kiểm tra các trường bắt buộc
         if (!newDetail.productId) newErrors.productId = "Vui lòng chọn sản phẩm!";
-        if (!newDetail.colorId) newErrors.colorId = "Vui lòng chọn màu!";
-        if (!newDetail.sizeId) newErrors.sizeId = "Vui lòng chọn kích cỡ!";
-        if (!newDetail.weightId) newErrors.weightId = "Vui lòng chọn cân nặng!";
+
         if (!newDetail.price || isNaN(newDetail.price) || Number(newDetail.price) <= 0)
             newErrors.price = "Giá không được để trống và phải lớn hơn 0!";
         if (!newDetail.quantity || isNaN(newDetail.quantity) || Number(newDetail.quantity) <= 0)
@@ -248,21 +247,51 @@ const ProductListDetails = () => {
             return;
         }
 
+        // Chuyển đổi các giá trị sang Number để so sánh chính xác
+        const newColorId = Number(newDetail.colorId);
+        const newSizeId = Number(newDetail.sizeId);
+        const newWeightId = Number(newDetail.weightId);
+        const newProductId = Number(newDetail.productId);
+
+        // Ánh xạ các giá trị hiển thị từ danh sách colors, sizes, weights
+        const selectedColor = colors.find(c => c.productColorId === newColorId);
+        const selectedSize = sizes.find(s => s.productSizeId === newSizeId);
+        const selectedWeight = weights.find(w => w.weightId === newWeightId);
+
+        // Kiểm tra trùng lặp dựa trên ID hoặc giá trị hiển thị
+        const isDuplicate = productDetails.some((detail) => {
+            const detailColorId = colors.find(c => c.colorValue === detail.colorValue)?.productColorId;
+            const detailSizeId = sizes.find(s => s.sizeValue === detail.sizeValue)?.productSizeId;
+            const detailWeightId = weights.find(w => w.weightValue === detail.weightValue)?.weightId;
+
+            return (
+                detailColorId === newColorId &&
+                detailSizeId === newSizeId &&
+                detailWeightId === newWeightId &&
+                (detail.productId ? detail.productId === newProductId : true) // Kiểm tra productId nếu có
+            );
+        });
+
+        if (isDuplicate) {
+            toast.error("Biến thể với màu, kích cỡ và cân nặng này đã tồn tại!");
+            return;
+        }
+
         setErrors({});
 
         const payload = {
             quantity: Number(newDetail.quantity),
             price: Number(newDetail.price),
-            products: { productId: Number(newDetail.productId) },
-            weights: newDetail.weightId ? { weightId: Number(newDetail.weightId) } : null,
-            productSizes: newDetail.sizeId ? { productSizeId: Number(newDetail.sizeId) } : null,
-            productColors: newDetail.colorId ? { productColorId: Number(newDetail.colorId) } : null,
+            products: { productId: newProductId },
+            weights: newWeightId ? { weightId: newWeightId } : null,
+            productSizes: newSizeId ? { productSizeId: newSizeId } : null,
+            productColors: newColorId ? { productColorId: newColorId } : null,
             status: newDetail.status
         };
 
         try {
             await ProductDetailsService.createProductDetail(payload);
-            fetchProductDetails();
+            fetchProductDetails(); // Cập nhật danh sách
             toast.success("Thêm biến thể thành công!");
             setNewDetail({
                 productId: productId,
@@ -274,9 +303,10 @@ const ProductListDetails = () => {
                 status: true
             });
             setIsModalOpen(false);
-            setCurrentPage(1); // Reset về trang đầu sau khi thêm mới
+            setCurrentPage(1); // Reset về trang đầu
         } catch (error) {
             console.error("Lỗi khi thêm biến thể:", error);
+            toast.error("Lỗi khi thêm biến thể!");
         }
     };
 
