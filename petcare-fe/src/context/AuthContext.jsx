@@ -155,12 +155,52 @@ export const AuthProvider = ({ children }) => {
       const notificationData = JSON.parse(messageBody);
       console.log("Received WebSocket message:", messageBody);
 
+      // Xử lý thông báo tài khoản bị vô hiệu hóa
+      if (notificationData.type === "ACCOUNT_DISABLED" && user && notificationData.userId === user.userId) {
+        console.log("[WebSocket] Account disabled notification received for current user, logging out...");
+        logout();
+        return;
+      }
+      
+      // Xử lý thông báo hoàn tiền
+      if (notificationData.type === "REFUND_EMAIL_SENT" && user && notificationData.userId === user.userId) {
+        console.log("[WebSocket] Refund email notification received:", notificationData);
+        // Hiển thị thông báo với thông tin chi tiết về email hoàn tiền
+        const newNotification = {
+          id: notificationData.id || Date.now(),
+          message: notificationData.message || `Email hoàn tiền đã được gửi cho đơn hàng #${notificationData.orderId}`,
+          isRead: false,
+          orderId: notificationData.orderId || null,
+          timestamp: new Date().toISOString(),
+          type: "REFUND_EMAIL_SENT",
+          amount: notificationData.amount || null
+        };
+
+        setNotifications((prev) => {
+          const updatedNotifications = [newNotification, ...prev];
+          return updatedNotifications;
+        });
+
+        setUnreadCount((prev) => prev + 1);
+        setIsShaking(true);
+        setTimeout(() => setIsShaking(false), 1500);
+        
+        // Delay việc fetch dữ liệu để đảm bảo backend đã cập nhật
+        setTimeout(() => {
+          fetchNotifications();
+        }, 1000);
+        
+        return;
+      }
+
+      // Xử lý các thông báo thông thường
       const newNotification = {
         id: notificationData.id,
         message: notificationData.message,
         isRead: false,
         orderId: notificationData.orderId || null,
         timestamp: new Date().toISOString(),
+        type: notificationData.type || "GENERAL"
       };
 
       setNotifications((prev) => {

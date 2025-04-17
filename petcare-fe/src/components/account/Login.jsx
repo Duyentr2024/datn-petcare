@@ -1,81 +1,114 @@
 import React, { useState, useEffect } from "react";
 import { EyeSlashIcon, EyeIcon } from "@heroicons/react/24/solid";
-import { FaArrowCircleRight, FaFacebookF, FaGoogle } from "react-icons/fa";
-import Cookies from "js-cookie";
+import { FaArrowCircleRight, FaGoogle } from "react-icons/fa";
 import Swal from "sweetalert2";
-import { useNavigate } from "react-router-dom"; // Import useNavigate từ React Router
-
+import { useNavigate } from "react-router-dom";
 import LoginService from "../../service/accountService/LoginService";
-const Login = () => {
-  // khai báo các state cần thiết
-  const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState(""); // State lưu email
-  const [password, setPassword] = useState(""); // State lưu password
-  const [token, setToken] = useState(null); // Thêm state để lưu token
 
+const Login = () => {
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const navigate = useNavigate();
-  // Ẩn hiện mật khẩu
+
+  // Toggle hiển thị mật khẩu
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
 
+  // Xử lý hiệu ứng khi các phần tử load
   useEffect(() => {
-    // Tạo observer để theo dõi khi phần tử vào view
+    // Tạo observer
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add("in-view"); // Thêm lớp khi phần tử vào vùng nhìn thấy
+            entry.target.classList.add("in-view");
           }
         });
       },
-      {
-        threshold: 0.5, // Khi phần tử có ít nhất 50% diện tích vào vùng nhìn thấy
-      }
+      { threshold: 0.5 }
     );
 
-    // Chọn tất cả các phần tử .load-img để theo dõi
+    // Theo dõi các phần tử .load-img
     const images = document.querySelectorAll(".load-img");
     images.forEach((img) => {
-      observer.observe(img); // Theo dõi phần tử khi vào view
-    });
-
-    // Đảm bảo hiệu ứng xảy ra ngay khi trang được tải
-    images.forEach((img) => {
-      // Kiểm tra nếu phần tử đã vào view khi tải trang
+      observer.observe(img);
+      // Áp dụng in-view khi phần tử đã vào viewport
       if (img.getBoundingClientRect().top <= window.innerHeight * 0.5) {
-        img.classList.add("in-view"); // Nếu có, áp dụng lớp in-view
+        img.classList.add("in-view");
       }
     });
 
-    // Cleanup observer khi component bị unmount
-    return () => {
-      images.forEach((img) => {
-        observer.unobserve(img);
-      });
-    };
+    // Cuộn lên đầu trang
     window.scrollTo(0, 0);
+
+    // Cleanup observer
+    return () => {
+      images.forEach((img) => observer.unobserve(img));
+    };
   }, []);
 
-  // Xử lý đăng nhập
+  // Khởi tạo Google và Facebook SDK
+  useEffect(() => {
+    // Khởi tạo Google Sign-In
+    window.google.accounts.id.initialize({
+      client_id: "854614351620-s8cmgi8ticqj4p2jlqedf4drbis3s7oj.apps.googleusercontent.com",
+      callback: handleGoogleLogin,
+    });
+
+    window.google.accounts.id.renderButton(
+      document.getElementById("google-login-button"),
+      { theme: "outline", size: "large" }
+    );
+
+    // Khởi tạo Facebook SDK
+    window.fbAsyncInit = function () {
+      window.FB.init({
+        appId: "536613939122715",
+        cookie: true,
+        xfbml: true,
+        version: "v16.0",
+      });
+    };
+
+    // Tải SDK của Facebook
+    (function (d, s, id) {
+      var js,
+        fjs = d.getElementsByTagName(s)[0];
+      if (d.getElementById(id)) return;
+      js = d.createElement(s);
+      js.id = id;
+      js.src = "https://connect.facebook.net/en_US/sdk.js";
+      fjs.parentNode.insertBefore(js, fjs);
+    })(document, "script", "facebook-jssdk");
+  }, []);
+
+  // Hiển thị thông báo thành công
+  const showSuccessMessage = (data) => {
+    Swal.fire({
+      title: "Đăng nhập thành công!",
+      text: `Xin chào ${data.fullName}`,
+      icon: "success",
+      confirmButtonText: "OK",
+    });
+  };
+
+  // Điều hướng dựa trên vai trò người dùng
+  const navigateByRole = (roleName) => {
+    if (roleName === "ADMIN" || roleName === "N") {
+      navigate("/admin");
+    } else {
+      navigate("/");
+    }
+  };
+
+  // Xử lý đăng nhập thông thường
   const handleLogin = async () => {
     try {
       const data = await LoginService.login(email, password);
-      Swal.fire({
-        title: "Đăng nhập thành công!",
-        text: `Xin chào ${data.fullName}`,
-        icon: "success",
-        confirmButtonText: "OK",
-      });
-
-        
-      if (data.roleName === "ADMIN") {
-        navigate("/admin");
-      } else if (data.roleName === "N") {
-        navigate("/admin");
-      } else {
-        navigate("/");
-      }
+      showSuccessMessage(data);
+      navigateByRole(data.roleName);
     } catch (error) {
       Swal.fire({
         icon: "error",
@@ -85,20 +118,12 @@ const Login = () => {
     }
   };
 
-  
-
-  // Hàm xử lý đăng nhập bằng Google
+  // Xử lý đăng nhập Google
   const handleGoogleLogin = async (response) => {
     if (response && response.credential) {
       try {
         const data = await LoginService.googleLogin(response.credential);
-        Swal.fire({
-          title: "Đăng nhập thành công!",
-          text: `Xin chào ${data.fullName}`,
-          icon: "success",
-          confirmButtonText: "OK",
-        });
-  
+        showSuccessMessage(data);
         navigate("/");
       } catch (error) {
         Swal.fire({
@@ -116,32 +141,24 @@ const Login = () => {
     }
   };
 
+  // Xử lý đăng nhập Facebook
   const handleFacebookLogin = (response) => {
     if (response.authResponse) {
       const accessToken = response.authResponse.accessToken;
       window.FB.api(
         "/me",
-        { fields: "id,name,email,picture" }, // Thêm 'picture' để lấy avatar
+        { fields: "id,name,email,picture" },
         async function (user) {
           try {
-             console.log("Facebook Token:", accessToken); // Log token để kiểm tra
             const data = await LoginService.facebookLogin({
               id: user.id,
               name: user.name,
-              email: user.email || "", // Đảm bảo email không bị `undefined`
+              email: user.email || "",
               accessToken: response.authResponse.accessToken,
-              imageUrl: user.picture?.data?.url || "", // 📌 Gửi ảnh đại diện lên BE
+              imageUrl: user.picture?.data?.url || "",
             });
-  
-            console.log("data", data);
-  
-            Swal.fire({
-              title: "Đăng nhập thành công!",
-              text: `Xin chào ${data.fullName}`,
-              icon: "success",
-              confirmButtonText: "OK",
-            });
-  
+            
+            showSuccessMessage(data);
             navigate("/");
           } catch (error) {
             Swal.fire({
@@ -160,46 +177,6 @@ const Login = () => {
       });
     }
   };
-  
-  
-
-  useEffect(() => {
-    // Khởi tạo Google Sign-In
-    window.google.accounts.id.initialize({
-      client_id:
-        "854614351620-s8cmgi8ticqj4p2jlqedf4drbis3s7oj.apps.googleusercontent.com",
-      callback: handleGoogleLogin,
-    });
-
-    window.google.accounts.id.renderButton(
-      document.getElementById("google-login-button"), // Thêm ID cho button
-      { theme: "outline", size: "large" }
-    );
-
-    // Khởi tạo Facebook SDK
-    window.fbAsyncInit = function () {
-      window.FB.init({
-        appId: "536613939122715", // Thay thế bằng App ID của bạn
-        cookie: true, // Enable cookies để server có thể truy cập phiên
-        xfbml: true, // Parse các social plugin trên trang
-        version: "v16.0", // Phiên bản API của Facebook
-      });
-    };
-
-    // Tải SDK của Facebook
-    (function (d, s, id) {
-      var js,
-        fjs = d.getElementsByTagName(s)[0];
-      if (d.getElementById(id)) {
-        return;
-      }
-      js = d.createElement(s);
-      js.id = id;
-      js.src = "https://connect.facebook.net/en_US/sdk.js";
-      fjs.parentNode.insertBefore(js, fjs);
-    })(document, "script", "facebook-jssdk");
-  }, []);
-
 
   // Xử lý submit form
   const handleSubmit = (e) => {
@@ -269,7 +246,7 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Other Form Elements */}
+            {/* Đăng nhập và Quên mật khẩu */}
             <div className="flex items-center justify-between mb-6">
               <button
                 type="submit"
@@ -281,7 +258,6 @@ const Login = () => {
                 </span>
                 <FaArrowCircleRight className="h-5 w-5 transform transition-all duration-300 group-hover:text-yellow-300 group-hover:translate-x-2" />
               </button>
-              {/* Ẩn link quên mật khẩu trên màn hình nhỏ */}
               <a
                 href="/forgotPassword"
                 className="text-yellow-500 hover:underline hidden md:inline"
@@ -290,35 +266,34 @@ const Login = () => {
               </a>
             </div>
 
+            {/* Đăng nhập qua mạng xã hội */}
             <div className="flex items-center justify-center mb-6">
               <span className="text-gray-500">Đăng nhập qua mạng xã hội</span>
             </div>
 
             <div className="flex items-center justify-center space-x-4 mb-6">
-              {/* Ẩn các nút mạng xã hội trên màn hình nhỏ */}
               <button
-               type="button"
-               onClick={() =>
-                   window.FB.login(handleFacebookLogin, {scope: "email"})
-               } // Kích hoạt modal đăng nhập Facebook
-              className="flex items-center justify-center gap-3 h-[40px] border border-gray-300 rounded-md font-medium hover:bg-gray-100 w-[219px] max-w-xs">
+                type="button"
+                onClick={() => window.FB.login(handleFacebookLogin, {scope: "email"})}
+                className="flex items-center justify-center gap-3 h-[40px] border border-gray-300 rounded-md font-medium hover:bg-gray-100 w-[219px] max-w-xs"
+              >
                 <img
                   src="https://www.material-tailwind.com/logos/logo-facebook.png"
                   alt="facebook"
                   className="h-6 w-6"
-              />
-              Facebook
+                />
+                Facebook
               </button>
               <button
                 id="google-login-button"
                 type="button"
-                onClick={() => window.google.accounts.id.prompt()} // Kích hoạt modal đăng nhập Google
-
+                onClick={() => window.google.accounts.id.prompt()}
               >
                 <FaGoogle className="text-white" />
               </button>
             </div>
 
+            {/* Đăng ký */}
             <div className="text-center">
               <span className="text-gray-500">
                 Bạn chưa có tài khoản?{" "}
@@ -332,8 +307,6 @@ const Login = () => {
       </div>
     </div>
   );
-
-
 };
 
 export default Login;
