@@ -446,17 +446,21 @@ const VaccineManagement = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Loại Vaccine <span className="text-red-500">*</span>
                                 </label>
-                                <input
-                                    type="text"
+                                <select
                                     name="type"
                                     value={formData.type}
                                     onChange={handleInputChange}
                                     className={`w-full px-4 py-2 rounded-lg border ${
                                         errors.type ? 'border-red-500' : 'border-gray-300'
                                     } focus:outline-none focus:ring-2 focus:ring-[#7b4d2b] disabled:bg-gray-100`}
-                                    placeholder="Nhập loại vaccine"
                                     disabled={isLoading}
-                                />
+                                >
+                                    <option value="" disabled>
+                                        Chọn loại vaccine
+                                    </option>
+                                    <option value="DOG">DOG</option>
+                                    <option value="CAT">CAT</option>
+                                </select>
                                 {errors.type && <p className="text-red-500 text-xs mt-1">{errors.type}</p>}
                             </div>
                             <div>

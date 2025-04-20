@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { motion, AnimatePresence } from 'framer-motion'; // Import framer-motion
 
 // Hàm định dạng tiền tệ
 const formatPrice = (price) => {
@@ -84,7 +85,7 @@ const sampleInvoices = [
 
 const InvoiceManagement = () => {
     const [invoices, setInvoices] = useState(sampleInvoices);
-    const [formData, setFormData] = useState(null); // Lưu hóa đơn đang xem chi tiết
+    const [formData, setFormData] = useState(null);
     const [showForm, setShowForm] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortBy, setSortBy] = useState('date');
@@ -212,8 +213,22 @@ const InvoiceManagement = () => {
         setCurrentPage(pageNumber);
     };
 
+    // Định nghĩa variants cho hiệu ứng
+    const pageVariants = {
+        initial: { opacity: 0, y: 20 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, y: -20 },
+    };
+
     return (
-        <div className="p-6">
+        <motion.div
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            variants={pageVariants}
+            transition={{ duration: 0.3 }}
+            className="p-6"
+        >
             <ToastContainer />
             {isLoading && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
@@ -255,127 +270,131 @@ const InvoiceManagement = () => {
                 </div>
             </div>
 
-            {showForm && formData && (
-                <div className="bg-[#e8dfd7] p-6 rounded-xl shadow-md mb-8 animate-fade-in no-print">
-                    <h2 className="text-2xl font-bold text-[#7b4d2b] mb-6">Chi Tiết Hóa Đơn</h2>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <AnimatePresence mode="wait">
+                {showForm && formData && (
+                    <motion.div
+                        key="form"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        className="bg-[#e8dfd7] p-6 rounded-xl shadow-md mb-8 animate-fade-in no-print"
+                    >
+                        <h2 className="text-2xl font-bold text-[#7b4d2b] mb-6">Chi Tiết Hóa Đơn</h2>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Tên Khách Hàng
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.customerName}
+                                        className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-100"
+                                        disabled
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Ngày Hóa Đơn
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={formData.date}
+                                        className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-100"
+                                        disabled
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Tổng Tiền (VNĐ)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={formData.totalAmount}
+                                        className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-100"
+                                        disabled
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Trạng Thái</label>
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.status}
+                                        className="h-4 w-4 text-[#7b4d2b] border-gray-300 rounded disabled:opacity-50"
+                                        disabled
+                                    />
+                                    <span className="ml-2 text-sm text-gray-700">
+                                        {formData.status ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                                    </span>
+                                </div>
+                            </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Tên Khách Hàng
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.customerName}
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Ghi Chú</label>
+                                <textarea
+                                    value={formData.note}
                                     className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-100"
+                                    rows="3"
                                     disabled
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Ngày Hóa Đơn
-                                </label>
-                                <input
-                                    type="date"
-                                    value={formData.date}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-100"
-                                    disabled
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Tổng Tiền (VNĐ)
-                                </label>
-                                <input
-                                    type="number"
-                                    value={formData.totalAmount}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-100"
-                                    disabled
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Trạng Thái</label>
-                                <input
-                                    type="checkbox"
-                                    checked={formData.status}
-                                    className="h-4 w-4 text-[#7b4d2b] border-gray-300 rounded disabled:opacity-50"
-                                    disabled
-                                />
-                                <span className="ml-2 text-sm text-gray-700">
-                                    {formData.status ? 'Đã thanh toán' : 'Chưa thanh toán'}
-                                </span>
+                            <div className="flex space-x-4">
+                                {!formData.status && (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => handlePayment('Tiền mặt')}
+                                            className="px-6 py-2 bg-green-600 text-white rounded-full shadow-md hover:bg-green-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50"
+                                            disabled={isLoading}
+                                        >
+                                            Thanh toán tiền mặt
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handlePayment('MoMo')}
+                                            className="px-6 py-2 bg-pink-600 text-white rounded-full shadow-md hover:bg-pink-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50"
+                                            disabled={isLoading}
+                                        >
+                                            Thanh toán MoMo
+                                        </button>
+                                    </>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={handlePrintInvoice}
+                                    className="px-6 py-2 bg-blue-600 text-white rounded-full shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50"
+                                    disabled={isLoading}
+                                >
+                                    <Printer className="w-5 h-5 mr-2 inline" />
+                                    In Hóa Đơn
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowForm(false);
+                                        setFormData(null);
+                                    }}
+                                    className="px-6 py-2 bg-gray-500 text-white rounded-full shadow-md hover:bg-gray-600 transition-all duration-300 transform hover:scale-105 disabled:opacity-50"
+                                    disabled={isLoading}
+                                >
+                                    Đóng
+                                </button>
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Ghi Chú</label>
-                            <textarea
-                                value={formData.note}
-                                className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-100"
-                                rows="3"
-                                disabled
-                            />
-                        </div>
-                        <div className="flex space-x-4">
-                            {!formData.status && (
-                                <>
-                                    <button
-                                        type="button"
-                                        onClick={() => handlePayment('Tiền mặt')}
-                                        className="px-6 py-2 bg-green-600 text-white rounded-full shadow-md hover:bg-green-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50"
-                                        disabled={isLoading}
-                                    >
-                                        Thanh toán tiền mặt
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handlePayment('MoMo')}
-                                        className="px-6 py-2 bg-pink-600 text-white rounded-full shadow-md hover:bg-pink-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50"
-                                        disabled={isLoading}
-                                    >
-                                        Thanh toán MoMo
-                                    </button>
-                                </>
-                            )}
-                            <button
-                                type="button"
-                                onClick={handlePrintInvoice}
-                                className="px-6 py-2 bg-blue-600 text-white rounded-full shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50"
-                                disabled={isLoading}
-                            >
-                                <Printer className="w-5 h-5 mr-2 inline" />
-                                In Hóa Đơn
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowForm(false);
-                                    setFormData(null);
-                                }}
-                                className="px-6 py-2 bg-gray-500 text-white rounded-full shadow-md hover:bg-gray-600 transition-all duration-300 transform hover:scale-105 disabled:opacity-50"
-                                disabled={isLoading}
-                            >
-                                Đóng
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Template in hóa đơn */}
             {formData && (
                 <div className="print-only hidden">
                     <div className="p-4 max-w-sm mx-auto">
-                        {/* Header */}
                         <div className="text-center mb-2">
                             <h1 className="text-xl font-bold">HÓA ĐƠN BỆNH VIỆN</h1>
                             <p className="text-sm">Bệnh viện XYZ - 123 Đường ABC, TP.HCM</p>
                             <p className="text-sm">Hotline: 0123 456 789</p>
                         </div>
-
-                        {/* Divider */}
                         <hr className="border-t border-dashed border-gray-400 mb-2" />
-
-                        {/* Invoice Details */}
                         <div className="mb-2">
                             <h2 className="text-base font-semibold mb-1">Chi Tiết Hóa Đơn</h2>
                             <div className="space-y-1 text-sm">
@@ -388,11 +407,7 @@ const InvoiceManagement = () => {
                                 <p>Ghi Chú: {formData.note || 'N/A'}</p>
                             </div>
                         </div>
-
-                        {/* Divider */}
                         <hr className="border-t border-dashed border-gray-400 mb-2" />
-
-                        {/* Footer */}
                         <div className="text-center">
                             <p className="text-sm">Cảm ơn quý khách đã sử dụng dịch vụ!</p>
                             <p className="text-sm">Chúc quý khách sức khỏe dồi dào!</p>
@@ -401,121 +416,133 @@ const InvoiceManagement = () => {
                 </div>
             )}
 
-            <div className="no-print">
-                <h2 className="text-2xl font-bold text-[#7b4d2b] mb-6">Danh Sách Hóa Đơn</h2>
-                {isLoading ? (
-                    <p className="text-gray-500 text-center">Đang tải danh sách hóa đơn...</p>
-                ) : filteredInvoices.length === 0 ? (
-                    <p className="text-gray-500 text-center">Chưa có hóa đơn nào.</p>
-                ) : (
-                    <>
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full bg-white rounded-xl shadow-md">
-                                <thead>
-                                <tr className="bg-[#7b4d2b] text-white">
-                                    <th className="py-3 px-4 text-left text-sm font-semibold">ID</th>
-                                    <th className="py-3 px-4 text-left text-sm font-semibold">Tên Khách Hàng</th>
-                                    <th className="py-3 px-4 text-left text-sm font-semibold">Ngày</th>
-                                    <th className="py-3 px-4 text-left text-sm font-semibold">Tổng Tiền</th>
-                                    <th className="py-3 px-4 text-left text-sm font-semibold">Trạng Thái</th>
-                                    <th className="py-3 px-4 text-left text-sm font-semibold">Ghi Chú</th>
-                                    <th className="py-3 px-4 text-left text-sm font-semibold">Hành Động</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                {currentInvoices.map((invoice) => (
-                                    <tr
-                                        key={invoice.id}
-                                        className="border-b border-gray-200 hover:bg-[#e8dfd7] transition-all duration-200"
-                                    >
-                                        <td className="py-3 px-4 text-sm text-gray-700">{invoice.id}</td>
-                                        <td className="py-3 px-4 text-sm text-gray-700">{invoice.customerName}</td>
-                                        <td className="py-3 px-4 text-sm text-gray-700">{formatDate(invoice.date)}</td>
-                                        <td className="py-3 px-4 text-sm text-gray-700">
-                                            {formatPrice(invoice.totalAmount)}
-                                        </td>
-                                        <td className="py-3 px-4 text-sm">
-                                            {invoice.status ? (
-                                                <span className="flex items-center text-green-600">
-                                                        <CheckCircle className="w-4 h-4 mr-1" /> Đã thanh toán
-                                                    </span>
-                                            ) : (
-                                                <span className="flex items-center text-red-600">
-                                                        <XCircle className="w-4 h-4 mr-1" /> Chưa thanh toán
-                                                    </span>
-                                            )}
-                                        </td>
-                                        <td className="py-3 px-4 text-sm text-gray-700">
-                                            {invoice.note || 'N/A'}
-                                        </td>
-                                        <td className="py-3 px-4 text-sm">
-                                            <div className="flex space-x-2">
-                                                <button
-                                                    onClick={() => handleViewInvoice(invoice)}
-                                                    className="text-[#7b4d2b] hover:text-[#6a3f1e] disabled:opacity-50"
-                                                    disabled={isLoading}
-                                                >
-                                                    <Eye className="w-5 h-5" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteInvoice(invoice.id)}
-                                                    className="text-red-500 hover:text-red-600 disabled:opacity-50"
-                                                    disabled={isLoading}
-                                                >
-                                                    <Trash2 className="w-5 h-5" />
-                                                </button>
-                                            </div>
-                                        </td>
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={currentPage} // Key thay đổi khi chuyển trang phân trang
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="no-print"
+                >
+                    <h2 className="text-2xl font-bold text-[#7b4d2b] mb-6">Danh Sách Hóa Đơn</h2>
+                    {isLoading ? (
+                        <p className="text-gray-500 text-center">Đang tải danh sách hóa đơn...</p>
+                    ) : filteredInvoices.length === 0 ? (
+                        <p className="text-gray-500 text-center">Chưa có hóa đơn nào.</p>
+                    ) : (
+                        <>
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full bg-white rounded-xl shadow-md">
+                                    <thead>
+                                    <tr className="bg-[#7b4d2b] text-white">
+                                        <th className="py-3 px-4 text-left text-sm font-semibold">ID</th>
+                                        <th className="py-3 px-4 text-left text-sm font-semibold">Tên Khách Hàng</th>
+                                        <th className="py-3 px-4 text-left text-sm font-semibold">Ngày</th>
+                                        <th className="py-3 px-4 text-left text-sm font-semibold">Tổng Tiền</th>
+                                        <th className="py-3 px-4 text-left text-sm font-semibold">Trạng Thái</th>
+                                        <th className="py-3 px-4 text-left text-sm font-semibold">Ghi Chú</th>
+                                        <th className="py-3 px-4 text-left text-sm font-semibold">Hành Động</th>
                                     </tr>
-                                ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        {totalPages > 1 && (
-                            <div className="flex justify-center mt-6 space-x-2">
-                                <button
-                                    onClick={() => handlePageChange(currentPage - 1)}
-                                    disabled={currentPage === 1 || isLoading}
-                                    className={`p-2 rounded-full ${
-                                        currentPage === 1 || isLoading
-                                            ? 'bg-gray-300 cursor-not-allowed'
-                                            : 'bg-[#7b4d2b] text-white hover:bg-[#6a3f1e]'
-                                    } transition-all duration-300`}
-                                >
-                                    <ChevronLeft className="w-5 h-5" />
-                                </button>
-                                {Array.from({ length: totalPages }, (_, index) => (
-                                    <button
-                                        key={index + 1}
-                                        onClick={() => handlePageChange(index + 1)}
-                                        className={`px-4 py-2 rounded-full ${
-                                            currentPage === index + 1
-                                                ? 'bg-[#7b4d2b] text-white'
-                                                : 'bg-gray-200 text-gray-700 hover:bg-[#e8dfd7]'
-                                        } transition-all duration-300 ${
-                                            isLoading ? 'cursor-not-allowed opacity-50' : ''
-                                        }`}
-                                        disabled={isLoading}
-                                    >
-                                        {index + 1}
-                                    </button>
-                                ))}
-                                <button
-                                    onClick={() => handlePageChange(currentPage + 1)}
-                                    disabled={currentPage === totalPages || isLoading}
-                                    className={`p-2 rounded-full ${
-                                        currentPage === totalPages || isLoading
-                                            ? 'bg-gray-300 cursor-not-allowed'
-                                            : 'bg-[#7b4d2b] text-white hover:bg-[#6a3f1e]'
-                                    } transition-all duration-300`}
-                                >
-                                    <ChevronRight className="w-5 h-5" />
-                                </button>
+                                    </thead>
+                                    <tbody>
+                                    {currentInvoices.map((invoice) => (
+                                        <motion.tr
+                                            key={invoice.id}
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="border-b border-gray-200 hover:bg-[#e8dfd7] transition-all duration-200"
+                                        >
+                                            <td className="py-3 px-4 text-sm text-gray-700">{invoice.id}</td>
+                                            <td className="py-3 px-4 text-sm text-gray-700">{invoice.customerName}</td>
+                                            <td className="py-3 px-4 text-sm text-gray-700">{formatDate(invoice.date)}</td>
+                                            <td className="py-3 px-4 text-sm text-gray-700">
+                                                {formatPrice(invoice.totalAmount)}
+                                            </td>
+                                            <td className="py-3 px-4 text-sm">
+                                                {invoice.status ? (
+                                                    <span className="flex items-center text-green-600">
+                                                            <CheckCircle className="w-4 h-4 mr-1" /> Đã thanh toán
+                                                        </span>
+                                                ) : (
+                                                    <span className="flex items-center text-red-600">
+                                                            <XCircle className="w-4 h-4 mr-1" /> Chưa thanh toán
+                                                        </span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-4 text-sm text-gray-700">
+                                                {invoice.note || 'N/A'}
+                                            </td>
+                                            <td className="py-3 px-4 text-sm">
+                                                <div className="flex space-x-2">
+                                                    <button
+                                                        onClick={() => handleViewInvoice(invoice)}
+                                                        className="text-[#7b4d2b] hover:text-[#6a3f1e] disabled:opacity-50"
+                                                        disabled={isLoading}
+                                                    >
+                                                        <Eye className="w-5 h-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteInvoice(invoice.id)}
+                                                        className="text-red-500 hover:text-red-600 disabled:opacity-50"
+                                                        disabled={isLoading}
+                                                    >
+                                                        <Trash2 className="w-5 h-5" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </motion.tr>
+                                    ))}
+                                    </tbody>
+                                </table>
                             </div>
-                        )}
-                    </>
-                )}
-            </div>
+                            {totalPages > 1 && (
+                                <div className="flex justify-center mt-6 space-x-2">
+                                    <button
+                                        onClick={() => handlePageChange(currentPage - 1)}
+                                        disabled={currentPage === 1 || isLoading}
+                                        className={`p-2 rounded-full ${
+                                            currentPage === 1 || isLoading
+                                                ? 'bg-gray-300 cursor-not-allowed'
+                                                : 'bg-[#7b4d2b] text-white hover:bg-[#6a3f1e]'
+                                        } transition-all duration-300`}
+                                    >
+                                        <ChevronLeft className="w-5 h-5" />
+                                    </button>
+                                    {Array.from({ length: totalPages }, (_, index) => (
+                                        <button
+                                            key={index + 1}
+                                            onClick={() => handlePageChange(index + 1)}
+                                            className={`px-4 py-2 rounded-full ${
+                                                currentPage === index + 1
+                                                    ? 'bg-[#7b4d2b] text-white'
+                                                    : 'bg-gray-200 text-gray-700 hover:bg-[#e8dfd7]'
+                                            } transition-all duration-300 ${
+                                                isLoading ? 'cursor-not-allowed opacity-50' : ''
+                                            }`}
+                                            disabled={isLoading}
+                                        >
+                                            {index + 1}
+                                        </button>
+                                    ))}
+                                    <button
+                                        onClick={() => handlePageChange(currentPage + 1)}
+                                        disabled={currentPage === totalPages || isLoading}
+                                        className={`p-2 rounded-full ${
+                                            currentPage === totalPages || isLoading
+                                                ? 'bg-gray-300 cursor-not-allowed'
+                                                : 'bg-[#7b4d2b] text-white hover:bg-[#6a3f1e]'
+                                        } transition-all duration-300`}
+                                    >
+                                        <ChevronRight className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </motion.div>
+            </AnimatePresence>
 
             {/* CSS cho in */}
             {/* eslint-disable-next-line react/no-unknown-property */}
@@ -542,7 +569,7 @@ const InvoiceManagement = () => {
                     p  { font-size: 12px; }
                 }
             `}</style>
-        </div>
+        </motion.div>
     );
 };
 
