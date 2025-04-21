@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { IoSearchOutline, IoClose, IoCheckmark } from "react-icons/io5";
+import { IoSearchOutline, IoClose, IoCheckmark, IoRefresh } from "react-icons/io5";
 import { getAllProductDetails, createOfflineOrder, getPointsByPhone, applyDiscount, addProductToOfflineCart, removeProductFromOfflineCart, getOfflineCartDetails } from "../../service/orderOfflineService/OfflineService";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -7,9 +8,10 @@ import Cookies from "js-cookie";
 import { useCookies } from "react-cookie";
 import { decodeToken } from "../utils/jwt";
 import { useNavigate } from "react-router-dom";
+import QRImage from '/src/assets/images/QR.jpg'; 
 
 const isPaymentDisabled = (currentTab) => {
-  const totalAmount = Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 10 * 30000));
+  const totalAmount = Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 100 * 30000));
   if (currentTab.products.length === 0) return true;
   if (currentTab.paymentMethod === 'TRANSFER') return false;
   if (currentTab.paymentMethod === 'CASH') {
@@ -144,14 +146,33 @@ const OrderOffline = () => {
     const [localSearchTerm, setLocalSearchTerm] = useState("");
     const productsPerPage = 10;
 
-    const filteredProducts = products.filter(product =>
-      product.products?.productName?.toLowerCase().includes(localSearchTerm.toLowerCase()) || false
-    );
+    // Lọc sản phẩm: Ẩn productDetails.status = false và lọc theo tên
+    const filteredProducts = products.filter(product => {
+      const isProductActive = product.products?.status === true; // Kiểm tra sản phẩm chính
+      const isDetailActive = product.status !== false; // Kiểm tra biến thể (nếu có trường status)
+      const matchesSearch = product.products?.productName?.toLowerCase().includes(localSearchTerm.toLowerCase()) || false;
+      return isProductActive && isDetailActive && matchesSearch;
+    });
 
-    const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+    // Sắp xếp sản phẩm để các biến thể cùng productId nằm gần nhau
+    const sortedProducts = filteredProducts.sort((a, b) => {
+      // Chuyển productId thành chuỗi, mặc định là '0' nếu không tồn tại
+      const productIdA = String(a.products?.productId ?? '0');
+      const productIdB = String(b.products?.productId ?? '0');
+
+      if (productIdA === productIdB) {
+        // Nếu cùng productId, sắp xếp theo biến thể (size, weight, color)
+        const variantA = `${a.productSizes?.sizeValue || ''}${a.weights?.weightValue || ''}${a.productColors?.colorValue || ''}`;
+        const variantB = `${b.productSizes?.sizeValue || ''}${b.weights?.weightValue || ''}${b.productColors?.colorValue || ''}`;
+        return variantA.localeCompare(variantB);
+      }
+      return productIdA.localeCompare(productIdB); // Sắp xếp theo productId
+    });
+
+    const totalPages = Math.ceil(sortedProducts.length / productsPerPage);
     const indexOfLastProduct = currentPage * productsPerPage;
     const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
-    const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
+    const currentProducts = sortedProducts.slice(indexOfFirstProduct, indexOfLastProduct);
 
     return (
       <>
@@ -283,7 +304,7 @@ const OrderOffline = () => {
     const totalAmount = Math.max(
       0,
       currentTab.products.reduce((sum, p) => sum + p.total, 0) -
-      (currentTab.pointsToUse / 10) * 30000
+      (currentTab.pointsToUse / 100 * 30000)
     );
 
     if (currentTab.paymentMethod === 'CASH' && currentTab.customerPayment < totalAmount) {
@@ -354,9 +375,9 @@ const OrderOffline = () => {
     const points = parseInt(value) || 0;
     setTabs(tabs.map(tab => {
       if (tab.id === activeTab) {
-        const maxUsablePoints = Math.floor(tab.totalPoints / 10) * 10;
+        const maxUsablePoints = Math.floor(tab.totalPoints / 100) * 100; // Chỉ dùng bội số của 100
         const pointsToUse = Math.min(points, maxUsablePoints);
-        return { ...tab, pointsToUse: pointsToUse >= 10 ? pointsToUse : 0 };
+        return { ...tab, pointsToUse: pointsToUse >= 100 ? pointsToUse : 0 };
       }
       return tab;
     }));
@@ -424,7 +445,7 @@ const OrderOffline = () => {
   };
 
   const handleQuickAmount = (amount) => {
-    const totalAmount = Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 10 * 30000));
+    const totalAmount = Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 100 * 30000));
 
     setTabs(tabs.map(tab => {
       if (tab.id === activeTab) {
@@ -445,7 +466,7 @@ const OrderOffline = () => {
   const handleInputChange = (e) => {
     const value = e.target.value.replace(/\D/g, '');
     const amount = parseInt(value) || 0;
-    const totalAmount = Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 10 * 30000));
+    const totalAmount = Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 100 * 30000));
 
     setTabs(tabs.map(tab => {
       if (tab.id === activeTab) {
@@ -518,6 +539,10 @@ const OrderOffline = () => {
     }));
   };
 
+  const handleReload = () => {
+    window.location.reload();
+  };
+
   const currentTab = tabs.find(tab => tab.id === activeTab) || tabs[0];
 
   return (
@@ -538,11 +563,20 @@ const OrderOffline = () => {
             ))}
           </div>
         </div>
-        {isAuthenticated && (
-          <div className="text-white text-sm mr-4">
-            <span>Nhân viên: {staffName}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {isAuthenticated && (
+            <div className="text-white text-sm mr-4">
+              <span>Nhân viên: {staffName}</span>
+            </div>
+          )}
+          <button
+            onClick={handleReload}
+            className="text-white hover:text-gray-200 transition-colors duration-200"
+            title="Load lại trang"
+          >
+            <IoRefresh size={20} />
+          </button>
+        </div>
       </header>
 
       {currentTab && (
@@ -703,6 +737,12 @@ const OrderOffline = () => {
                   </button>
                 )}
               </div>
+              {/* Hiển thị tên khách hàng ngay dưới input */}
+              {currentTab.customerPhone.length === 10 && currentTab.customerName !== 'Khách lẻ' && (
+                <div className="text-xs text-gray-700 mt-1">
+                  Tên khách hàng: {currentTab.customerName}
+                </div>
+              )}
 
               <div className="relative mb-1">
                 <input
@@ -714,7 +754,7 @@ const OrderOffline = () => {
                 />
               </div>
 
-              {currentTab.customerPhone && currentTab.totalPoints >= 10 && (
+              {currentTab.customerPhone && currentTab.totalPoints >= 100 && (
                 <div className="mb-1">
                   <label className="block text-xs font-medium text-gray-700 mb-0.5">Dùng điểm tích lũy</label>
                   <select
@@ -723,9 +763,9 @@ const OrderOffline = () => {
                     className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-[#e59f1e] text-xs"
                   >
                     <option value={0}>Không sử dụng</option>
-                    {Array.from({ length: Math.floor(currentTab.totalPoints / 10) }, (_, i) => (i + 1) * 10).map(points => (
+                    {Array.from({ length: Math.floor(currentTab.totalPoints / 100) }, (_, i) => (i + 1) * 100).map(points => (
                       <option key={points} value={points}>
-                        {points} điểm (-{(points / 10 * 30000).toLocaleString()}đ)
+                        {points} điểm (-{(points / 100 * 30000).toLocaleString()}đ)
                       </option>
                     ))}
                   </select>
@@ -747,11 +787,11 @@ const OrderOffline = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Giảm giá</span>
-                  <span>{(currentTab.pointsToUse / 10 * 30000).toLocaleString()}đ</span>
+                  <span>{(currentTab.pointsToUse / 100 * 30000).toLocaleString()}đ</span>
                 </div>
                 <div className="flex justify-between font-semibold text-[#e59f1e] border-t pt-0.5">
                   <span>Khách cần trả</span>
-                  <span>{Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 10 * 30000)).toLocaleString()}đ</span>
+                  <span>{Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 100 * 30000)).toLocaleString()}đ</span>
                 </div>
               </div>
             </div>
@@ -783,7 +823,7 @@ const OrderOffline = () => {
                     <div className="flex justify-between items-center mb-1">
                       <span className="text-xs text-gray-700">Tổng tiền cần trả:</span>
                       <span className="text-xs font-bold text-[#e59f1e]">
-                        {Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 10 * 30000)).toLocaleString()}đ
+                        {Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 100 * 30000)).toLocaleString()}đ
                       </span>
                     </div>
                     <label className="block text-xs font-medium text-gray-700 mb-0.5">Số tiền khách đưa</label>
@@ -814,6 +854,22 @@ const OrderOffline = () => {
                 </>
               )}
 
+
+              {currentTab.paymentMethod === 'TRANSFER' && (
+                <>
+                  {/* Thêm thông tin chuyển khoản và hình ảnh QR */}
+                  <div className="mb-1 p-2 border rounded bg-gray-50">
+                    <h3 className="text-sm font-bold text-gray-700 mb-2">Thông tin chuyển khoản</h3>
+                    <div className="flex justify-center mb-3">
+                      <img
+                        src={QRImage} // Sử dụng biến đã import
+                        alt="QR Code for Payment"
+                        className="w-55 h-65"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="flex flex-col justify-end flex-grow">
                 {currentTab.paymentMethod === 'CASH' && currentTab.change > 0 && (
                   <div className="mb-2 bg-[#e59f1e]/10 p-1 rounded">

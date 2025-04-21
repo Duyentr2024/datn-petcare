@@ -30,10 +30,18 @@ const ProductListDetails = () => {
         sizeId: "",
         weightId: "",
         quantity: "",
+        status: true
     });
 
     const [editDetail, setEditDetail] = useState(null);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState("active");
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [selectedProductDetailId, setSelectedProductDetailId] = useState(null);
+
+    // Trạng thái phân trang
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(8); // Số lượng sản phẩm mỗi trang
 
     const openEditModal = (productDetails) => {
         if (!productDetails) {
@@ -52,9 +60,9 @@ const ProductListDetails = () => {
             productId: productId ?? 0,
             weightId,
             sizeId,
-            colorId
+            colorId,
+            status: productDetails.status
         };
-
 
         setEditDetail(productData);
         setIsEditModalOpen(true);
@@ -90,21 +98,55 @@ const ProductListDetails = () => {
             weights: editDetail.weightId ? { weightId: Number(editDetail.weightId) } : undefined,
             productSizes: editDetail.sizeId ? { productSizeId: Number(editDetail.sizeId) } : undefined,
             productColors: editDetail.colorId ? { productColorId: Number(editDetail.colorId) } : undefined,
+            status: editDetail.status
         };
-
 
         try {
             const response = await ProductDetailsService.updateProductDetail(editDetail.productDetailId, payload);
             fetchProductDetails();
             setIsEditModalOpen(false);
             toast.success("Cập nhật thành công!");
+            setCurrentPage(1); // Reset về trang đầu sau khi cập nhật
         } catch (error) {
             console.error("Lỗi khi cập nhật biến thể:", error);
+        }
+    };
 
-            if (error.response) {
-                console.error("🔴 Phản hồi lỗi từ server:", error.response.data);
+    const handleToggleStatus = async (productDetailId, currentStatus) => {
+        if (currentStatus) {
+            setSelectedProductDetailId(productDetailId);
+            setShowConfirmModal(true);
+        } else {
+            try {
+                await ProductDetailsService.toggleProductDetailStatus(productDetailId);
+                toast.success("Đã tiếp tục bán sản phẩm!");
+                fetchProductDetails();
+                setCurrentPage(1); // Reset về trang đầu sau khi thay đổi trạng thái
+            } catch (error) {
+                toast.error("Lỗi khi thay đổi trạng thái!");
+                console.error("Lỗi khi toggle status:", error);
             }
         }
+    };
+
+    const confirmToggleStatus = async () => {
+        try {
+            await ProductDetailsService.toggleProductDetailStatus(selectedProductDetailId);
+            toast.success("Đã ngừng bán sản phẩm!");
+            fetchProductDetails();
+            setShowConfirmModal(false);
+            setSelectedProductDetailId(null);
+            setCurrentPage(1); // Reset về trang đầu sau khi thay đổi trạng thái
+        } catch (error) {
+            toast.error("Lỗi khi thay đổi trạng thái!");
+            console.error("Lỗi khi toggle status:", error);
+            setShowConfirmModal(false);
+        }
+    };
+
+    const cancelToggleStatus = () => {
+        setShowConfirmModal(false);
+        setSelectedProductDetailId(null);
     };
 
     useEffect(() => {
@@ -158,7 +200,7 @@ const ProductListDetails = () => {
         if (!productId) return;
 
         try {
-            const data = await ProductDetailsService.getProductDetailsDTOByProductId(productId);
+            const data = await ProductDetailsService.getAllProductDetailsDTOByProductId(productId);
             setProductDetails(data);
             console.log("Dữ liệu API:", data);
         } catch (err) {
@@ -189,9 +231,6 @@ const ProductListDetails = () => {
         setSelectedImages([]);
     };
 
-    if (loading) return <p className="text-center text-gray-500">Đang tải...</p>;
-    if (error) return <p className="text-center text-red-500">{error}</p>;
-
     const handleAddProductDetail = async () => {
         let newErrors = {};
 
@@ -218,6 +257,7 @@ const ProductListDetails = () => {
             weights: newDetail.weightId ? { weightId: Number(newDetail.weightId) } : null,
             productSizes: newDetail.sizeId ? { productSizeId: Number(newDetail.sizeId) } : null,
             productColors: newDetail.colorId ? { productColorId: Number(newDetail.colorId) } : null,
+            status: newDetail.status
         };
 
         try {
@@ -231,17 +271,56 @@ const ProductListDetails = () => {
                 sizeId: "",
                 weightId: "",
                 quantity: "",
+                status: true
             });
             setIsModalOpen(false);
+            setCurrentPage(1); // Reset về trang đầu sau khi thêm mới
         } catch (error) {
             console.error("Lỗi khi thêm biến thể:", error);
         }
-
     };
+
+    // Lọc dữ liệu theo tab
+    const filteredProductDetails = productDetails.filter((product) =>
+        activeTab === "active" ? product.status : !product.status
+    );
+
+    // Tính toán phân trang
+    const totalItems = filteredProductDetails.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const currentItems = filteredProductDetails.slice(startIndex, endIndex);
+
+    // Xử lý chuyển trang
+    const handlePageChange = (pageNumber) => {
+        setCurrentPage(pageNumber);
+    };
+
+    // Xử lý nút Previous và Next
+    const handlePrevious = () => {
+        if (currentPage > 1) {
+            setCurrentPage(currentPage - 1);
+        }
+    };
+
+    const handleNext = () => {
+        if (currentPage < totalPages) {
+            setCurrentPage(currentPage + 1);
+        }
+    };
+
+    // Reset trang khi chuyển tab
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [activeTab]);
+
+    if (loading) return <p className="text-center text-gray-500">Đang tải...</p>;
+    if (error) return <p className="text-center text-red-500">{error}</p>;
 
     return (
         <div className="p-6 bg-white shadow-md rounded-md">
-            <ToastContainer 
+            <ToastContainer
                 position="top-right"
                 autoClose={3000}
                 hideProgressBar={false}
@@ -274,102 +353,139 @@ const ProductListDetails = () => {
                 </button>
             </div>
 
-            {productDetails.length > 0 ? (
-                <table className="w-full border-collapse border border-gray-300">
-                    <thead>
-                        <tr className="bg-gray-200">
-                            <th className="border border-gray-300 px-4 py-2">ID</th>
-                            <th className="border border-gray-300 px-4 py-2">Tên sản phẩm</th>
-                            <th className="border border-gray-300 px-4 py-2">Giá</th>
-                            <th className="border border-gray-300 px-4 py-2">Màu</th>
-                            <th className="border border-gray-300 px-4 py-2">Size</th>
-                            <th className="border border-gray-300 px-4 py-2">Cân nặng</th>
-                            <th className="border border-gray-300 px-4 py-2">Số lượng</th>
-                            <th className="border border-gray-300 px-4 py-2">Hình ảnh</th>
-                            <th className="border border-gray-300 px-4 py-2">Hành động</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {productDetails.map((product) => (
-                            <tr key={product.productDetailId} className="text-center">
-                                <td className="border border-gray-300 px-4 py-2">{product.productDetailId}</td>
-                                <td className="border border-gray-300 px-4 py-2">{product.productName}</td>
-                                <td className="border border-gray-300 px-4 py-2 font-bold">
-                                    {new Intl.NumberFormat("vi-VN").format(product.price)} VND
-                                </td>
-                                <td className="border border-gray-300 px-4 py-2">{product.colorValue}</td>
-                                <td className="border border-gray-300 px-4 py-2">{product.sizeValue}</td>
-                                <td className="border border-gray-300 px-4 py-2">{product.weightValue} kg</td>
-                                <td className="border border-gray-300 px-4 py-2">{product.quantity}</td>
-                                <td className="border border-gray-300 px-4 py-2">
-                                    <Link
-                                        to={`/admin/products-list/manage-product-details/:productId/product-image/${product.productDetailId}`}
-                                        className="px-3 py-2 bg-blue-500 text-white rounded-md flex items-center gap-2"
+            <div className="flex border-b">
+                <button
+                    className={`flex-1 py-2 text-center font-medium ${activeTab === "active"
+                        ? "border-b-2 border-green-600 text-green-600"
+                        : "text-gray-500 hover:text-green-600"
+                        } transition-colors`}
+                    onClick={() => setActiveTab("active")}
+                >
+                    Đang bán
+                </button>
+                <button
+                    className={`flex-1 py-2 text-center font-medium ${activeTab === "inactive"
+                        ? "border-b-2 border-green-600 text-green-600"
+                        : "text-gray-500 hover:text-green-600"
+                        } transition-colors`}
+                    onClick={() => setActiveTab("inactive")}
+                >
+                    Ngừng bán
+                </button>
+            </div>
+
+            {filteredProductDetails.length > 0 ? (
+                <div className="mt-4">
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse border border-gray-200 rounded-lg shadow-sm">
+                            <thead>
+                                <tr className="bg-gray-100 text-gray-700 text-sm">
+                                    <th className="border border-gray-200 px-3 py-2">ID</th>
+                                    <th className="border border-gray-200 px-3 py-2">Tên sản phẩm</th>
+                                    <th className="border border-gray-200 px-3 py-2">Giá</th>
+                                    <th className="border border-gray-200 px-3 py-2">Màu</th>
+                                    <th className="border border-gray-200 px-3 py-2">Size</th>
+                                    <th className="border border-gray-200 px-3 py-2">Cân nặng</th>
+                                    <th className="border border-gray-200 px-3 py-2">Số lượng</th>
+                                    <th className="border border-gray-200 px-3 py-2">Trạng thái</th>
+                                    <th className="border border-gray-200 px-3 py-2">Hình ảnh</th>
+                                    <th className="border border-gray-200 px-3 py-2">Hành động</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {currentItems.map((product) => (
+                                    <tr
+                                        key={product.productDetailId}
+                                        className="text-center text-sm hover:bg-gray-50 transition-colors"
                                     >
-                                        👁️ Xem ảnh
-                                    </Link>
-                                </td>
-                                <td className="border border-gray-300 px-4 py-2">
-                                    <div className="flex gap-2 mt-2">
-                                        <button
-                                            className="px-3 py-1 bg-yellow-500 text-white rounded-md"
-                                            onClick={() => openEditModal(product)}
-                                        >
-                                            ✏️ Sửa
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                                        <td className="border border-gray-200 px-3 py-2">{product.productDetailId}</td>
+                                        <td className="border border-gray-200 px-3 py-2">{product.productName}</td>
+                                        <td className="border border-gray-200 px-3 py-2 font-semibold">
+                                            {new Intl.NumberFormat("vi-VN").format(product.price)} VND
+                                        </td>
+                                        <td className="border border-gray-200 px-3 py-2">{product.colorValue}</td>
+                                        <td className="border border-gray-200 px-3 py-2">{product.sizeValue}</td>
+                                        <td className="border border-gray-200 px-3 py-2">{product.weightValue} kg</td>
+                                        <td className="border border-gray-200 px-3 py-2">{product.quantity}</td>
+                                        <td className="border border-gray-200 px-3 py-2">
+                                            <button
+                                                className={`px-2 py-1 text-xs ${product.status ? 'bg-green-500' : 'bg-red-500'
+                                                    } text-white rounded-md`}
+                                                onClick={() => handleToggleStatus(product.productDetailId, product.status)}
+                                            >
+                                                {product.status ? 'Đang bán' : 'Ngừng bán'}
+                                            </button>
+                                        </td>
+                                        <td className="border border-gray-200 px-3 py-2">
+                                            <Link
+                                                to={`/admin/products-list/manage-product-details/:productId/product-image/${product.productDetailId}`}
+                                                className="px-2 py-1 bg-blue-500 text-white rounded-md text-xs flex items-center justify-center gap-1"
+                                            >
+                                                👁️ Xem
+                                            </Link>
+                                        </td>
+                                        <td className="border border-gray-200 px-3 py-2">
+                                            <div className="flex gap-1 justify-center">
+                                                <button
+                                                    className="px-2 py-1 bg-yellow-500 text-white rounded-md text-xs"
+                                                    onClick={() => openEditModal(product)}
+                                                >
+                                                    ✏️ Sửa
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Phân trang */}
+                    <div className="flex justify-between items-center mt-4">
+                        <button
+                            onClick={handlePrevious}
+                            disabled={currentPage === 1}
+                            className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 transition"
+                        >
+                            Trước
+                        </button>
+
+                        <div className="text-sm text-gray-600">
+                            Trang {currentPage} / {totalPages}
+                        </div>
+
+                        <button
+                            onClick={handleNext}
+                            disabled={currentPage === totalPages}
+                            className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 transition"
+                        >
+                            Sau
+                        </button>
+                    </div>
+                </div>
             ) : (
-                <p className="text-center text-gray-500">Không có thông tin sản phẩm.</p>
+                <p className="text-center text-gray-500 mt-4">Không có thông tin sản phẩm.</p>
             )}
 
-            {modalOpen && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                    <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl w-full text-center">
-                        <h3 className="text-xl font-semibold mb-4">Hình ảnh sản phẩm</h3>
-
-                        {selectedImages && selectedImages.length > 0 ? (
-                            <table className="w-full border-collapse border border-gray-300">
-                                <tbody>
-                                    {Array.from({ length: Math.ceil(selectedImages.length / 4) }, (_, rowIndex) => (
-                                        <tr key={rowIndex} className="text-center">
-                                            {selectedImages.slice(rowIndex * 4, rowIndex * 4 + 4).map((imgUrl, index) => (
-                                                <td key={index} className="border border-gray-300 px-4 py-2">
-                                                    <div className="flex flex-col items-center justify-center">
-                                                        <img
-                                                            src={imgUrl}
-                                                            alt={`Product Image ${index}`}
-                                                            className="w-32 h-32 object-cover rounded-md mx-auto"
-                                                        />
-                                                        <div className="flex gap-2 mt-2">
-                                                            <button className="px-3 py-1 bg-blue-500 text-white rounded-md">Sửa</button>
-                                                            <button className="px-3 py-1 bg-red-500 text-white rounded-md">Xóa</button>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            ))}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        ) : (
-                            <p className="text-gray-500 text-lg italic">Không có ảnh</p>
-                        )}
-                        <button
-                            className="mt-4 px-4 py-2 bg-green-500 text-white rounded-md w-full"
-                        >
-                            Thêm ảnh
-                        </button>
-                        <button
-                            className="mt-4 px-4 py-2 bg-red-500 text-white rounded-md w-full"
-                            onClick={closeModal}
-                        >
-                            Đóng
-                        </button>
+            {showConfirmModal && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center">
+                    <div className="bg-white p-6 rounded-md shadow-lg w-1/3">
+                        <h3 className="text-lg font-semibold mb-4">Xác nhận ngừng bán</h3>
+                        <p className="mb-4">Bạn có chắc chắn muốn ngừng bán sản phẩm này không?</p>
+                        <div className="flex justify-end space-x-2">
+                            <button
+                                onClick={cancelToggleStatus}
+                                className="px-4 py-2 bg-gray-300 text-black rounded-md"
+                            >
+                                Không
+                            </button>
+                            <button
+                                onClick={confirmToggleStatus}
+                                className="px-4 py-2 bg-green-500 text-white rounded-md"
+                            >
+                                Có
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -392,7 +508,7 @@ const ProductListDetails = () => {
                                 : "Đang tải..."}
                         </p>
 
-                        <select 
+                        <select
                             className={`border p-2 rounded w-full mb-2 ${errors.colorId ? 'border-red-500' : ''}`}
                             value={newDetail.colorId}
                             onChange={(e) => setNewDetail({ ...newDetail, colorId: e.target.value })}
@@ -404,7 +520,7 @@ const ProductListDetails = () => {
                         </select>
                         {errors.colorId && <p className="text-red-500 text-sm">{errors.colorId}</p>}
 
-                        <select 
+                        <select
                             className={`border p-2 rounded w-full mb-2 ${errors.sizeId ? 'border-red-500' : ''}`}
                             value={newDetail.sizeId}
                             onChange={(e) => setNewDetail({ ...newDetail, sizeId: e.target.value })}
@@ -416,7 +532,7 @@ const ProductListDetails = () => {
                         </select>
                         {errors.sizeId && <p className="text-red-500 text-sm">{errors.sizeId}</p>}
 
-                        <select 
+                        <select
                             className={`border p-2 rounded w-full mb-2 ${errors.weightId ? 'border-red-500' : ''}`}
                             value={newDetail.weightId}
                             onChange={(e) => setNewDetail({ ...newDetail, weightId: e.target.value })}
@@ -428,8 +544,8 @@ const ProductListDetails = () => {
                         </select>
                         {errors.weightId && <p className="text-red-500 text-sm">{errors.weightId}</p>}
 
-                        <input 
-                            type="number" 
+                        <input
+                            type="number"
                             placeholder="Nhập Giá"
                             value={newDetail.price}
                             onChange={(e) => setNewDetail({ ...newDetail, price: e.target.value })}
@@ -437,8 +553,8 @@ const ProductListDetails = () => {
                         />
                         {errors.price && <p className="text-red-500 text-sm">{errors.price}</p>}
 
-                        <input 
-                            type="number" 
+                        <input
+                            type="number"
                             placeholder="Nhập Số Lượng"
                             value={newDetail.quantity}
                             onChange={(e) => setNewDetail({ ...newDetail, quantity: e.target.value })}
@@ -470,7 +586,7 @@ const ProductListDetails = () => {
                                 : "Đang tải..."}
                         </p>
 
-                        <select 
+                        <select
                             className="border p-2 rounded w-full mb-2"
                             value={editDetail?.colorId || ""}
                             onChange={(e) => setEditDetail({ ...editDetail, colorId: e.target.value })}
@@ -480,7 +596,7 @@ const ProductListDetails = () => {
                             ))}
                         </select>
 
-                        <select 
+                        <select
                             className="border p-2 rounded w-full mb-2"
                             value={editDetail?.sizeId || ""}
                             onChange={(e) => setEditDetail({ ...editDetail, sizeId: e.target.value })}
@@ -490,7 +606,7 @@ const ProductListDetails = () => {
                             ))}
                         </select>
 
-                        <select 
+                        <select
                             className="border p-2 rounded w-full mb-2"
                             value={editDetail?.weightId || ""}
                             onChange={(e) => setEditDetail({ ...editDetail, weightId: e.target.value })}
@@ -500,8 +616,8 @@ const ProductListDetails = () => {
                             ))}
                         </select>
 
-                        <input 
-                            type="number" 
+                        <input
+                            type="number"
                             placeholder="Nhập Giá"
                             value={editDetail?.price || ""}
                             onChange={(e) => setEditDetail({ ...editDetail, price: e.target.value })}
@@ -509,8 +625,8 @@ const ProductListDetails = () => {
                         />
                         {errors.price && <p className="text-red-500 text-sm">{errors.price}</p>}
 
-                        <input 
-                            type="number" 
+                        <input
+                            type="number"
                             placeholder="Nhập Số Lượng"
                             value={editDetail?.quantity || ""}
                             onChange={(e) => setEditDetail({ ...editDetail, quantity: e.target.value })}

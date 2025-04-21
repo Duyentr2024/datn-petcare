@@ -41,7 +41,7 @@ const Address = () => {
 
             try {
 
-                const res = await axios.get("http://localhost:8080/api/addresses");
+                const res = await axios.get(`http://localhost:8080/api/addresses/user/${user.userId}`);
                 setAddresses(Array.isArray(res.data) ? res.data : []);
             } catch {
                 setError("Không thể tải danh sách địa chỉ");
@@ -53,7 +53,8 @@ const Address = () => {
         };
 
         fetchAddresses();
-    }, [user?.userId]);
+
+    }, [user.userId]);
 
     const fetchDistricts = async (provinceId) => {
         if (!provinceId) {
