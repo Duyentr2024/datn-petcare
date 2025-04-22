@@ -369,8 +369,8 @@ const PostForm = () => {
                     <button
                         type="submit"
                         disabled={isUploading}
-                        className={`px-6 py-3 bg-blue-600 text-white rounded-lg shadow-md transition-all duration-200 ${
-                            isUploading ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700"
+                        className={`px-6 py-3 bg-[#f0b040] text-white rounded-lg shadow-md transition-all duration-200 ${
+                            isUploading ? "opacity-50 cursor-not-allowed" : "hover:bg-[#e0a030]"
                         }`}
                     >
                         {isUploading

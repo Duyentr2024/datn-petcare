@@ -1,23 +1,40 @@
 import React, { useEffect, useState } from "react";
 import StatisticsService from "../../service/manageService/StatisticsService";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
-import { FaDollarSign, FaChartBar, FaBoxOpen, FaSearch, FaTrophy, FaUsers } from "react-icons/fa";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, Legend } from "recharts";
+import { FaDollarSign, FaChartBar, FaBoxOpen, FaSearch, FaUsers, FaHospital, FaPalette } from "react-icons/fa";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import {
+  FiUser,
+  FiPhone, // Biểu tượng điện thoại
+  FiShoppingCart // Biểu tượng giỏ hàng
+} from "react-icons/fi";
+
 
 const ManageStatistics = () => {
+  // Tab Management
+  const [activeTab, setActiveTab] = useState("revenue");
   const [revenueToday, setRevenueToday] = useState(null);
+  const [revenueTodayOnline, setRevenueTodayOnline] = useState(null);
+  const [revenueTodayOffline, setRevenueTodayOffline] = useState(null);
   const [revenueYesterday, setRevenueYesterday] = useState(null);
+  const [revenueYesterdayOnline, setRevenueYesterdayOnline] = useState(null);
+  const [revenueYesterdayOffline, setRevenueYesterdayOffline] = useState(null);
   const [monthlyRevenue, setMonthlyRevenue] = useState(null);
+  const [monthlyRevenueOnline, setMonthlyRevenueOnline] = useState(null);
+  const [monthlyRevenueOffline, setMonthlyRevenueOffline] = useState(null);
   const [totalStock, setTotalStock] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [bestSellingProducts, setBestSellingProducts] = useState([]);
+  const [topFavoriteProducts, setTopFavoriteProducts] = useState([]);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [viewType, setViewType] = useState("daily");
   const [totalRevenue, setTotalRevenue] = useState(null);
+  const [totalOnlineRevenue, setTotalOnlineRevenue] = useState(0);
+  const [totalOfflineRevenue, setTotalOfflineRevenue] = useState(0);
   const [totalOrdersToday, setTotalOrdersToday] = useState({
     totalOrders: null,
     offlineOrders: null,
@@ -47,6 +64,19 @@ const ManageStatistics = () => {
     });
   };
 
+  // Hàm định dạng tuần (YEARWEEK) thành chuỗi dễ đọc
+  const formatWeek = (yearWeek) => {
+    const year = yearWeek.toString().slice(0, 4);
+    const week = parseInt(yearWeek.toString().slice(4), 10);
+    return `Tuần ${week}/${year}`;
+  };
+
+  // Hàm định dạng tháng (yyyy-MM) thành chuỗi dễ đọc
+  const formatMonth = (monthStr) => {
+    const [year, month] = monthStr.split("-");
+    return `Tháng ${parseInt(month, 10)}/${year}`;
+  };
+
   const exportRevenueReport = async () => {
     if (chartData.length === 0) {
       toast.error("Không có dữ liệu để xuất.");
@@ -55,61 +85,145 @@ const ManageStatistics = () => {
 
     const totalRevenueSum = chartData.reduce((sum, item) => sum + (Number(item.revenue) || 0), 0);
     const totalOrderCount = chartData.reduce((sum, item) => sum + (Number(item.orderCount) || 0), 0);
-    const totalOnlineOrders = chartData.reduce(
-      (sum, item) => sum + (Number(item.onlineOrders) || 0),
-      0
-    );
-    const totalOfflineOrders = chartData.reduce(
-      (sum, item) => sum + (Number(item.offlineOrders) || 0),
-      0
-    );
+    const totalOnlineOrders = ordersByRange.onlineOrders || 0;
+    const totalOfflineOrders = ordersByRange.offlineOrders || 0;
+    const totalOnlineRevenueSum = chartData.reduce((sum, item) => sum + (Number(item.onlineRevenue) || 0), 0);
+    const totalOfflineRevenueSum = chartData.reduce((sum, item) => sum + (Number(item.offlineRevenue) || 0), 0);
+
+    console.log("Excel - Tổng doanh thu:", totalRevenueSum);
+    console.log("Excel - Doanh thu Online:", totalOnlineRevenueSum);
+    console.log("Excel - Doanh thu Offline:", totalOfflineRevenueSum);
+    console.log("Excel - Tổng đơn Online:", totalOnlineOrders);
+    console.log("Excel - Tổng đơn Offline:", totalOfflineOrders);
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Báo cáo Doanh thu");
 
+    // Tiêu đề chính
     const titleRow = worksheet.addRow(["BÁO CÁO DOANH THU PETCARE"]);
-    titleRow.getCell(1).alignment = { horizontal: "center" };
-    worksheet.mergeCells("A1:F1");
-    const dateRow = worksheet.addRow([`Ngày xuất báo cáo: ${new Date().toLocaleDateString("vi-VN")}`]);
-    dateRow.getCell(1).alignment = { horizontal: "center" };
-    worksheet.mergeCells("A2:F2");
-    const periodRow = worksheet.addRow([
-      `Thời gian thống kê: ${startDate && endDate
-        ? `${new Date(startDate).toLocaleDateString("vi-VN")} - ${new Date(endDate).toLocaleDateString("vi-VN")}`
-        : "Tháng hiện tại"
-      }`,
-    ]);
-    periodRow.getCell(1).alignment = { horizontal: "center" };
-    worksheet.mergeCells("A3:F3");
-    worksheet.addRow([]);
-
-    const headerRow = worksheet.addRow([
-      "STT",
-      "Thời gian",
-      "Doanh thu (VND)",
-      "Tổng đơn hàng",
-      "Đơn Online",
-      "Đơn Offline",
-    ]);
-    headerRow.font = { bold: true, size: 12, color: { argb: "000000" } };
-    headerRow.eachCell((cell) => {
+    titleRow.font = { name: 'Calibri', bold: true, size: 14, color: { argb: "FFFFFF" } };
+    titleRow.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+    titleRow.height = 35;
+    worksheet.mergeCells("A1:J1"); // Merge từ A đến J (10 cột)
+    // Áp dụng gradient fill chỉ cho các ô từ A1 đến J1
+    for (let col = 1; col <= 10; col++) { // Từ cột A (1) đến J (10)
+      const cell = worksheet.getRow(1).getCell(col);
+      cell.fill = {
+        type: "gradient",
+        gradient: "angle",
+        degree: 45,
+        stops: [
+          { position: 0, color: { argb: "BFDBFE" } }, // Xanh nhạt
+          { position: 1, color: { argb: "93C5FD" } }, // Xanh nhạt hơn
+        ],
+      };
       cell.border = {
         top: { style: "thin", color: { argb: "000000" } },
         left: { style: "thin", color: { argb: "000000" } },
         bottom: { style: "thin", color: { argb: "000000" } },
         right: { style: "thin", color: { argb: "000000" } },
       };
-      cell.alignment = { horizontal: "center" };
+    }
+
+    // Ngày xuất báo cáo
+    const dateRow = worksheet.addRow([`Ngày xuất báo cáo: ${new Date().toLocaleDateString("vi-VN")}`]);
+    dateRow.font = { name: 'Calibri', bold: true, size: 11, color: { argb: "FFFFFF" } };
+    dateRow.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+    dateRow.height = 25;
+    worksheet.mergeCells("A2:J2"); // Merge từ A đến J
+    // Áp dụng gradient fill chỉ cho các ô từ A2 đến J2
+    for (let col = 1; col <= 10; col++) {
+      const cell = worksheet.getRow(2).getCell(col);
+      cell.fill = {
+        type: "gradient",
+        gradient: "angle",
+        degree: 45,
+        stops: [
+          { position: 0, color: { argb: "9CA3AF" } }, // Xám nhạt
+          { position: 1, color: { argb: "D1D5DB" } }, // Xám nhạt hơn
+        ],
+      };
+      cell.border = {
+        top: { style: "thin", color: { argb: "000000" } },
+        left: { style: "thin", color: { argb: "000000" } },
+        bottom: { style: "thin", color: { argb: "000000" } },
+        right: { style: "thin", color: { argb: "000000" } },
+      };
+    }
+
+    // Thời gian thống kê
+    const periodRow = worksheet.addRow([
+      `Thời gian: ${startDate && endDate
+        ? `${new Date(startDate).toLocaleDateString("vi-VN")} - ${new Date(endDate).toLocaleDateString("vi-VN")}`
+        : "Tháng hiện tại"
+      }`,
+    ]);
+    periodRow.font = { name: 'Calibri', bold: true, size: 11, color: { argb: "FFFFFF" } };
+    periodRow.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+    periodRow.height = 25;
+    worksheet.mergeCells("A3:J3"); // Merge từ A đến J
+    // Áp dụng gradient fill chỉ cho các ô từ A3 đến J3
+    for (let col = 1; col <= 10; col++) {
+      const cell = worksheet.getRow(3).getCell(col);
+      cell.fill = {
+        type: "gradient",
+        gradient: "angle",
+        degree: 45,
+        stops: [
+          { position: 0, color: { argb: "9CA3AF" } }, // Xám nhạt
+          { position: 1, color: { argb: "D1D5DB" } }, // Xám nhạt hơn
+        ],
+      };
+      cell.border = {
+        top: { style: "thin", color: { argb: "000000" } },
+        left: { style: "thin", color: { argb: "000000" } },
+        bottom: { style: "thin", color: { argb: "000000" } },
+        right: { style: "thin", color: { argb: "000000" } },
+      };
+    }
+
+    worksheet.addRow([]); // Dòng trống
+
+    // Header
+    const headerRow = worksheet.addRow([
+      "STT",
+      viewType === "daily" ? "Ngày" : viewType === "weekly" ? "Tuần" : "Tháng",
+      "Doanh thu (VND)",
+      "Doanh thu Online (VND)",
+      "Doanh thu Offline (VND)",
+      "Tổng đơn hàng",
+      "Đơn Online",
+      "Đơn Offline",
+      "Tỷ lệ Online (%)",
+      "Tỷ lệ Offline (%)",
+    ]);
+    headerRow.font = { name: 'Calibri', bold: true, size: 11, color: { argb: "FFFFFF" } };
+    headerRow.eachCell((cell, colNumber) => {
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "3B82F6" } };
+      cell.border = {
+        top: { style: "thin", color: { argb: "000000" } },
+        left: { style: "thin", color: { argb: "000000" } },
+        bottom: { style: "thin", color: { argb: "000000" } },
+        right: { style: "thin", color: { argb: "000000" } },
+      };
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
     });
 
+    // Dữ liệu
     chartData.forEach((item, index) => {
+      const onlinePercentage = item.revenue ? ((item.onlineRevenue / item.revenue) * 100).toFixed(2) : 0;
+      const offlinePercentage = item.revenue ? ((item.offlineRevenue / item.revenue) * 100).toFixed(2) : 0;
       const row = worksheet.addRow([
         index + 1,
         item.date || item.week || item.month || "N/A",
         item.revenue !== undefined ? Number(item.revenue) : 0,
+        item.onlineRevenue || 0,
+        item.offlineRevenue || 0,
         item.orderCount || 0,
         item.onlineOrders || 0,
         item.offlineOrders || 0,
+        onlinePercentage,
+        offlinePercentage,
       ]);
       row.eachCell((cell) => {
         cell.border = {
@@ -118,42 +232,63 @@ const ManageStatistics = () => {
           bottom: { style: "thin", color: { argb: "000000" } },
           right: { style: "thin", color: { argb: "000000" } },
         };
-        cell.alignment = { horizontal: "center" };
+        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
       });
-      row.getCell(3).numFmt = "#,##0";
-      row.getCell(4).numFmt = "#,##0";
-      row.getCell(5).numFmt = "#,##0";
+      row.getCell(3).numFmt = "#,##0 ₫";
+      row.getCell(4).numFmt = "#,##0 ₫";
+      row.getCell(5).numFmt = "#,##0 ₫";
       row.getCell(6).numFmt = "#,##0";
+      row.getCell(7).numFmt = "#,##0";
+      row.getCell(8).numFmt = "#,##0";
+      row.getCell(9).numFmt = "0.00";
+      row.getCell(10).numFmt = "0.00";
     });
 
+    // Tổng cộng
+    // Thêm hàng tổng cộng
     const totalRow = worksheet.addRow([
       "",
       "Tổng cộng",
       totalRevenueSum,
+      totalOnlineRevenueSum,
+      totalOfflineRevenueSum,
       totalOrderCount,
       totalOnlineOrders,
       totalOfflineOrders,
+      totalRevenueSum ? ((totalOnlineRevenueSum / totalRevenueSum) * 100).toFixed(2) : 0,
+      totalRevenueSum ? ((totalOfflineRevenueSum / totalRevenueSum) * 100).toFixed(2) : 0,
     ]);
-    totalRow.font = { bold: true, size: 12 };
-    totalRow.eachCell((cell, colNumber) => {
+    totalRow.font = { name: 'Calibri', bold: true, size: 11 };
+    totalRow.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+
+    // Áp dụng màu nền và viền chỉ cho các ô từ A đến J
+    for (let col = 1; col <= 10; col++) { // Từ cột A (1) đến J (10)
+      const cell = totalRow.getCell(col);
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "E5E7EB" } }; // Màu xám nhạt
       cell.border = {
         top: { style: "thin", color: { argb: "000000" } },
         left: { style: "thin", color: { argb: "000000" } },
         bottom: { style: "double", color: { argb: "000000" } },
         right: { style: "thin", color: { argb: "000000" } },
       };
-      cell.alignment = { horizontal: "center" };
-      if (colNumber === 3) cell.numFmt = "#,##0";
-      if (colNumber >= 4) cell.numFmt = "#,##0";
-    });
+      // Định dạng số cho các ô dữ liệu
+      if (col >= 3 && col <= 5) cell.numFmt = "#,##0 ₫"; // Doanh thu
+      if (col >= 6 && col <= 8) cell.numFmt = "#,##0"; // Số đơn
+      if (col >= 9 && col <= 10) cell.numFmt = "0.00"; // Tỷ lệ
+    };
 
+    // Điều chỉnh độ rộng cột
     worksheet.columns = [
-      { width: 6 },
-      { width: 22 },
-      { width: 20 },
-      { width: 14 },
-      { width: 14 },
-      { width: 14 },
+      { width: 6 }, // STT
+      { width: 16 }, // Ngày/Tuần/Tháng
+      { width: 16 }, // Doanh thu
+      { width: 16 }, // Doanh thu Online
+      { width: 16 }, // Doanh thu Offline
+      { width: 10 }, // Tổng đơn
+      { width: 10 }, // Đơn Online
+      { width: 10 }, // Đơn Offline
+      { width: 10 }, // Tỷ lệ Online
+      { width: 10 }, // Tỷ lệ Offline
     ];
 
     try {
@@ -165,7 +300,7 @@ const ManageStatistics = () => {
       toast.success("Xuất báo cáo thành công!");
     } catch (error) {
       console.error("Lỗi khi xuất file Excel:", error);
-      toast.error("Có lỗi xảy ra khi xuất file Excel. Vui lòng kiểm tra console!");
+      toast.error("Có lỗi xảy ra khi xuất file Excel!");
     }
   };
 
@@ -179,61 +314,189 @@ const ManageStatistics = () => {
     Promise.all([
       StatisticsService.getDailyRevenueCurrentMonth(),
       StatisticsService.getDailyOrderCountByType(startOfMonth, endOfMonth),
+      StatisticsService.getOrdersByDateRange(startOfMonth, endOfMonth),
+      StatisticsService.getDailyRevenueByType(startOfMonth, endOfMonth),
     ])
-      .then(([revenueRes, orderCountRes]) => {
-        const revenueData = Object.entries(revenueRes.data).map(([date, stats]) => ({
-          date: formatDateFromBE(date), // Định dạng ngay từ BE thành dd/mm/yyyy
-          revenue: Number(stats.revenue),
-          orderCount: Number(stats.orderCount),
+      .then(([revenueRes, orderCountRes, ordersByRangeRes, revenueByTypeRes]) => {
+        console.log("Default Monthly - Revenue data:", revenueRes.data);
+        console.log("Default Monthly - Order count data:", orderCountRes.data);
+        console.log("Default Monthly - Orders by range:", ordersByRangeRes.data);
+        console.log("Default Monthly - Revenue by type:", revenueByTypeRes.data);
+
+        setOrdersByRange({
+          onlineOrders: Number(ordersByRangeRes.data?.onlineOrders || 0),
+          offlineOrders: Number(ordersByRangeRes.data?.offlineOrders || 0),
+        });
+
+        const dateList = [];
+        let currentDate = new Date(startOfMonth);
+        const end = new Date(endOfMonth);
+        while (currentDate <= end) {
+          dateList.push(new Date(currentDate));
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        const revenueData = Object.entries(revenueRes.data || {}).map(([date, stats]) => ({
+          date: formatDateFromBE(date),
+          revenue: Number(stats.revenue || 0),
+          orderCount: Number(stats.orderCount || 0),
         }));
 
-        const orderCountData = Object.entries(orderCountRes.data).reduce((acc, [date, stats]) => {
-          const normalizedDate = formatDateFromBE(date); // Chuẩn hóa ngày từ orderCount
+        const orderCountData = Object.entries(orderCountRes.data || {}).reduce((acc, [date, stats]) => {
+          const normalizedDate = formatDateFromBE(date);
           acc[normalizedDate] = {
-            onlineOrders: Number(stats.onlineOrders),
-            offlineOrders: Number(stats.offlineOrders),
+            onlineOrders: Number(stats.onlineOrders || 0),
+            offlineOrders: Number(stats.offlineOrders || 0),
           };
           return acc;
         }, {});
 
-        const combinedData = revenueData.map((item) => ({
-          date: item.date, // Sử dụng định dạng dd/mm/yyyy
-          revenue: item.revenue,
-          orderCount: item.orderCount,
-          onlineOrders: orderCountData[item.date]?.onlineOrders || 0,
-          offlineOrders: orderCountData[item.date]?.offlineOrders || 0,
-        }));
+        const revenueByTypeData = Object.entries(revenueByTypeRes.data || {}).reduce((acc, [date, stats]) => {
+          const normalizedDate = formatDateFromBE(date);
+          acc[normalizedDate] = {
+            onlineRevenue: Number(stats.onlineRevenue || 0),
+            offlineRevenue: Number(stats.offlineRevenue || 0),
+          };
+          return acc;
+        }, {});
+
+        const combinedData = dateList.map((date) => {
+          const formattedDate = formatDateFromBE(date.toISOString());
+          const revenueItem = revenueData.find((item) => item.date === formattedDate) || {
+            revenue: 0,
+            orderCount: 0,
+          };
+          const orderItem = orderCountData[formattedDate] || {
+            onlineOrders: 0,
+            offlineOrders: 0,
+          };
+          const revenueByType = revenueByTypeData[formattedDate] || {
+            onlineRevenue: 0,
+            offlineRevenue: 0,
+          };
+
+          return {
+            date: formattedDate,
+            revenue: revenueItem.revenue,
+            orderCount: revenueItem.orderCount,
+            onlineOrders: orderItem.onlineOrders,
+            offlineOrders: orderItem.offlineOrders,
+            onlineRevenue: revenueByType.onlineRevenue,
+            offlineRevenue: revenueByType.offlineRevenue,
+          };
+        });
 
         setChartData(combinedData);
         const total = combinedData.reduce((sum, item) => sum + item.revenue, 0);
+        const totalOnlineRevenueSum = combinedData.reduce((sum, item) => sum + item.onlineRevenue, 0);
+        const totalOfflineRevenueSum = combinedData.reduce((sum, item) => sum + item.offlineRevenue, 0);
+
         setTotalRevenue(total);
+        setTotalOnlineRevenue(totalOnlineRevenueSum);
+        setTotalOfflineRevenue(totalOfflineRevenueSum);
+
+        console.log("Default Monthly - Tổng doanh thu:", total);
+        console.log("Default Monthly - Doanh thu Online:", totalOnlineRevenueSum);
+        console.log("Default Monthly - Doanh thu Offline:", totalOfflineRevenueSum);
+        console.log("Default Monthly - Tổng đơn Online:", ordersByRangeRes.data?.onlineOrders);
+        console.log("Default Monthly - Tổng đơn Offline:", ordersByRangeRes.data?.offlineOrders);
       })
       .catch((error) => {
         console.error("Error fetching default monthly revenue:", error);
         toast.error("Có lỗi khi lấy dữ liệu tháng hiện tại!");
+        setChartData([]);
       });
   };
 
   useEffect(() => {
-    StatisticsService.getRevenueToday().then((res) => setRevenueToday(res.data));
-    StatisticsService.getRevenueYesterday().then((res) => setRevenueYesterday(res.data));
-    StatisticsService.getBestSellingProducts().then((res) => setBestSellingProducts(res.data.slice(0, 5)));
-    StatisticsService.getRevenueThisMonth().then((res) => setMonthlyRevenue(res.data));
-    StatisticsService.getTotalStock().then((res) => setTotalStock(res.data));
-    StatisticsService.getTotalOrdersToday().then((res) => setTotalOrdersToday(res.data));
-    StatisticsService.getTotalOrdersYesterday().then((res) =>
-      setTotalOrdersYesterday((prev) => ({ ...prev, totalOrders: res.data }))
-    );
-    StatisticsService.getYesterdayOrderStats().then((res) =>
-      setTotalOrdersYesterday((prev) => ({
-        ...prev,
-        offlineOrders: res.data.offlineOrdersYesterday,
-        onlineOrders: res.data.onlineOrdersYesterday,
-      }))
-    );
-    StatisticsService.getTotalOrdersThisMonth().then((res) => setTotalOrdersThisMonth(res.data));
-    StatisticsService.getTotalCustomers().then((res) => setTotalCustomers(res.data));
-    StatisticsService.getTopFiveCustomers().then((res) => setTopFiveCustomers(res.data));
+    Promise.all([
+      StatisticsService.getRevenueToday(),
+      StatisticsService.getRevenueTodayByType(),
+      StatisticsService.getTotalOrdersToday(),
+      StatisticsService.getRevenueYesterday(),
+      StatisticsService.getRevenueYesterdayByType(),
+      StatisticsService.getTotalOrdersYesterday(),
+      StatisticsService.getYesterdayOrderStats(),
+      StatisticsService.getRevenueThisMonth(),
+      StatisticsService.getRevenueThisMonthByType(),
+      StatisticsService.getTotalOrdersThisMonth(),
+      StatisticsService.getTotalStock(),
+      StatisticsService.getTotalCustomers(),
+      StatisticsService.getTopFiveCustomers(),
+      StatisticsService.getBestSellingProducts(),
+      StatisticsService.getTopFavoriteProducts(), // Thêm API mới
+    ])
+      .then(
+        ([
+          revenueTodayRes,
+          revenueTodayByTypeRes,
+          ordersTodayRes,
+          revenueYesterdayRes,
+          revenueYesterdayByTypeRes,
+          totalOrdersYesterdayRes,
+          statsYesterdayRes,
+          revenueThisMonthRes,
+          revenueThisMonthByTypeRes,
+          ordersThisMonthRes,
+          totalStockRes,
+          totalCustomersRes,
+          topFiveCustomersRes,
+          bestSellingProductsRes,
+          topFavoriteProductsRes, // Thêm response mới
+        ]) => {
+          // Xử lý dữ liệu hôm nay
+          const totalRevenueToday = revenueTodayRes.data;
+          setRevenueToday(totalRevenueToday);
+          setRevenueTodayOnline(revenueTodayByTypeRes.data?.onlineRevenue || 0);
+          setRevenueTodayOffline(revenueTodayByTypeRes.data?.offlineRevenue || 0);
+          setTotalOrdersToday({
+            totalOrders: ordersTodayRes.data?.totalOrders || 0,
+            offlineOrders: ordersTodayRes.data?.offlineOrders || 0,
+            onlineOrders: ordersTodayRes.data?.onlineOrders || 0,
+          });
+
+          // Xử lý dữ liệu hôm qua
+          const totalRevenueYesterday = revenueYesterdayRes.data;
+          setRevenueYesterday(totalRevenueYesterday);
+          setRevenueYesterdayOnline(revenueYesterdayByTypeRes.data?.onlineRevenue || 0);
+          setRevenueYesterdayOffline(revenueYesterdayByTypeRes.data?.offlineRevenue || 0);
+          setTotalOrdersYesterday({
+            totalOrders: totalOrdersYesterdayRes.data || 0,
+            offlineOrders: statsYesterdayRes.data?.offlineOrdersYesterday || 0,
+            onlineOrders: statsYesterdayRes.data?.onlineOrdersYesterday || 0,
+          });
+
+          // Xử lý dữ liệu tháng này
+          const totalRevenueThisMonth = revenueThisMonthRes.data;
+          setMonthlyRevenue(totalRevenueThisMonth);
+          setMonthlyRevenueOnline(revenueThisMonthByTypeRes.data?.onlineRevenue || 0);
+          setMonthlyRevenueOffline(revenueThisMonthByTypeRes.data?.offlineRevenue || 0);
+          setTotalOrdersThisMonth({
+            totalOrders: ordersThisMonthRes.data?.totalOrders || 0,
+            offlineOrders: ordersThisMonthRes.data?.offlineOrders || 0,
+            onlineOrders: ordersThisMonthRes.data?.onlineOrders || 0,
+          });
+
+          // Xử lý tổng kho, khách hàng, top khách hàng, top sản phẩm
+          setTotalStock(totalStockRes.data || 0);
+          setTotalCustomers(totalCustomersRes.data || 0);
+          setTopFiveCustomers(topFiveCustomersRes.data || []);
+          setBestSellingProducts(bestSellingProductsRes.data?.slice(0, 5) || []);
+
+          // Xử lý top 5 sản phẩm yêu thích
+          setTopFavoriteProducts(topFavoriteProductsRes.data?.slice(0, 5) || []);
+
+          console.log("Today - Total:", totalRevenueToday, "Online:", revenueTodayByTypeRes.data?.onlineRevenue, "Offline:", revenueTodayByTypeRes.data?.offlineRevenue);
+          console.log("Yesterday - Total:", totalRevenueYesterday, "Online:", revenueYesterdayByTypeRes.data?.onlineRevenue, "Offline:", revenueYesterdayByTypeRes.data?.offlineRevenue);
+          console.log("This Month - Total:", totalRevenueThisMonth, "Online:", revenueThisMonthByTypeRes.data?.onlineRevenue, "Offline:", revenueThisMonthByTypeRes.data?.offlineRevenue);
+          console.log("Top Favorite Products:", topFavoriteProductsRes.data);
+        }
+      )
+      .catch((error) => {
+        console.error("Error fetching initial data:", error);
+        toast.error("Có lỗi khi lấy dữ liệu ban đầu!");
+      });
+
     fetchDefaultMonthlyRevenue();
   }, []);
 
@@ -251,7 +514,7 @@ const ManageStatistics = () => {
       return;
     }
 
-    const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
 
     if (daysDiff > 365) {
       toast.error("Vui lòng chọn khoảng thời gian không quá 365 ngày.");
@@ -263,143 +526,355 @@ const ManageStatistics = () => {
       Promise.all([
         StatisticsService.getDailyRevenue(startDate, endDate),
         StatisticsService.getDailyOrderCountByType(startDate, endDate),
+        StatisticsService.getOrdersByDateRange(startDate, endDate),
+        StatisticsService.getDailyRevenueByType(startDate, endDate),
       ])
-        .then(([revenueRes, orderCountRes]) => {
-          const revenueData = Object.entries(revenueRes.data).map(([date, stats]) => ({
-            date: formatDateFromBE(date), // Chuẩn hóa ngày từ BE thành dd/mm/yyyy
-            revenue: Number(stats.revenue || stats),
-            orderCount: stats.orderCount ? Number(stats.orderCount) : 0,
+        .then(([revenueRes, orderCountRes, ordersByRangeRes, revenueByTypeRes]) => {
+          console.log("Search Daily - Raw revenue data:", revenueRes.data);
+          console.log("Search Daily - Raw order count data:", orderCountRes.data);
+          console.log("Search Daily - Raw orders by range:", ordersByRangeRes.data);
+          console.log("Search Daily - Raw revenue by type:", revenueByTypeRes.data);
+
+          const dateList = [];
+          let currentDate = new Date(start);
+          while (currentDate <= end) {
+            dateList.push(new Date(currentDate));
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+
+          const revenueData = Object.entries(revenueRes.data || {}).map(([date, stats]) => ({
+            date: formatDateFromBE(date),
+            revenue: Number(stats.revenue || 0),
+            orderCount: Number(stats.orderCount || 0),
           }));
 
-          const orderCountData = Object.entries(orderCountRes.data).reduce((acc, [date, stats]) => {
-            const normalizedDate = formatDateFromBE(date); // Chuẩn hóa ngày từ orderCount
+          const orderCountData = Object.entries(orderCountRes.data || {}).reduce((acc, [date, stats]) => {
+            const normalizedDate = formatDateFromBE(date);
             acc[normalizedDate] = {
-              onlineOrders: Number(stats.onlineOrders),
-              offlineOrders: Number(stats.offlineOrders),
+              onlineOrders: Number(stats.onlineOrders || 0),
+              offlineOrders: Number(stats.offlineOrders || 0),
             };
             return acc;
           }, {});
 
-          const combinedData = revenueData.map((item) => ({
-            date: item.date, // Sử dụng định dạng dd/mm/yyyy
-            revenue: item.revenue,
-            orderCount: item.orderCount,
-            onlineOrders: orderCountData[item.date]?.onlineOrders || 0,
-            offlineOrders: orderCountData[item.date]?.offlineOrders || 0,
-          }));
+          const revenueByTypeData = Object.entries(revenueByTypeRes.data || {}).reduce((acc, [date, stats]) => {
+            const normalizedDate = formatDateFromBE(date);
+            acc[normalizedDate] = {
+              onlineRevenue: Number(stats.onlineRevenue || 0),
+              offlineRevenue: Number(stats.offlineRevenue || 0),
+            };
+            return acc;
+          }, {});
+
+          const combinedData = dateList.map((date) => {
+            const formattedDate = formatDateFromBE(date.toISOString());
+            const revenueItem = revenueData.find((item) => item.date === formattedDate) || {
+              revenue: 0,
+              orderCount: 0,
+            };
+            const orderItem = orderCountData[formattedDate] || {
+              onlineOrders: 0,
+              offlineOrders: 0,
+            };
+            const revenueByType = revenueByTypeData[formattedDate] || {
+              onlineRevenue: 0,
+              offlineRevenue: 0,
+            };
+
+            return {
+              date: formattedDate,
+              revenue: revenueItem.revenue,
+              orderCount: revenueItem.orderCount,
+              onlineOrders: orderItem.onlineOrders,
+              offlineOrders: orderItem.offlineOrders,
+              onlineRevenue: revenueByType.onlineRevenue,
+              offlineRevenue: revenueByType.offlineRevenue,
+            };
+          });
+
+          console.log("Search Daily - Combined Data:", combinedData);
+
+          const total = combinedData.reduce((sum, item) => sum + item.revenue, 0);
+          const totalOnlineRevenueSum = combinedData.reduce((sum, item) => sum + item.onlineRevenue, 0);
+          const totalOfflineRevenueSum = combinedData.reduce((sum, item) => sum + item.offlineRevenue, 0);
 
           setChartData(combinedData);
-          const total = combinedData.reduce((sum, item) => sum + item.revenue, 0);
           setTotalRevenue(total);
+          setTotalOnlineRevenue(totalOnlineRevenueSum);
+          setTotalOfflineRevenue(totalOfflineRevenueSum);
+          setOrdersByRange({
+            onlineOrders: Number(ordersByRangeRes.data?.onlineOrders || 0),
+            offlineOrders: Number(ordersByRangeRes.data?.offlineOrders || 0),
+          });
+
+          console.log("Search Daily - Tổng doanh thu:", total);
+          console.log("Search Daily - Doanh thu Online:", totalOnlineRevenueSum);
+          console.log("Search Daily - Doanh thu Offline:", totalOfflineRevenueSum);
+          console.log("Search Daily - Tổng đơn Online:", ordersByRangeRes.data?.onlineOrders);
+          console.log("Search Daily - Tổng đơn Offline:", ordersByRangeRes.data?.offlineOrders);
         })
         .catch((error) => {
           console.error("Error fetching daily data:", error);
           toast.error("Có lỗi khi lấy dữ liệu hàng ngày!");
-        });
-      StatisticsService.getOrdersByDateRange(startDate, endDate).then((res) => {
-        setOrdersByRange(res.data);
+          setChartData([]);
+          setTotalRevenue(0);
+          setTotalOnlineRevenue(0);
+          setTotalOfflineRevenue(0);
+          setOrdersByRange({ onlineOrders: 0, offlineOrders: 0 });
       });
     } else if (daysDiff <= 90) {
       setViewType("weekly");
       Promise.all([
         StatisticsService.getWeeklyRevenue(startDate, endDate),
         StatisticsService.getWeeklyOrderCountByType(startDate, endDate),
+        StatisticsService.getOrdersByDateRange(startDate, endDate),
+        StatisticsService.getWeeklyRevenueByType(startDate, endDate),
       ])
-        .then(([revenueRes, orderCountRes]) => {
-          const revenueData = revenueRes.data.map((item) => ({
-            week: item.week,
-            revenue: Number(item.revenue),
+        .then(([revenueRes, orderCountRes, ordersByRangeRes, revenueByTypeRes]) => {
+          console.log("Search Weekly - Raw revenue data:", revenueRes.data);
+          console.log("Search Weekly - Raw order count data:", orderCountRes.data);
+          console.log("Search Weekly - Raw orders by range:", ordersByRangeRes.data);
+          console.log("Search Weekly - Raw revenue by type:", revenueByTypeRes.data);
+
+          const weekList = [];
+          let currentDate = new Date(start);
+          currentDate.setDate(currentDate.getDate() - ((currentDate.getDay() + 6) % 7));
+          while (currentDate <= end) {
+            const year = currentDate.getFullYear();
+            const firstDayOfYear = new Date(year, 0, 1);
+            const daysSinceStartOfYear = Math.floor(
+              (currentDate.getTime() - firstDayOfYear.getTime()) / (1000 * 60 * 60 * 24)
+            );
+            const weekNumber = Math.ceil((daysSinceStartOfYear + firstDayOfYear.getDay() + 1) / 7);
+            const weekKey = `${year}${weekNumber.toString().padStart(2, "0")}`;
+            if (!weekList.includes(weekKey)) {
+              weekList.push(weekKey);
+            }
+            currentDate.setDate(currentDate.getDate() + 7);
+          }
+
+          const revenueData = (revenueRes.data || []).map((item) => ({
+            weekKey: item.week?.toString() || "",
+            week: formatWeek(item.week || ""),
+            revenue: Number(item.revenue || 0),
+            orderCount: Number(item.orderCount || 0),
           }));
 
-          const orderCountData = orderCountRes.data.reduce((acc, item) => {
-            acc[item.week] = {
-              orderCount: Number(item.orderCount),
-              onlineOrders: Number(item.onlineOrders),
-              offlineOrders: Number(item.offlineOrders),
+          const orderCountData = (orderCountRes.data || []).reduce((acc, item) => {
+            const weekKey = item.week?.toString() || "";
+            acc[weekKey] = {
+              orderCount: Number(item.orderCount || 0),
+              onlineOrders: Number(item.onlineOrders || 0),
+              offlineOrders: Number(item.offlineOrders || 0),
+              formattedWeek: formatWeek(weekKey),
             };
             return acc;
           }, {});
 
-          const combinedData = revenueData.map((item) => ({
-            week: item.week,
-            revenue: item.revenue,
-            orderCount: orderCountData[item.week]?.orderCount || 0,
-            onlineOrders: orderCountData[item.week]?.onlineOrders || 0,
-            offlineOrders: orderCountData[item.week]?.offlineOrders || 0,
-          }));
+          const revenueByTypeData = (revenueByTypeRes.data || []).reduce((acc, item) => {
+            const weekKey = item.week?.toString() || "";
+            acc[weekKey] = acc[weekKey] || { onlineRevenue: 0, offlineRevenue: 0, formattedWeek: formatWeek(weekKey) };
+            if (item.type === "ORDER ONLINE") {
+              acc[weekKey].onlineRevenue = Number(item.revenue || 0);
+            } else if (item.type === "OFFLINE") {
+              acc[weekKey].offlineRevenue = Number(item.revenue || 0);
+            }
+            return acc;
+          }, {});
+
+          const combinedData = weekList.map((weekKey) => {
+            const formattedWeek = formatWeek(weekKey);
+            const revenueItem = revenueData.find((item) => item.weekKey === weekKey) || {
+              revenue: 0,
+              orderCount: 0,
+            };
+            const orderItem = orderCountData[weekKey] || {
+              orderCount: 0,
+              onlineOrders: 0,
+              offlineOrders: 0,
+            };
+            const revenueByType = revenueByTypeData[weekKey] || {
+              onlineRevenue: 0,
+              offlineRevenue: 0,
+            };
+
+            return {
+              week: formattedWeek,
+              revenue: revenueItem.revenue,
+              orderCount: orderItem.orderCount,
+              onlineOrders: orderItem.onlineOrders,
+              offlineOrders: orderItem.offlineOrders,
+              onlineRevenue: revenueByType.onlineRevenue,
+              offlineRevenue: revenueByType.offlineRevenue,
+            };
+          });
+
+          console.log("Search Weekly - Combined Data:", combinedData);
+
+          const total = combinedData.reduce((sum, item) => sum + item.revenue, 0);
+          const totalOnlineRevenueSum = combinedData.reduce((sum, item) => sum + item.onlineRevenue, 0);
+          const totalOfflineRevenueSum = combinedData.reduce((sum, item) => sum + item.offlineRevenue, 0);
 
           setChartData(combinedData);
-          const total = combinedData.reduce((sum, item) => sum + item.revenue, 0);
           setTotalRevenue(total);
+          setTotalOnlineRevenue(totalOnlineRevenueSum);
+          setTotalOfflineRevenue(totalOfflineRevenueSum);
+          setOrdersByRange({
+            onlineOrders: Number(ordersByRangeRes.data?.onlineOrders || 0),
+            offlineOrders: Number(ordersByRangeRes.data?.offlineOrders || 0),
+          });
+
+          console.log("Search Weekly - Tổng doanh thu:", total);
+          console.log("Search Weekly - Doanh thu Online:", totalOnlineRevenueSum);
+          console.log("Search Weekly - Doanh thu Offline:", totalOfflineRevenueSum);
+          console.log("Search Weekly - Tổng đơn Online:", ordersByRangeRes.data?.onlineOrders);
+          console.log("Search Weekly - Tổng đơn Offline:", ordersByRangeRes.data?.offlineOrders);
         })
         .catch((error) => {
           console.error("Error fetching weekly data:", error);
           toast.error("Có lỗi khi lấy dữ liệu hàng tuần!");
-        });
-      StatisticsService.getOrdersByDateRange(startDate, endDate).then((res) => {
-        setOrdersByRange(res.data);
+          setChartData([]);
+          setTotalRevenue(0);
+          setTotalOnlineRevenue(0);
+          setTotalOfflineRevenue(0);
+          setOrdersByRange({ onlineOrders: 0, offlineOrders: 0 });
       });
     } else {
       setViewType("monthly");
       Promise.all([
-        StatisticsService.getRevenue(startDate, endDate),
+        StatisticsService.getMonthlyRevenue(startDate, endDate),
         StatisticsService.getMonthlyOrderCountByType(startDate, endDate),
+        StatisticsService.getOrdersByDateRange(startDate, endDate),
+        StatisticsService.getMonthlyRevenueByType(startDate, endDate), // Thêm API mới vào
       ])
-        .then(([revenueRes, orderCountRes]) => {
-          const totalRevenue = Number(revenueRes.data);
-          const orderCountData = orderCountRes.data.map((item) => ({
-            month: item.month,
-            orderCount: Number(item.orderCount),
-            onlineOrders: Number(item.onlineOrders),
-            offlineOrders: Number(item.offlineOrders),
-          }));
+        .then(([revenueRes, orderCountRes, ordersByRangeRes, revenueByTypeRes]) => { // Thêm `revenueByTypeRes` cho dữ liệu doanh thu online/offline
+          console.log("Search Monthly - Raw revenue data:", revenueRes.data);
+          console.log("Search Monthly - Raw order count data:", orderCountRes.data);
+          console.log("Search Monthly - Raw orders by range:", ordersByRangeRes.data);
+          console.log("Search Monthly - Raw revenue by type data:", revenueByTypeRes.data); // Log dữ liệu doanh thu online/offline
 
-          const combinedData = orderCountData.map((item) => {
-            const monthDate = new Date(item.month + "-01");
-            const monthStr = monthDate.toLocaleDateString("vi-VN", {
-              month: "long",
-              year: "numeric",
-            });
+          // Tạo danh sách tháng đầy đủ
+          const monthList = [];
+          let currentDate = new Date(start);
+          currentDate.setDate(1); // Đặt về đầu tháng
+          const endMonth = new Date(end.getFullYear(), end.getMonth() + 1, 0); // Cuối tháng của endDate
+          while (currentDate <= endMonth) {
+            const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
+            const monthStr = formatMonth(monthKey);
+            monthList.push({ monthKey, monthStr });
+            currentDate.setMonth(currentDate.getMonth() + 1);
+          }
+          console.log("Search Monthly - Month List:", monthList);
+
+          // Xử lý dữ liệu doanh thu
+          const revenueData = (revenueRes.data || []).map((item) => ({
+            monthKey: item.month || "",
+            month: formatMonth(item.month || ""),
+            revenue: Number(item.revenue || 0),
+            orderCount: Number(item.orderCount || 0),
+          }));
+          console.log("Search Monthly - Processed Revenue Data:", revenueData);
+
+          // Xử lý dữ liệu số đơn hàng
+          const orderCountData = (orderCountRes.data || []).reduce((acc, item) => {
+            const monthKey = item.month || "";
+            acc[monthKey] = {
+              orderCount: Number(item.orderCount || 0),
+              onlineOrders: Number(item.onlineOrders || 0),
+              offlineOrders: Number(item.offlineOrders || 0),
+              formattedMonth: formatMonth(monthKey),
+            };
+            return acc;
+          }, {});
+          console.log("Search Monthly - Processed Order Count Data:", orderCountData);
+
+          // Xử lý dữ liệu doanh thu online và offline
+          const revenueByTypeData = (revenueByTypeRes.data || []).reduce((acc, item) => {
+            const monthKey = item.month || "";
+            acc[monthKey] = {
+              onlineRevenue: Number(item.onlineRevenue || 0),
+              offlineRevenue: Number(item.offlineRevenue || 0),
+            };
+            return acc;
+          }, {});
+          console.log("Search Monthly - Processed Revenue By Type Data:", revenueByTypeData);
+
+          // Kết hợp dữ liệu
+          const combinedData = monthList.map(({ monthKey, monthStr }) => {
+            const revenueItem = revenueData.find((item) => item.monthKey === monthKey) || {
+              revenue: 0,
+              orderCount: 0,
+            };
+            const orderItem = orderCountData[monthKey] || {
+              orderCount: 0,
+              onlineOrders: 0,
+              offlineOrders: 0,
+            };
+            const revenueByTypeItem = revenueByTypeData[monthKey] || {
+              onlineRevenue: 0,
+              offlineRevenue: 0,
+            };
+
             return {
               month: monthStr,
-              revenue:
-                orderCountData.length === 1
-                  ? totalRevenue
-                  : (totalRevenue * item.orderCount) / orderCountData.reduce((sum, i) => sum + i.orderCount, 0),
-              orderCount: item.orderCount,
-              onlineOrders: item.onlineOrders,
-              offlineOrders: item.offlineOrders,
+              revenue: revenueItem.revenue,
+              orderCount: orderItem.orderCount,
+              onlineOrders: orderItem.onlineOrders,
+              offlineOrders: orderItem.offlineOrders,
+              onlineRevenue: revenueByTypeItem.onlineRevenue,
+              offlineRevenue: revenueByTypeItem.offlineRevenue,
             };
           });
+          console.log("Search Monthly - Combined Data:", combinedData);
+
+          // Tính tổng
+          const total = combinedData.reduce((sum, item) => sum + item.revenue, 0);
+          const totalOnlineRevenueSum = combinedData.reduce((sum, item) => sum + item.onlineRevenue, 0);
+          const totalOfflineRevenueSum = combinedData.reduce((sum, item) => sum + item.offlineRevenue, 0);
 
           setChartData(combinedData);
-          setTotalRevenue(totalRevenue);
+          setTotalRevenue(total);
+          setTotalOnlineRevenue(totalOnlineRevenueSum);
+          setTotalOfflineRevenue(totalOfflineRevenueSum);
+          setOrdersByRange({
+            onlineOrders: Number(ordersByRangeRes.data?.onlineOrders || 0),
+            offlineOrders: Number(ordersByRangeRes.data?.offlineOrders || 0),
+          });
+
+          console.log("Search Monthly - Tổng doanh thu:", total);
+          console.log("Search Monthly - Doanh thu Online:", totalOnlineRevenueSum);
+          console.log("Search Monthly - Doanh thu Offline:", totalOfflineRevenueSum);
+          console.log("Search Monthly - Tổng đơn Online:", ordersByRangeRes.data?.onlineOrders);
+          console.log("Search Monthly - Tổng đơn Offline:", ordersByRangeRes.data?.offlineOrders);
         })
         .catch((error) => {
           console.error("Error fetching monthly data:", error);
           toast.error("Có lỗi khi lấy dữ liệu hàng tháng!");
+          setChartData([]);
+          setTotalRevenue(0);
+          setTotalOnlineRevenue(0);
+          setTotalOfflineRevenue(0);
+          setOrdersByRange({ onlineOrders: 0, offlineOrders: 0 });
         });
-      StatisticsService.getOrdersByDateRange(startDate, endDate).then((res) => {
-        setOrdersByRange(res.data);
-      });
     }
+
   };
 
   const formatCurrency = (value) => {
-    return value !== null
+    return value !== null && value !== undefined
       ? value.toLocaleString("vi-VN", { style: "currency", currency: "VND" })
       : "Đang tải...";
   };
 
   const formatNumber = (value) => {
-    return value !== null ? value.toLocaleString("vi-VN") : "Đang tải...";
+    return value !== null && value !== undefined ? value.toLocaleString("vi-VN") : "Đang tải...";
   };
 
   return (
-    <div className="p-3 bg-gray-100 rounded-lg shadow-lg max-w-6xl mx-auto">
+    <div className="p-1 bg-gray-50 rounded-lg max-w-[1280px] mx-auto mt-2">
       <ToastContainer
         position="top-right"
-        autoClose={3000}
+        autoClose={2000}
         hideProgressBar={false}
         newestOnTop={false}
         closeOnClick
@@ -408,144 +883,185 @@ const ManageStatistics = () => {
         draggable
         pauseOnHover
       />
-      <h2 className="text-2xl font-bold text-center mb-2 text-blue-600">📊 Thống kê Doanh thu</h2>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2 mb-3">
+      {/* Tab Selection */}
+      <div className="flex border-b overflow-x-auto">
         {[
-          {
-            title: "Thống kê hôm nay",
+          { name: "revenue", label: "Thống kê doanh thu", icon: <FaDollarSign size={11} /> },
+          { name: "products", label: "Sản phẩm bán chạy", icon: <FaBoxOpen size={11} /> },
+          { name: "customers", label: "Khách hàng thân thiết", icon: <FaUsers size={11} /> },
+          { name: "spa", label: "Quản lý Spa", icon: <FaHospital size={11} /> },
+          { name: "interface", label: "Quản lý giao diện", icon: <FaPalette size={11} /> }
+        ].map((tab) => (
+          <button
+            key={tab.name}
+            className={`py-1.5 px-3.5 font-medium text-xs md:text-sm rounded-t-md transition-colors whitespace-nowrap ${activeTab === tab.name
+              ? "bg-white text-blue-600 border-b-2 border-blue-600"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            onClick={() => setActiveTab(tab.name)}
+          >
+            <span className="inline-flex items-center gap-1">
+              {tab.icon}
+              {tab.label}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Content based on active tab */}
+      <div className="bg-white rounded-lg p-3.5">
+        {activeTab === "revenue" && (
+          <div>
+            {/* Revenue Tab Content */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-2 mb-3 overflow-x-auto">
+              {[
+                {
+                  title: "Hôm nay",
             revenue: revenueToday,
             orders: totalOrdersToday,
-            icon: <FaDollarSign />,
-            color: "text-green-600",
+                  icon: <FaDollarSign size={12} />,
+                  color: "text-green-500",
           },
           {
-            title: "Thống kê hôm qua",
+                  title: "Hôm qua",
             revenue: revenueYesterday,
             orders: totalOrdersYesterday,
-            icon: <FaChartBar />,
-            color: "text-orange-600",
+                  icon: <FaChartBar size={12} />,
+                  color: "text-orange-500",
           },
           {
-            title: "Thống kê tháng này",
+                  title: "Tháng này",
             revenue: monthlyRevenue,
             orders: totalOrdersThisMonth,
-            icon: <FaBoxOpen />,
-            color: "text-blue-600",
+                  icon: <FaBoxOpen size={12} />,
+                  color: "text-blue-500",
           },
           {
-            title: "Số lượng sản phẩm",
+                  title: "Sản phẩm",
             value: totalStock,
-            icon: <FaBoxOpen />,
-            color: "text-purple-600",
+                  icon: <FaBoxOpen size={12} />,
+                  color: "text-purple-500",
           },
           {
-            title: "Tổng số khách hàng",
+                  title: "Khách hàng",
             value: totalCustomers,
-            icon: <FaUsers />,
-            color: "text-teal-600",
+                  icon: <FaUsers size={12} />,
+                  color: "text-teal-500",
           },
         ].map((item, index) => (
           <div
             key={index}
-            className="border p-2 rounded-lg bg-white shadow hover:shadow-md transition flex items-center"
+                  className="border border-gray-200 p-2 rounded-lg bg-white hover:bg-gray-50 transition flex items-center gap-2 group relative"
           >
-            <div className={`text-xl mr-1 ${item.color}`}>{item.icon}</div>
+                  <div className={`text-base ${item.color}`}>{item.icon}</div>
             <div>
-              <h3 className="text-xs font-semibold text-gray-700 truncate">{item.title}</h3>
+                    <h3 className="text-xs font-semibold text-gray-600 truncate">{item.title}</h3>
               {item.revenue !== undefined ? (
                 <>
                   <p className="text-sm font-bold text-gray-900 truncate">
-                    Doanh thu: {formatCurrency(item.revenue)}
-                  </p>
-                  {item.orders !== undefined && (
-                    typeof item.orders === "object" && item.orders ? (
-                      <>
-                        <p className="text-xs text-gray-900 truncate">
-                          Tổng đơn: {formatNumber(item.orders.totalOrders)}
+                          {formatCurrency(item.revenue)}
                         </p>
-                        <p className="text-xs text-gray-600 truncate">
-                          Offline: {formatNumber(item.orders.offlineOrders)}
-                        </p>
-                        <p className="text-xs text-gray-600 truncate">
-                          Online: {formatNumber(item.orders.onlineOrders)}
+                        <p className="text-xs text-gray-500 truncate">
+                          Đơn: {formatNumber(item.orders?.totalOrders || item.orders)}
                         </p>
                       </>
                     ) : (
-                      <p className="text-xs text-gray-900 truncate">
-                        Đơn hàng: {formatNumber(item.orders)}
-                      </p>
-                    )
-                  )}
-                </>
-              ) : (
-                <p className="text-sm font-bold text-gray-900 truncate">
-                  {formatNumber(item.value)}
-                </p>
+                      <p className="text-sm font-bold text-gray-900 truncate">{formatNumber(item.value)}</p>
+                    )}
+                  </div>
+                  {/* Tooltip for detailed info (hidden by default, shown on hover) */}
+                  {item.revenue !== undefined && item.onlineRevenue !== undefined && item.offlineRevenue !== undefined && (
+                    <div className="absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded-md p-2 z-10 top-full left-0 mt-1 min-w-[150px] shadow-lg">
+                      <p className="truncate">Online: {formatCurrency(item.onlineRevenue)}</p>
+                      <p className="truncate">Offline: {formatCurrency(item.offlineRevenue)}</p>
+                      {item.orders && typeof item.orders === "object" && (
+                        <>
+                          <p className="truncate">Đơn Online: {formatNumber(item.orders.onlineOrders)}</p>
+                          <p className="truncate">Đơn Offline: {formatNumber(item.orders.offlineOrders)}</p>
+                        </>
               )}
             </div>
+                  )}
           </div>
         ))}
       </div>
 
-      <div className="mb-3 bg-white p-4 rounded-md shadow">
-        <h3 className="text-md font-semibold flex items-center mb-3 text-gray-800">
-          <FaSearch className="mr-2 text-blue-600" /> Tìm kiếm doanh thu theo ngày
-        </h3>
-        <div className="flex flex-col sm:flex-row gap-2">
+            <div className="mb-3.5 bg-white p-2.5 rounded-md border border-gray-200">
+              <div className="flex items-center mb-1.5 text-gray-800">
+                <FaSearch className="mr-1.5 text-blue-600" size={11} />
+                <span className="text-sm font-semibold">Tìm kiếm doanh thu</span>
+              </div>
+              <div className="flex flex-row gap-2">
           <input
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="border p-1.5 rounded w-full shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
           />
           <input
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="border p-1.5 rounded w-full shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
           />
           <button
             onClick={fetchRevenueByDate}
-            className="bg-blue-600 text-white px-3 py-1.5 rounded shadow hover:bg-blue-700 transition flex items-center justify-center text-sm"
+                  className="bg-blue-600 text-white px-3.5 py-2 rounded hover:bg-blue-700 transition flex items-center text-sm"
           >
-            <FaSearch className="mr-1" /> Tìm
+                  <FaSearch className="mr-1" size={10} /> Tìm
           </button>
         </div>
+              <div className="flex flex-row justify-between items-center mt-2.5">
         {totalRevenue !== null && (
-          <div className="mt-3">
-            <h3 className="text-md font-semibold text-green-700">
-              Tổng doanh thu: {formatCurrency(totalRevenue)}
-            </h3>
-          </div>
-        )}
-        {ordersByRange.offlineOrders !== null && ordersByRange.onlineOrders !== null && (
-          <div className="mt-2">
-            <p className="text-sm text-gray-700">
-              Đơn Offline: <span className="font-bold">{formatNumber(ordersByRange.offlineOrders)}</span>
-            </p>
-            <p className="text-sm text-gray-700">
-              Đơn Online: <span className="font-bold">{formatNumber(ordersByRange.onlineOrders)}</span>
-            </p>
+                  <div>
+                    <p className="text-sm font-semibold text-green-700 truncate">
+                      Tổng: {formatCurrency(totalRevenue)}
+                    </p>
+                    {(totalOnlineRevenue > 0 || totalOfflineRevenue > 0) && (
+                      <div className="flex flex-col mt-1">
+                        <p className="text-xs text-blue-600 truncate">
+                          Online: {formatCurrency(totalOnlineRevenue)}
+                        </p>
+                        <p className="text-xs text-orange-600 truncate">
+                          Offline: {formatCurrency(totalOfflineRevenue)}
+                        </p>
+                      </div>
+                    )}
           </div>
         )}
         <button
           onClick={exportRevenueReport}
-          className="bg-green-600 text-white px-3 py-1.5 rounded shadow hover:bg-green-700 transition mt-4 flex items-center text-sm"
+                  className="bg-green-600 text-white px-3.5 py-2 rounded hover:bg-green-700 transition flex items-center text-sm"
         >
-          📥 Xuất Excel
+                  📥 Excel
         </button>
+              </div>
+              {ordersByRange.offlineOrders !== null && ordersByRange.onlineOrders !== null && (
+                <div className="mt-1.5 flex flex-row gap-3.5">
+                  <p className="text-xs text-gray-700 truncate">
+                    Đơn Offline: {formatNumber(ordersByRange.offlineOrders)}
+                  </p>
+                  <p className="text-xs text-gray-700 truncate">
+                    Đơn Online: {formatNumber(ordersByRange.onlineOrders)}
+                  </p>
+                </div>
+              )}
       </div>
 
       {chartData.length > 0 && (
-        <div className="mb-4 bg-white p-4 rounded-lg shadow">
-          <h3 className="text-md font-semibold mb-2">📈 Biểu đồ doanh thu và đơn hàng</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData}>
+              <div className="bg-white p-2.5 rounded-md border border-gray-200">
+                <div className="flex items-center mb-1.5">
+                  <span className="text-sm font-semibold">📈 Biểu đồ</span>
+                </div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey={viewType === "daily" ? "date" : viewType === "weekly" ? "week" : "month"}
-                tickFormatter={(value) => value} // Hiển thị giá trị đã định dạng từ chartData
+                      tickFormatter={(value) => value}
+                      tick={{ fontSize: 11 }}
+                      height={25}
               />
               <YAxis
                 yAxisId="left"
@@ -556,6 +1072,8 @@ const ManageStatistics = () => {
                   else if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
                   return value;
                 }}
+                      tick={{ fontSize: 11 }}
+                      width={35}
               />
               <YAxis
                 yAxisId="right"
@@ -563,71 +1081,171 @@ const ManageStatistics = () => {
                 stroke="#82ca9d"
                 allowDecimals={false}
                 tickFormatter={(value) => value}
+                      tick={{ fontSize: 11 }}
+                      width={25}
               />
               <Tooltip
                 formatter={(value, name) =>
-                  name === "revenue" ? formatCurrency(value) : value.toLocaleString("vi-VN")
-                }
-                labelFormatter={(label) => label} // Giữ nguyên nhãn đã định dạng
-              />
-              <Bar yAxisId="left" dataKey="revenue" fill="#3B82F6" name="Doanh thu" />
-              <Bar yAxisId="right" dataKey="orderCount" fill="#82ca9d" name="Đơn hàng" />
+                        name === "revenue" || name === "onlineRevenue" || name === "offlineRevenue"
+                          ? formatCurrency(value)
+                          : value.toLocaleString("vi-VN")
+                      }
+                      labelFormatter={(label) => label}
+                      contentStyle={{ fontSize: "11px", padding: "4px 6px" }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "3px" }} />
+                    <Bar yAxisId="left" dataKey="revenue" fill="#4B5563" name="Tổng doanh thu" barSize={14} />
+                    <Bar yAxisId="left" dataKey="onlineRevenue" fill="#1E90FF" name="Online" barSize={14} />
+                    <Bar yAxisId="left" dataKey="offlineRevenue" fill="#FF8C00" name="Offline" barSize={14} />
+                    <Bar yAxisId="right" dataKey="orderCount" fill="#82ca9d" name="Tổng đơn" barSize={14} />
+                    <Bar yAxisId="right" dataKey="onlineOrders" fill="#4682B4" name="Đơn Online" barSize={14} />
+                    <Bar yAxisId="right" dataKey="offlineOrders" fill="#FFD700" name="Đơn Offline" barSize={14} />
             </BarChart>
           </ResponsiveContainer>
+              </div>
+            )}
         </div>
       )}
 
-      <div className="bg-white p-4 rounded-lg shadow mb-4">
-        <h3 className="text-lg font-semibold mb-4 flex items-center">
-          <FaTrophy className="text-yellow-500 mr-2" /> 5 Sản phẩm bán chạy nhất
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {bestSellingProducts.map((product, index) => (
+        {activeTab === "products" && (
+          <div>
+            {/* Products Tab Content */}
+            <div className="mb-2.5">
+              <span className="text-sm font-semibold text-blue-600">Top 5 sản phẩm bán chạy</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 overflow-x-auto">
+              {bestSellingProducts.length > 0 ? (
+                bestSellingProducts.map((product, index) => (
             <div
               key={index}
-              className="border rounded-lg p-3 bg-gray-50 shadow hover:shadow-lg transition"
+                    className="border border-gray-200 rounded-md p-2.5 bg-white transition hover:bg-gray-50 relative group"
             >
               <img
                 src={product.image}
                 alt={product.productName}
-                className="h-24 w-full object-cover rounded-md mb-2"
-              />
-              <h4 className="text-sm font-semibold text-gray-800 truncate">{product.productName}</h4>
+                      className="h-20 w-full object-cover rounded-md mb-1.5"
+                    />
+                    <h4 className="text-sm font-semibold text-gray-800 truncate" title={product.productName}>
+                      {product.productName}
+                    </h4>
+
+                    {/* Hiển thị biến thể */}
               <p className="text-xs text-gray-600">
-                Số lượng bán: <span className="font-bold">{product.totalSold}</span>
-              </p>
-              <p className="text-xs text-green-600 font-bold">{formatCurrency(product.price)}</p>
+                      Màu: <span className="font-medium">{product.colorValue}</span>
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Size: <span className="font-medium">{product.sizeValue}</span>
+                    </p>
+                    <p className="text-xs text-gray-600 mb-1">
+                      Khối lượng: <span className="font-medium">{product.weightValue} kg</span>
+                    </p>
+
+                    <div className="flex justify-between items-center mt-1">
+                      <p className="text-xs text-gray-600 truncate">
+                        Bán được: {formatNumber(product.totalSold)}
+                      </p>
+                      <p className="text-sm font-bold text-green-600 truncate">
+                        {formatCurrency(product.price)}
+                      </p>
             </div>
-          ))}
         </div>
+                ))
+              ) : (
+                <p className="text-sm text-gray-600">Không có dữ liệu.</p>
+              )}
       </div>
 
-      <div className="bg-white p-4 rounded-lg shadow">
-        <h3 className="text-lg font-semibold mb-4 flex items-center">
-          <FaTrophy className="text-yellow-500 mr-2" /> Top 5 Khách hàng thân thiết
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            {/* Top 5 sản phẩm được yêu thích nhất */}
+            <div className="mb-2.5 mt-6">
+              <span className="text-sm font-semibold text-blue-600">Top 5 sản phẩm được yêu thích nhất</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 overflow-x-auto">
+              {topFavoriteProducts.length > 0 ? (
+                topFavoriteProducts.map((product, index) => (
+                  <div
+                    key={index}
+                    className="border border-gray-200 rounded-md p-2.5 bg-white transition hover:bg-gray-50 relative group"
+                  >
+                    <img
+                      src={product.image}
+                      alt={product.productName}
+                      className="h-20 w-full object-cover rounded-md mb-1.5"
+                    />
+                    <h4 className="text-sm font-semibold text-gray-800 truncate" title={product.productName}>
+                      {product.productName}
+                    </h4>
+
+                    <div className="flex justify-between items-center mt-1">
+                      <p className="text-xs text-gray-600 truncate">
+                        Lượt yêu thích: {formatNumber(product.favoriteCount)}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-gray-600">Không có dữ liệu.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === "customers" && (
+          <div>
+            {/* Customers Tab Content */}
+            <div className="flex items-center mb-2.5">
+              <FiUser className="mr-1.5 text-blue-600" size={13} />
+              <span className="text-sm font-semibold text-blue-600">Top 5 khách hàng</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 overflow-x-auto">
           {topFiveCustomers.length > 0 ? (
             topFiveCustomers.map((customer, index) => (
               <div
                 key={index}
-                className="border rounded-lg p-3 bg-gray-50 shadow hover:shadow-lg transition"
+                    className="border border-gray-200 rounded-md p-2.5 bg-white transition hover:bg-gray-50"
               >
                 <h6 className="text-sm font-semibold text-gray-800 truncate">{customer.fullName}</h6>
-                <div className="mt-3 text-sm text-gray-700 space-y-1">
-                  <p className="flex items-center gap-2">
-                    📞 <span className="text-gray-600">{customer.phone}</span>
-                  </p>
-                  <p className="flex items-center gap-2">
-                    🛒 <span className="font-bold text-blue-600">{customer.orderCount}</span> đơn hàng
+                    <div className="mt-1 text-xs text-gray-700 space-y-0.5">
+                      <p className="flex items-center gap-1.5 truncate">
+                        <FiPhone className="text-gray-600" size={11} />
+                        <span className="text-gray-600">{customer.phone}</span>
+                      </p>
+                      <p className="flex items-center gap-1.5 truncate">
+                        <FiShoppingCart className="text-blue-600" size={11} />
+                        <span className="font-bold text-blue-600">{formatNumber(customer.orderCount)}</span> đơn
                   </p>
                 </div>
               </div>
             ))
           ) : (
-            <p className="text-gray-600">Đang tải...</p>
+                <p className="text-sm text-gray-600">Không có dữ liệu.</p>
           )}
         </div>
+          </div>
+        )}
+
+        {activeTab === "spa" && (
+          <div className="p-4">
+            <div className="flex flex-col items-center justify-center my-8 text-center">
+              <FaHospital className="text-blue-500 text-4xl mb-4" />
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">Quản lý Spa</h3>
+              <p className="text-gray-500 max-w-md">
+                Tính năng Quản lý Spa đang được phát triển. Vui lòng quay lại sau.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "interface" && (
+          <div className="p-4">
+            <div className="flex flex-col items-center justify-center my-8 text-center">
+              <FaPalette className="text-purple-500 text-4xl mb-4" />
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">Quản lý giao diện</h3>
+              <p className="text-gray-500 max-w-md">
+                Tính năng Quản lý giao diện đang được phát triển. Vui lòng quay lại sau.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

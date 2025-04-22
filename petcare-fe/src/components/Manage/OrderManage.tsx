@@ -235,14 +235,14 @@ const OrderManage = () => {
       {/* Order Table */}
       <div className="bg-white p-4 rounded-lg shadow-lg">
         <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-200">
-              <th className="p-3 border">Mã đơn hàng</th>
-              <th className="p-3 border">Khách hàng</th>
-              <th className="p-3 border">Ngày đặt</th>
-              <th className="p-3 border">Tổng tiền</th>
-              {activeTab === "all" && <th className="p-3 border">Trạng thái</th>}
-              <th className="p-3 border">Thao tác</th>
+        <thead className="bg-[#f0b040] text-white text-sm">
+            <tr>
+              <th className="py-3 px-5">Mã đơn hàng</th>
+              <th className="py-3 px-5">Khách hàng</th>
+              <th className="py-3 px-5">Ngày đặt</th>
+              <th className="py-3 px-5">Tổng tiền</th>
+              {activeTab === "all" && <th className="py-3 px-5">Trạng thái</th>}
+              <th className="py-3 px-5">Thao tác</th>
             </tr>
           </thead>
           <tbody>

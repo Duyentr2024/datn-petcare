@@ -7,6 +7,7 @@ import ProductSizeService from "../../service/manageService/ProductSizeService";
 import ProductWeightsService from "../../service/manageService/ProductWeightsService";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { FiEdit, FiEye } from "react-icons/fi";
 
 const ProductListDetails = () => {
     const { productId } = useParams();
@@ -370,24 +371,24 @@ const ProductListDetails = () => {
             <div className="flex justify-between mb-4">
                 <button
                     onClick={() => window.history.back()}
-                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                    className="bg-[#f0b040] text-white px-4 py-2 rounded hover:bg-[#e0a030]"
                 >
                     ← Quay về
                 </button>
 
                 <button
                     onClick={() => setIsModalOpen(true)}
-                    className="px-4 py-2 bg-green-500 text-white rounded-md"
+                    className="px-5 py-2 bg-[#f0b040] text-white rounded-md font-medium transition-colors hover:bg-[#e0a030]"
                 >
-                    Thêm biến thể
+                    <i className="fas fa-plus mr-2"></i> Thêm
                 </button>
             </div>
 
             <div className="flex border-b">
                 <button
                     className={`flex-1 py-2 text-center font-medium ${activeTab === "active"
-                        ? "border-b-2 border-green-600 text-green-600"
-                        : "text-gray-500 hover:text-green-600"
+                        ? "border-b-2 border-[#f0b040] text-[#f0b040]"
+                        : "text-gray-500 hover:text-[#e0a030]"
                         } transition-colors`}
                     onClick={() => setActiveTab("active")}
                 >
@@ -395,8 +396,8 @@ const ProductListDetails = () => {
                 </button>
                 <button
                     className={`flex-1 py-2 text-center font-medium ${activeTab === "inactive"
-                        ? "border-b-2 border-green-600 text-green-600"
-                        : "text-gray-500 hover:text-green-600"
+                        ? "border-b-2 border-[#f0b040] text-[#f0b040]"
+                        : "text-gray-500 hover:text-[#e0a030]"
                         } transition-colors`}
                     onClick={() => setActiveTab("inactive")}
                 >
@@ -405,21 +406,21 @@ const ProductListDetails = () => {
             </div>
 
             {filteredProductDetails.length > 0 ? (
-                <div className="mt-4">
+                <div className="">
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse border border-gray-200 rounded-lg shadow-sm">
-                            <thead>
-                                <tr className="bg-gray-100 text-gray-700 text-sm">
-                                    <th className="border border-gray-200 px-3 py-2">ID</th>
-                                    <th className="border border-gray-200 px-3 py-2">Tên sản phẩm</th>
-                                    <th className="border border-gray-200 px-3 py-2">Giá</th>
-                                    <th className="border border-gray-200 px-3 py-2">Màu</th>
-                                    <th className="border border-gray-200 px-3 py-2">Size</th>
-                                    <th className="border border-gray-200 px-3 py-2">Cân nặng</th>
-                                    <th className="border border-gray-200 px-3 py-2">Số lượng</th>
-                                    <th className="border border-gray-200 px-3 py-2">Trạng thái</th>
-                                    <th className="border border-gray-200 px-3 py-2">Hình ảnh</th>
-                                    <th className="border border-gray-200 px-3 py-2">Hành động</th>
+                            <thead className="bg-[#f0b040] text-white text-sm">
+                                <tr>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">ID</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Tên sản phẩm</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Giá</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Màu</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Size</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Cân nặng</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Số lượng</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Trạng thái</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Hình ảnh</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Hành động</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -439,28 +440,32 @@ const ProductListDetails = () => {
                                         <td className="border border-gray-200 px-3 py-2">{product.quantity}</td>
                                         <td className="border border-gray-200 px-3 py-2">
                                             <button
-                                                className={`px-2 py-1 text-xs ${product.status ? 'bg-green-500' : 'bg-red-500'
-                                                    } text-white rounded-md`}
+                                                className={`px-2 py-1 rounded-full text-xs font-medium  ${product.status ? "bg-green-100 text-green-700"
+                                                    : "bg-red-100 text-red-700"
+                                                    }`}
                                                 onClick={() => handleToggleStatus(product.productDetailId, product.status)}
                                             >
                                                 {product.status ? 'Đang bán' : 'Ngừng bán'}
                                             </button>
                                         </td>
                                         <td className="border border-gray-200 px-3 py-2">
-                                            <Link
-                                                to={`/admin/products-list/manage-product-details/:productId/product-image/${product.productDetailId}`}
-                                                className="px-2 py-1 bg-blue-500 text-white rounded-md text-xs flex items-center justify-center gap-1"
-                                            >
-                                                👁️ Xem
-                                            </Link>
+                                            <div className="flex gap-1 justify-center">
+                                                <Link
+                                                    to={`/admin/products-list/manage-product-details/:productId/product-image/${product.productDetailId}`}
+                                                    className="p-2 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 transition duration-200 flex items-center gap-2 whitespace-nowrap"     >
+                                                    <FiEye />
+                                                </Link>
+                                            </div>
+
                                         </td>
                                         <td className="border border-gray-200 px-3 py-2">
                                             <div className="flex gap-1 justify-center">
                                                 <button
-                                                    className="px-2 py-1 bg-yellow-500 text-white rounded-md text-xs"
+                                                    className="p-2 bg-amber-500 text-white rounded-md text-xs font-medium hover:bg-amber-600 transition duration-200 flex items-center gap-1 whitespace-nowrap"
+
                                                     onClick={() => openEditModal(product)}
                                                 >
-                                                    ✏️ Sửa
+                                                    <FiEdit />
                                                 </button>
                                             </div>
                                         </td>
@@ -511,7 +516,7 @@ const ProductListDetails = () => {
                             </button>
                             <button
                                 onClick={confirmToggleStatus}
-                                className="px-4 py-2 bg-green-500 text-white rounded-md"
+                                className="px-4 py-2 bg-[#f0b040] text-white rounded-md hover:bg-[#e0a030] transition whitespace-nowrap"
                             >
                                 Có
                             </button>

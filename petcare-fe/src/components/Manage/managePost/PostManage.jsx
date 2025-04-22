@@ -253,8 +253,8 @@ const PostManage = () => {
             />
             <h1 className="text-2xl font-bold mb-4 text-center">Quản lý bài viết</h1>
             <div className="flex justify-between items-center mb-4">
-                <Link to="/admin/post-management/postform" className="bg-green-500 text-white px-4 py-2 rounded-lg">
-                    + Thêm bài viết
+                <Link to="/admin/post-management/postform" className="bg-[#f0b040] text-white px-4 py-2 rounded-lg hover:bg-[#e0a030]">
+                <i className="fas fa-plus mr-2"></i> Thêm bài viết
                 </Link>
                 <input
                     type="text"
@@ -267,8 +267,8 @@ const PostManage = () => {
 
             <div className="overflow-x-auto bg-white shadow-md rounded-lg">
                 <table className="w-full text-sm text-gray-600">
-                    <thead>
-                    <tr className="bg-blue-500 text-white text-left">
+                <thead className="bg-[#f0b040] text-white text-sm text-left">
+                    <tr>
                         <th className="p-3">Tiêu đề</th>
                         <th className="p-3">Tác giả</th>
                         <th className="p-3">Lượt xem</th>

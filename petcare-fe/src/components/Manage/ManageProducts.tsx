@@ -7,6 +7,7 @@ import { storage } from "../../firebaseConfig";
 import { Link } from "react-router-dom";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { FiEdit, FiEye } from "react-icons/fi";
 
 const ManageProducts = () => {
     const [products, setProducts] = useState([]);
@@ -40,7 +41,7 @@ const ManageProducts = () => {
     });
     const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage] = useState(7);
+    const [itemsPerPage] = useState(5);
     const [isAddingLoading, setIsAddingLoading] = useState(false);
     const [isUpdatingLoading, setIsUpdatingLoading] = useState(false);
     const [activeTab, setActiveTab] = useState("active");
@@ -317,7 +318,7 @@ const ManageProducts = () => {
     };
 
     return (
-        <div className="p-3 bg-white shadow rounded-md">
+        <div className="p-6 bg-white shadow-lg rounded-lg">
             <ToastContainer
                 position="top-right"
                 autoClose={3000}
@@ -329,34 +330,34 @@ const ManageProducts = () => {
                 draggable
                 pauseOnHover
             />
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-2xl font-bold text-gray-800">
                 Quản lý sản phẩm
             </h2>
-            <div className="flex justify-between items-center gap-2">
+            <div className="flex justify-between items-center gap-4">
                 <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Tìm kiếm sản phẩm..."
-                    className="border p-2 rounded-md w-full max-w-[200px] text-sm focus:ring-1 focus:ring-blue-500"
+                    className="border border-gray-300 p-2 rounded-md w-full max-w-[250px] text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 />
                 <button
                     onClick={() => {
                         setIsModalOpen(true);
                         resetForm();
                     }}
-                    className="px-4 py-2 bg-green-500 text-white rounded-md"
+                    className="px-5 py-2 bg-[#f0b040] text-white rounded-md font-medium transition-colors hover:bg-[#e0a030]"
                 >
-                    Thêm sản phẩm
+                    <i className="fas fa-plus mr-2"></i> Thêm
                 </button>
             </div>
 
-            <div className="flex border-b">
+            <div className="flex border-b ">
                 <button
                     className={`flex-1 py-2 text-center font-medium ${activeTab === "active"
-                        ? "border-b-2 border-green-600 text-green-600"
-                        : "text-gray-500 hover:text-green-600"
-                    } transition-colors`}
+                        ? "border-b-2 border-[#f0b040] text-[#f0b040]"
+                        : "text-gray-500 hover:text-[#e0a030]"
+                        } transition-colors`}
                     onClick={() => {
                         setActiveTab("active");
                         setCurrentPage(1);
@@ -366,9 +367,9 @@ const ManageProducts = () => {
                 </button>
                 <button
                     className={`flex-1 py-2 text-center font-medium ${activeTab === "inactive"
-                        ? "border-b-2 border-green-600 text-green-600"
-                        : "text-gray-500 hover:text-green-600"
-                    } transition-colors`}
+                        ? "border-b-2 border-[#f0b040] text-[#f0b040]"
+                        : "text-gray-500 hover:text-[#e0a030]"
+                        } transition-colors`}
                     onClick={() => {
                         setActiveTab("inactive");
                         setCurrentPage(1);
@@ -377,43 +378,43 @@ const ManageProducts = () => {
                     Ngừng bán
                 </button>
             </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-left bg-white rounded-md shadow-md table-fixed">
-                    <thead className="text-gray-700 text-xs uppercase tracking-wide">
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
+                <table className="w-full text-left bg-white table-fixed">
+                    <thead className="bg-[#f0b040] text-white text-sm">
                         <tr>
-                            <th className="w-[60px] p-2 whitespace-nowrap">ID</th>
-                            <th className="w-[150px] p-2 whitespace-nowrap">Tên sản phẩm</th>
-                            <th className="w-[300px] p-2 whitespace-nowrap">Mô tả</th>
-                            <th className="w-[80px] p-2 whitespace-nowrap">Thương hiệu</th>
-                            <th className="w-[80px] p-2 whitespace-nowrap">Danh mục</th>
-                            <th className="w-[100px] p-2 text-center whitespace-nowrap">Hình ảnh</th>
-                            <th className="w-[80px] p-2 text-center whitespace-nowrap">Trạng thái</th>
-                            <th className="w-[150px] p-2 text-center whitespace-nowrap">Hành động</th>
+                            <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">ID</th>
+                            <th className="w-[150px] py-3 px-5 text-xs uppercase tracking-wide">Tên sản phẩm</th>
+                            <th className="w-[300px] py-3 px-5 text-xs uppercase tracking-wide">Mô tả</th>
+                            <th className="w-[80px] py-3 px-5 text-xs uppercase tracking-wide">Thương hiệu</th>
+                            <th className="w-[80px] py-3 px-5 text-xs uppercase tracking-wide">Danh mục</th>
+                            <th className="w-[100px] py-3 px-5 text-xs uppercase tracking-wide text-center">Hình ảnh</th>
+                            <th className="w-[80px] py-3 px-5 text-xs uppercase tracking-wide text-center">Trạng thái</th>
+                            <th className="w-[150px] py-3 px-5 text-xs uppercase tracking-wide text-center">Hành động</th>
                         </tr>
                     </thead>
-                    <tbody className="text-gray-600 text-xs">
+                    <tbody className="text-gray-600 text-xs divide-y divide-gray-200">
                         {products.length > 0 ? (
                             paginateProducts().map((product) => (
                                 <tr
                                     key={product.productId}
-                                    className="border-b border-gray-100 hover:bg-gray-50 transition duration-150"
+                                    className="hover:bg-gray-50 transition duration-150"
                                 >
-                                    <td className="p-2 font-medium truncate">{product.productId}</td>
-                                    <td className="p-2 font-medium" title={product.productName}>
+                                    <td className="p-3 font-medium truncate">{product.productId}</td>
+                                    <td className="p-3 font-medium" title={product.productName}>
                                         {product.productName}
                                     </td>
-                                    <td className="p-2 max-h-[40px] overflow-hidden" title={product.description}>
+                                    <td className="p-3 max-h-[40px] overflow-hidden" title={product.description}>
                                         {product.description.length > 150
                                             ? `${product.description.substring(0, 150)}...`
                                             : product.description}
                                     </td>
-                                    <td className="p-2 truncate" title={product.brandName}>
+                                    <td className="p-3 truncate" title={product.brandName}>
                                         {product.brandName || "N/A"}
                                     </td>
-                                    <td className="p-2 truncate" title={product.categoryName}>
+                                    <td className="p-3 truncate" title={product.categoryName}>
                                         {product.categoryName || "N/A"}
                                     </td>
-                                    <td className="p-2">
+                                    <td className="p-3">
                                         <div className="flex justify-center">
                                             <img
                                                 src={product.image}
@@ -422,28 +423,28 @@ const ManageProducts = () => {
                                             />
                                         </div>
                                     </td>
-                                    <td className="p-2 text-center">
+                                    <td className="p-3 text-Bạn có chắc chắn muốn ngừng bán sản phẩm này không?">
                                         <button
                                             onClick={() => handleToggleStatus(product.productId, product.status)}
-                                            className={`px-2 py-1 rounded-md text-xs font-medium text-white transition duration-200 shadow-sm ${product.status ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'}`}
+                                            className={`px-2 py-1 rounded-full text-xs font-medium ${product.status ? 'bg-green-100 text-green-700' :'bg-red-100 text-red-700'} transition duration-200`}
                                         >
                                             {product.status ? "Đang bán" : "Ngừng bán"}
                                         </button>
                                     </td>
-                                    <td className="p-2">
-                                        <div className="flex justify-center gap-1">
+                                    <td className="p-3">
+                                        <div className="flex justify-center gap-2">
                                             <Link
                                                 to={`/admin/products-list/manage-product-details/${product.productId}`}
-                                                className="px-2 py-1 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 transition duration-200 shadow-sm flex items-center gap-1"
+                                                className="p-2 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 transition duration-200 flex items-center gap-1 whitespace-nowrap"
                                                 onClick={() => setSelectedProductId(product.productId)}
                                             >
-                                                <span>👁️</span> Xem
+                                                <FiEye />
                                             </Link>
                                             <button
                                                 onClick={() => openEditModal(product)}
-                                                className="px-2 py-1 bg-yellow-500 text-white rounded-md text-xs font-medium hover:bg-yellow-600 transition duration-200 shadow-sm flex items-center gap-1"
+                                                className="p-2 bg-amber-500 text-white rounded-md text-xs font-medium hover:bg-amber-600 transition duration-200 flex items-center gap-1 whitespace-nowrap"
                                             >
-                                                <span>✏️</span> Sửa
+                                                <FiEdit />
                                             </button>
                                         </div>
                                     </td>
@@ -460,21 +461,21 @@ const ManageProducts = () => {
                 </table>
             </div>
 
-            <div className="mt-3 flex justify-between items-center text-sm">
+            <div className="mt-6 flex justify-between items-center text-sm">
                 <button
                     onClick={() => setCurrentPage(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 transition"
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 transition"
                 >
                     Trước
                 </button>
                 <span className="text-gray-600">
-                    Trang {currentPage} / {totalPages}
+                    Trang {currentPage} / {totalPages || 1}
                 </span>
                 <button
                     onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 transition"
+                    disabled={currentPage === totalPages || totalPages === 0}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50 transition"
                 >
                     Sau
                 </button>
@@ -482,8 +483,8 @@ const ManageProducts = () => {
 
             {/* Modal xác nhận ngừng bán */}
             {isConfirmModalOpen && (
-                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center transition-opacity duration-200">
-                    <div className="bg-white p-6 rounded-lg shadow-xl w-96 transform transition-all duration-200 scale-100">
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center z-50">
+                    <div className="bg-white p-6 rounded-lg shadow-xl w-96 transform transition-all">
                         <h3 className="text-lg font-semibold text-gray-800 mb-4">
                             Xác nhận ngừng bán
                         </h3>
@@ -493,13 +494,13 @@ const ManageProducts = () => {
                         <div className="flex justify-end gap-4">
                             <button
                                 onClick={() => setIsConfirmModalOpen(false)}
-                                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition duration-200"
+                                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition whitespace-nowrap"
                             >
                                 Không
                             </button>
                             <button
                                 onClick={confirmToggleStatus}
-                                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition duration-200"
+                                className="px-4 py-2 bg-[#f0b040] text-white rounded-md hover:bg-[#e0a030] transition whitespace-nowrap"
                             >
                                 Có
                             </button>
@@ -582,7 +583,7 @@ const ManageProducts = () => {
                                 <div className="border p-6 rounded-md bg-gray-50 border-dashed text-center">
                                     <label
                                         htmlFor="editFileInput"
-                                        className="cursor-pointer bg-green-500 text-white px-8 py-3 rounded-md text-lg font-semibold hover:bg-green-600 transition"
+                                        className="cursor-pointer bg-[#f0b040] text-white px-8 py-3 rounded-md text-lg font-semibold hover:bg-[#e0a030] transition"
                                     >
                                         Chọn ảnh
                                     </label>
@@ -618,7 +619,7 @@ const ManageProducts = () => {
                             <button
                                 onClick={handleUpdateProduct}
                                 disabled={isUpdatingLoading}
-                                className={`px-5 py-2 bg-green-500 text-white rounded-lg transition ${isUpdatingLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600'}`}
+                                className={`px-5 py-2 bg-[#f0b040] text-white rounded-lg transition ${isUpdatingLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#e0a030]'}`}
                             >
                                 {isUpdatingLoading ? (
                                     <span className="flex items-center">
@@ -711,7 +712,7 @@ const ManageProducts = () => {
                                 <div className="border p-6 rounded-md bg-gray-50 border-dashed text-center">
                                     <label
                                         htmlFor="fileInput"
-                                        className="cursor-pointer bg-green-500 text-white px-8 py-3 rounded-md text-lg font-semibold hover:bg-green-600 transition"
+                                        className="cursor-pointer bg-[#f0b040] text-white px-8 py-3 rounded-md text-lg font-semibold hover:bg-[#e0a030] transition"
                                     >
                                         Chọn ảnh
                                     </label>
@@ -754,7 +755,7 @@ const ManageProducts = () => {
                             <button
                                 onClick={handleAddProduct}
                                 disabled={isAddingLoading}
-                                className={`px-5 py-2 bg-green-500 text-white rounded-lg transition ${isAddingLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-600'}`}
+                                className={`px-5 py-2 bg-[#f0b040] text-white rounded-lg transition ${isAddingLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#e0a030]'}`}
                             >
                                 {isAddingLoading ? (
                                     <span className="flex items-center">

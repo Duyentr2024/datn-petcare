@@ -122,7 +122,7 @@ const ManageOnline = () => {
                     </div>
                     <button
                         onClick={handleSearchByDateRange}
-                        className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm self-end"
+                        className="px-3 py-1 bg-[#f0b040] text-white rounded-md hover:bg-[#e0a030]   transition-colors text-sm self-end"
                     >
                         Tìm
                     </button>
@@ -134,15 +134,15 @@ const ManageOnline = () => {
                 {paginatedOrders.length > 0 ? (
                     <>
                         <table className="w-full table-auto">
-                            <thead className="bg-gray-200">
+                            <thead className="bg-[#f0b040] text-white text-sm">
                                 <tr>
-                                    <th className="p-1 text-left text-[10px] font-semibold text-gray-600">Mã HD</th>
-                                    <th className="p-1 text-left text-[10px] font-semibold text-gray-600">Khách hàng</th>
-                                    <th className="p-1 text-left text-[10px] font-semibold text-gray-600">Tổng tiền</th>
-                                    <th className="p-1 text-left text-[10px] font-semibold text-gray-600">Phương thức TT</th>
-                                    <th className="p-1 text-left text-[10px] font-semibold text-gray-600">Trạng thái</th>
-                                    <th className="p-1 text-left text-[10px] font-semibold text-gray-600">Ngày tạo</th>
-                                    <th className="p-1 text-left text-[10px] font-semibold text-gray-600">Hành động</th>
+                                    <th className="p-1 text-left text-[10px] font-semibold ">Mã HD</th>
+                                    <th className="p-1 text-left text-[10px] font-semibold ">Khách hàng</th>
+                                    <th className="p-1 text-left text-[10px] font-semibold ">Tổng tiền</th>
+                                    <th className="p-1 text-left text-[10px] font-semibold ">Phương thức TT</th>
+                                    <th className="p-1 text-left text-[10px] font-semibold ">Trạng thái</th>
+                                    <th className="p-1 text-left text-[10px] font-semibold ">Ngày tạo</th>
+                                    <th className="p-1 text-left text-[10px] font-semibold ">Hành động</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -157,7 +157,7 @@ const ManageOnline = () => {
                                         <td className="p-1">
                                             <button
                                                 onClick={() => openModal(order)}
-                                                className="px-1 py-0.5 bg-green-600 text-white rounded-md hover:bg-green-700 text-[10px] transition-colors"
+                                                className="px-1 py-0.5 bg-[#f0b040] text-white rounded-md hover:bg-[#e0a030] text-[10px] transition-colors"
                                             >
                                                 Xem chi tiết
                                             </button>
@@ -258,13 +258,13 @@ const ManageOnline = () => {
                             <label className="block text-sm font-medium text-gray-600 mb-2">Danh sách sản phẩm</label>
                             <div className="overflow-x-auto">
                                 <table className="w-full border-collapse">
-                                    <thead className="bg-gray-100">
+                                    <thead className="bg-[#f0b040] text-white text-sm">
                                         <tr>
-                                            <th className="p-2 text-left text-xs font-semibold text-gray-600">Hình ảnh</th>
-                                            <th className="p-2 text-left text-xs font-semibold text-gray-600">Sản phẩm</th>
-                                            <th className="p-2 text-left text-xs font-semibold text-gray-600">Thông tin</th>
-                                            <th className="p-2 text-left text-xs font-semibold text-gray-600">Số lượng</th>
-                                            <th className="p-2 text-left text-xs font-semibold text-gray-600">Giá</th>
+                                            <th className="p-2 text-left text-xs font-semibold ">Hình ảnh</th>
+                                            <th className="p-2 text-left text-xs font-semibold ">Sản phẩm</th>
+                                            <th className="p-2 text-left text-xs font-semibold ">Thông tin</th>
+                                            <th className="p-2 text-left text-xs font-semibold ">Số lượng</th>
+                                            <th className="p-2 text-left text-xs font-semibold ">Giá</th>
                                         </tr>
                                     </thead>
                                     <tbody>
