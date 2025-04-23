@@ -123,7 +123,7 @@ const Introduce = () => {
         animate.beginElement(); // Kích hoạt animation ngay khi component được mount
       }
     }
-    window.scrollTo(0, 0);
+    
   }, []);
 
   // Hàm điều hướng slider (thủ công)

@@ -5,9 +5,9 @@ import { storage } from "../../firebaseConfig";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import Swal from "sweetalert2";
 import { toast, ToastContainer } from "react-toastify"; // Fixed: Added ToastContainer to the import
-import { FiEdit, FiTrash2 } from "react-icons/fi";
 import "react-toastify/dist/ReactToastify.css";
 import { useParams, useNavigate } from "react-router-dom";
+import { FiEdit, FiDelete } from "react-icons/fi";
 
 const ManageProductImages = () => {
     const [images, setImages] = useState([]);
@@ -173,7 +173,7 @@ const ManageProductImages = () => {
 
     return (
         <div className="p-6">
-            <ToastContainer 
+            <ToastContainer
                 position="top-right"
                 autoClose={3000}
                 hideProgressBar={false}
@@ -189,16 +189,16 @@ const ManageProductImages = () => {
                 <div className="flex justify-between ">
                     <button
                         onClick={() => window.history.back()}
-                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                        className="bg-[#f0b040] text-white px-4 py-2 rounded hover:bg-[#e0a030]"
                     >
                         ← Quay về
                     </button>
 
                     <button
                         onClick={() => setIsModalOpen(true)}
-                        className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                        className="px-5 py-2 bg-[#f0b040] text-white rounded-md font-medium transition-colors hover:bg-[#e0a030]"
                     >
-                        Thêm ảnh mới
+                        <i className="fas fa-plus mr-2"></i> Thêm
                     </button>
                 </div>
             </div>
@@ -230,7 +230,7 @@ const ManageProductImages = () => {
                         <div className="border p-4 rounded-md bg-gray-50 border-dashed text-center">
                             <label
                                 htmlFor="fileInput"
-                                className="cursor-pointer bg-green-500 text-white px-6 py-2 rounded-md font-semibold hover:bg-green-600"
+                                className="cursor-pointer bg-[#f0b040] text-white px-6 py-2 rounded-md font-semibold hover:bg-[#e0a030]"
                             >
                                 Chọn ảnh
                             </label>
@@ -257,7 +257,7 @@ const ManageProductImages = () => {
                         <div className="flex gap-2 mt-4">
                             <button
                                 onClick={handleSaveImage}
-                                className={`px-4 py-2 rounded text-white ${productImageId ? "bg-yellow-500" : "bg-green-500"} hover:opacity-90 ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`}
+                                className={`px-4 py-2 rounded text-white ${productImageId ? "bg-[#f0b040]" : "bg-[#e0a030]"} hover:opacity-90 ${isUploading ? "opacity-50 cursor-not-allowed" : ""}`}
                                 disabled={isUploading}
                             >
                                 {isUploading ? "Đang lưu..." : productImageId ? "Cập nhật ảnh" : "Thêm ảnh"}
@@ -272,12 +272,12 @@ const ManageProductImages = () => {
             )}
 
             <table className="w-full border-collapse border">
-                <thead>
-                    <tr className="bg-gray-200">
-                        <th className="border p-2">ID</th>
-                        <th className="border p-2">Sản phẩm chi tiết</th>
-                        <th className="border p-2">Ảnh</th>
-                        <th className="border p-2">Hành động</th>
+                <thead className="bg-[#f0b040] text-white text-sm">
+                    <tr >
+                        <th className="py-3 px-5">ID</th>
+                        <th className="py-3 px-5">Sản phẩm chi tiết</th>
+                        <th className="py-3 px-5">Ảnh</th>
+                        <th className="py-3 px-5">Hành động</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -291,12 +291,12 @@ const ManageProductImages = () => {
                             <td className="border p-2">
                                 <img src={image.imageUrl} alt="Product" className="w-24 h-24 object-cover rounded-lg shadow-md mx-auto" />
                             </td>
-                            <td className="border p-2">
+                            <td className="pt-10 flex justify-center gap-2">
                                 <button onClick={() => handleEditImage(image)} className="bg-yellow-500 text-white px-3 py-1 rounded">
-                                    <FiEdit size={16} /> Sửa
+                                      <FiEdit />
                                 </button>
                                 <button onClick={() => handleDeleteImage(image.productImageId)} className="bg-red-500 text-white px-3 py-1 rounded ml-2">
-                                    <FiTrash2 size={16} /> Xóa
+                                    <FiDelete/>
                                 </button>
                             </td>
                         </tr>

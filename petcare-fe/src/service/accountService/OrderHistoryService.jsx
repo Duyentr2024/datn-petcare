@@ -16,14 +16,19 @@ const OrderHistoryService = {
 
   cancelOrder: async (orderId, reason) => {
     try {
-      const url = `${API_BASE_URL}/api/orders/${orderId}/cancel`;
+      const url = `${API_BASE_URL}/api/orders/${orderId}/status`;
       console.log("Canceling order:", url, "with reason:", reason); // Debug
+      
       const response = await fetch(url, {
-        method: "POST",
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify({ 
+          statusId: 5,
+          paymentStatus: "Đã hủy thanh toán",
+          cancelReason: reason
+        }),
       });
 
       if (!response.ok) {

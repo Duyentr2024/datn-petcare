@@ -55,7 +55,19 @@ const ProductsService = {
             console.error(`Error deleting product ID ${productId}:`, error);
             throw error;
         }
+    },
+
+    // đổi trạng thái sản phẩm
+    toggleProductStatus: async (productId) => {
+        try {
+            const response = await axios.put(`${API_URL}/toggle-status/${productId}`);
+            return response.data; // Trả về thông báo từ server (ví dụ: "Trạng thái sản phẩm với ID 1 đã được cập nhật thành: Hoạt động")
+        } catch (error) {
+            console.error(`Error toggling status for product ID ${productId}:`, error);
+            throw error;
+        }
     }
 };
+
 
 export default ProductsService;

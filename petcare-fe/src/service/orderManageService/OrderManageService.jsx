@@ -19,29 +19,26 @@ const OrderManageService = {
         }
     },
 
-    updateOrderStatus: async (orderId, statusId) => {
+    updateOrderStatus: async (orderId, statusId, reason = null) => {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/${statusId}`, {
+            const response = await fetch(`${API_BASE_URL}/api/orders/${orderId}/status`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                 },
+                body: JSON.stringify({ 
+                    statusId: statusId,
+                    paymentStatus: statusId === 4 ? "Đã thanh toán" : null,
+                    cancelReason: reason
+                }),
             });
 
-            const textResponse = await response.text();
-            console.log("Raw API Response:", textResponse); // Kiểm tra phản hồi thực tế
-
             if (!response.ok) {
-                throw new Error(`Failed to update order status: ${response.status}`);
+                const errorText = await response.text();
+                throw new Error(`Failed to update order status: ${errorText}`);
             }
 
-            // Kiểm tra nếu phản hồi là JSON hợp lệ
-            try {
-                return JSON.parse(textResponse);
-            } catch (jsonError) {
-                console.error("API trả về dữ liệu không phải JSON hợp lệ:", textResponse);
-                throw new Error("Invalid JSON response from server");
-            }
+            return await response.json();
         } catch (error) {
             console.error("Error updating order status:", error);
             throw error;
@@ -64,7 +61,26 @@ const OrderManageService = {
             console.error("Lỗi khi hủy đơn hàng:", error);
             throw error;
         }
-    }
+    },
+
+    // Thêm phương thức mới để lấy đơn hàng theo voucherId
+    getOrdersByVoucherId: async (voucherId) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/orders/by-voucher/${voucherId}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            });
+            if (!response.ok) {
+                throw new Error("Failed to fetch orders by voucherId");
+            }
+            return await response.json();
+        } catch (error) {
+            console.error("Error fetching orders by voucherId:", error);
+            throw error;
+        }
+    },
 
 
 };

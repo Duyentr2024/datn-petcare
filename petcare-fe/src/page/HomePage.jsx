@@ -15,7 +15,6 @@ import Register from "../components/account/Register.jsx";
 import ForgotPassword from "../components/account/ForgotPassword.jsx";
 import MyAccount from "../components/account/MyAccount.jsx";
 import VerifyOTP from "../components/account/VerifyOTP.jsx";
-import OrderOffline from "../components/orderOffline/OrderOffline.jsx";
 import Introduce from "../components/introduce/Introduce.jsx";
 import NotFoundPage from "./NotFoundPage.jsx";
 import PrivateRoute from "../context/PrivateRoute.jsx";
@@ -23,7 +22,9 @@ import SearchProduct from "../components/product/search/SearchProduct.jsx";
 import NewsDetail from "../service/newpages/NewsDetail.jsx";
 import Policy from "../elements/Policy.jsx";
 import Guide from "../elements/Guide.jsx";
-
+import SpaPage from "../components/spaGrooming/Grooming.jsx";
+import AppointmentPage from "./AppointmentPage.jsx";
+import CheckoutPayment from "../components/spaGrooming/user/CheckoutPayment.jsx";
 // Hiệu ứng chuyển trang
 const pageVariants = {
     hidden: { opacity: 0, y: 30 },
@@ -54,12 +55,15 @@ const AnimatedRoutes = () => {
                     <Route path="/register" element={<Register />} />
                     <Route path="/forgotPassword" element={<ForgotPassword />} />
                     <Route path="/verify-otp" element={<VerifyOTP />} />
-                    <Route path="/orderOffline" element={<OrderOffline />} />
                     <Route path="/introduce" element={<Introduce />} />
                     <Route path="/search" element={<SearchProduct />} />
-                    <Route path="/newsdetail" element={<NewsDetail />} />
+                    <Route path="/newsdetail/:id" element={<NewsDetail />} />
                     <Route path="/policy" element={<Policy />} />
                     <Route path="/guide" element={<Guide />} />
+                    <Route path="/spa" element={<SpaPage />} />
+                    <Route path="/checkout-payment" element={<CheckoutPayment />} />
+
+            <Route path="/appointment" element={<AppointmentPage />} />
                     {/* ✅ Route yêu cầu đăng nhập */}
                     <Route element={<PrivateRoute />}>
                         <Route path="/my-account/*" element={<MyAccount />} />
