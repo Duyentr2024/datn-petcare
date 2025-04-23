@@ -11,7 +11,6 @@ const MedicalInfoForm = ({
                              loading,
                              handleInputChange,
                              formatPrice,
-                             formatDate,
                          }) => {
     return (
         <div className="space-y-6">
@@ -72,7 +71,7 @@ const MedicalInfoForm = ({
                     name="vaccine_id"
                     value={formData.vaccine_id || ''}
                     onChange={handleInputChange}
-                    className="mt-1 block w  w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#754826] focus:border-[#754826]"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-[#754826] focus:border-[#754826]"
                     disabled={loading}
                 >
                     <option value="">Không chọn</option>
@@ -132,7 +131,6 @@ MedicalInfoForm.propTypes = {
     loading: PropTypes.bool.isRequired,
     handleInputChange: PropTypes.func.isRequired,
     formatPrice: PropTypes.func.isRequired,
-    formatDate: PropTypes.func.isRequired,
 };
 
 export default MedicalInfoForm;

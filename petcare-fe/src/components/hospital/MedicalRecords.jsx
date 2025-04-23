@@ -15,7 +15,6 @@ const MedicalRecords = () => {
   const [selectedDetailRecord, setSelectedDetailRecord] = useState(null);
   const [medicalRecords, setMedicalRecords] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const pageSize = 10;
@@ -23,56 +22,41 @@ const MedicalRecords = () => {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      setError(null);
       try {
         const recordsResponse = await MedicalRecordService.getAllMedicalRecords(page, pageSize);
         const records = recordsResponse.content || recordsResponse;
-        const totalPagesFromApi = recordsResponse.totalPages || 1;
+        setTotalPages(recordsResponse.totalPages || 1);
 
-        const formattedRecords = (records || []).map((record) => {
-          const petId = record.vetPetDTO?.id || record.petId || null;
-          return {
-            id: record.id || null,
-            petId: petId || 'N/A',
-            petName: record.vetPetDTO?.namePet || record.petName || 'N/A',
-            petType: record.vetPetDTO?.petType || record.petType || 'N/A',
-            weightRange: record.vetPetDTO?.petWeight?.weightRange || record.weightRange || 'N/A',
-            petWeightId: record.vetPetDTO?.petWeight?.petWeightId || record.petWeightId || null,
-            breed: record.breed || 'N/A',
-            owner: record.vetPetDTO?.nameBoss || record.owner || 'N/A',
-            phoneBoss: record.vetPetDTO?.phoneBoss || record.phoneBoss || 'N/A',
-            age: record.vetPetDTO?.age || record.age || 0,
-            basicNote: record.vetPetDTO?.note || record.basicNote || '',
-            lastVisit: record.examDate
-                ? new Date(record.examDate).toLocaleDateString('vi-VN')
-                : 'N/A',
-            records: [
-              {
-                date: record.examDate
-                    ? new Date(record.examDate).toLocaleDateString('vi-VN')
-                    : 'N/A',
-                medicalInfo: record.symptoms || record.diagnosis || record.treatment
-                    ? `${record.symptoms || 'N/A'}\n${record.diagnosis || 'N/A'}\n${record.treatment || 'N/A'}`
-                    : '',
-                nextVisit: record.nextVisit || 'N/A',
-                medicalNote: record.note || '',
-                vaccineId: record.vaccineId || null,
-                vetServiceId: record.vetServiceId || null,
-                paid_amount: record.paid_amount || 0,
-              },
-            ],
-          };
-        });
+        const formattedRecords = (records || []).map((record) => ({
+          id: record.id || null,
+          petId: record.vetPetDTO?.id || record.petId || 'N/A',
+          petName: record.vetPetDTO?.namePet || record.petName || 'N/A',
+          petType: record.vetPetDTO?.petType || record.petType || 'N/A',
+          weightRange: record.vetPetDTO?.petWeight?.weightRange || record.weightRange || 'N/A',
+          petWeightId: record.vetPetDTO?.petWeight?.petWeightId || record.petWeightId || null,
+          breed: record.breed || 'N/A',
+          owner: record.vetPetDTO?.nameBoss || record.owner || 'N/A',
+          phoneBoss: record.vetPetDTO?.phoneBoss || record.phoneBoss || 'N/A',
+          age: record.vetPetDTO?.age || record.age || 0,
+          basicNote: record.vetPetDTO?.note || record.basicNote || '',
+          lastVisit: record.examDate ? new Date(record.examDate).toLocaleDateString('vi-VN') : 'N/A',
+          records: [
+            {
+              date: record.examDate ? new Date(record.examDate).toLocaleDateString('vi-VN') : 'N/A',
+              symptoms: record.symptoms || 'N/A',
+              diagnosis: record.diagnosis || 'N/A',
+              treatment: record.treatment || 'N/A',
+              medicalNote: record.note || '',
+              vaccineId: record.vaccineId || null,
+              vetServiceId: record.vetServiceId || null,
+              paid_amount: record.paid_amount || 0,
+            },
+          ],
+        }));
 
         setMedicalRecords(formattedRecords);
-        setTotalPages(totalPagesFromApi);
       } catch (error) {
-        console.error('Error fetching medical records:', error);
-        setError(error.message || 'Lỗi khi tải danh sách hồ sơ');
-        toast.error(error.message || 'Lỗi khi tải danh sách hồ sơ', {
-          position: 'top-right',
-          autoClose: 5000,
-        });
+        toast.error('Lỗi khi tải danh sách hồ sơ', { position: 'top-right', autoClose: 3000 });
       } finally {
         setLoading(false);
       }
@@ -85,17 +69,16 @@ const MedicalRecords = () => {
       if (mode === 'create' || mode === 'addVisit') {
         return [data, ...prevRecords];
       } else if (mode === 'edit') {
-        return prevRecords.map((record) =>
-            record.id === data.id ? { ...record, ...data } : record
-        );
+        return prevRecords.map((record) => (record.id === data.id ? { ...record, ...data } : record));
       } else if (mode === 'editVisit') {
         return prevRecords.map((record) => {
           if (record.petId === data.petId) {
             const updatedRecords = [...record.records];
             updatedRecords[visitIndex] = {
               date: data.date,
-              medicalInfo: data.medicalInfo,
-              nextVisit: data.nextVisit,
+              symptoms: data.symptoms,
+              diagnosis: data.diagnosis,
+              treatment: data.treatment,
               medicalNote: data.medicalNote,
               vaccineId: data.vaccineId,
               vetServiceId: data.vetServiceId,
@@ -118,7 +101,7 @@ const MedicalRecords = () => {
             ? 'Cập nhật hồ sơ thành công!'
             : mode === 'editVisit'
                 ? 'Cập nhật lần khám thành công!'
-                : 'Lưu hồ sơ bệnh án thành công!',
+                : 'Lưu hồ sơ thành công!',
         { position: 'top-right', autoClose: 3000 }
     );
   };
@@ -161,21 +144,9 @@ const MedicalRecords = () => {
   const handleUpdateVisit = async (record, visitIndex) => {
     try {
       const visit = record.records[visitIndex];
-      if (!visit) {
-        toast.error('Không tìm thấy thông tin lần khám', {
-          position: 'top-right',
-          autoClose: 5000,
-        });
-        return;
-      }
-
-      // Fetch the current medical record to ensure we have the latest vaccineId and vetServiceId
       const currentRecord = await MedicalRecordService.getMedicalRecordById(record.id);
       if (!currentRecord) {
-        toast.error('Không tìm thấy hồ sơ bệnh án', {
-          position: 'top-right',
-          autoClose: 5000,
-        });
+        toast.error('Không tìm thấy hồ sơ bệnh án', { position: 'top-right', autoClose: 3000 });
         return;
       }
 
@@ -190,8 +161,9 @@ const MedicalRecords = () => {
         phoneBoss: record.phoneBoss,
         age: record.age,
         basicNote: record.basicNote,
-        medicalInfo: visit.medicalInfo || '', // Ensure medicalInfo is passed
-        nextVisit: visit.nextVisit || '',
+        symptoms: visit.symptoms || '',
+        diagnosis: visit.diagnosis || '',
+        treatment: visit.treatment || '',
         medicalNote: visit.medicalNote || '',
         vaccineId: currentRecord.vaccineId?.toString() || '',
         vetServiceId: currentRecord.vetServiceId?.toString() || '',
@@ -202,21 +174,14 @@ const MedicalRecords = () => {
       setShowForm(true);
       setSelectedDetailRecord(null);
     } catch (error) {
-      console.error('Error preparing visit update:', error);
-      toast.error(error.message || 'Lỗi khi chuẩn bị cập nhật lần khám', {
-        position: 'top-right',
-        autoClose: 5000,
-      });
-      setSelectedRecord(null);
+      toast.error('Lỗi khi chuẩn bị cập nhật lần khám', { position: 'top-right', autoClose: 3000 });
     }
   };
 
   const handleViewDetails = async (record) => {
     try {
       const medicalRecord = await MedicalRecordService.getMedicalRecordById(record.id);
-      if (!medicalRecord) {
-        throw new Error('Không tìm thấy hồ sơ bệnh án');
-      }
+      if (!medicalRecord) throw new Error('Không tìm thấy hồ sơ bệnh án');
 
       const detailRecord = {
         id: medicalRecord.id,
@@ -230,11 +195,10 @@ const MedicalRecords = () => {
         phoneBoss: medicalRecord.vetPetDTO?.phoneBoss || medicalRecord.phoneBoss || record.phoneBoss || 'N/A',
         age: medicalRecord.vetPetDTO?.age || medicalRecord.age || record.age || 0,
         basicNote: medicalRecord.vetPetDTO?.note || medicalRecord.basicNote || record.basicNote || '',
-        medicalInfo: medicalRecord.symptoms || medicalRecord.diagnosis || medicalRecord.treatment
-            ? `${medicalRecord.symptoms || 'N/A'}\n${medicalRecord.diagnosis || 'N/A'}\n${medicalRecord.treatment || 'N/A'}`
-            : '',
-        nextVisit: medicalRecord.nextVisit || record.nextVisit || 'N/A',
-        medicalNote: medicalRecord.note || record.medicalNote || '',
+        symptoms: medicalRecord.symptoms || 'N/A',
+        diagnosis: medicalRecord.diagnosis || 'N/A',
+        treatment: medicalRecord.treatment || 'N/A',
+        medicalNote: medicalRecord.note || '',
         vaccineId: medicalRecord.vaccineId?.toString() || '',
         vetServiceId: medicalRecord.vetServiceId?.toString() || '',
         paid_amount: medicalRecord.paid_amount || record.paid_amount || 0,
@@ -244,22 +208,14 @@ const MedicalRecords = () => {
       setSelectedDetailRecord(detailRecord);
       setShowForm(false);
     } catch (error) {
-      console.error('Error fetching medical record details:', error);
-      toast.error(error.message || 'Lỗi khi tải thông tin chi tiết hồ sơ', {
-        position: 'top-right',
-        autoClose: 5000,
-      });
-      setSelectedDetailRecord(null);
+      toast.error('Lỗi khi tải thông tin chi tiết hồ sơ', { position: 'top-right', autoClose: 3000 });
     }
   };
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price || 0);
-  };
+  const formatPrice = (price) =>
+      new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price || 0);
 
-  const formatDate = (date) => {
-    return date ? new Date(date).toLocaleDateString('vi-VN') : 'N/A';
-  };
+  const formatDate = (date) => (date ? new Date(date).toLocaleDateString('vi-VN') : 'N/A');
 
   return (
       <motion.div
@@ -282,7 +238,7 @@ const MedicalRecords = () => {
                   setShowForm(true);
                   setSelectedDetailRecord(null);
                 }}
-                className="flex items-center px-4 py-2 bg-[#754826] text-white rounded-md hover:bg-[#5e3a20] transition-colors disabled:opacity-50"
+                className="flex items-center px-4 py-2 bg-[#754826] text-white rounded-md hover:bg-[#5e3a20] disabled:opacity-50"
                 disabled={loading}
             >
               <Plus className="w-4 h-4 mr-2" /> Thêm Hồ Sơ Mới
@@ -310,17 +266,6 @@ const MedicalRecords = () => {
 
           {!showForm && (
               <div className="space-y-6">
-                {error && (
-                    <div className="text-red-500 text-center">
-                      {error}
-                      <button
-                          onClick={() => setPage(0)}
-                          className="ml-2 text-blue-500 underline"
-                      >
-                        Thử lại
-                      </button>
-                    </div>
-                )}
                 {selectedDetailRecord ? (
                     <RecordDetailView
                         selectedDetailRecord={selectedDetailRecord}
