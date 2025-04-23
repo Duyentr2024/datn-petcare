@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { FaFacebookSquare, FaInstagramSquare, FaTwitterSquare } from 'react-icons/fa';
 import BannerFooter from './BannerFooter';
+import { Link } from 'react-router-dom';
 
 export default function RenderFooter() {
     const [isExpanded, setIsExpanded] = useState(false);
@@ -42,32 +43,6 @@ export default function RenderFooter() {
                                 className="w-40"
                                 src="http://nongsan.monamedia.net/wp-content/uploads/2023/11/nongsan-logo.png"
                             />
-                        </div>
-                        <div
-                            className="w-full md:w-2/3 flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0">
-                            <h2 className="text-lg font-semibold size[32px] text-orange-500 mb-3 md:mb-0 md:mr-6">
-                                Đăng ký nhận tin
-                            </h2>
-                            <div className="relative w-full md:w-1/2">
-                                <input
-                                    className="p-3 border border-gray-300 rounded-md w-full focus:outline-none focus:border-orange-500"
-                                    placeholder="Nhập email của bạn"
-                                    type="email"
-                                />
-                                <button
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-orange-500 hover:text-orange-600">
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 0 24 24"
-                                        fill="currentColor"
-                                        className="w-6 h-6"
-                                    >
-                                        <path d="M22 2L11 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-                                            strokeLinejoin="round" />
-                                        <path d="M22 2L15 22L11 13L2 9L22 2Z" fill="currentColor" />
-                                    </svg>
-                                </button>
-                            </div>
                         </div>
                     </div>
 
@@ -123,26 +98,24 @@ export default function RenderFooter() {
                                     }`}
                             >
                                 <p className="text-sm text-gray-600">
-                                    <i className="fas fa-map-marker-alt text-orange-500"></i> 1073/23 Cách Mạng Tháng 8,
-                                    P.7, Q.Tân Bình, TP.HCM
+                                    <i className="fas fa-map-marker-alt text-orange-500"></i> Hẻm 9, Đường Trần Chiên , Phường Lê Bình, Quận Cái Răng, TPCT
                                 </p>
                                 <p className="text-sm text-gray-600">
-                                    <i className="fas fa-phone text-orange-500"></i> 0313728397
+                                    <i className="fas fa-phone text-orange-500"></i> 0844233799
                                 </p>
                                 <p className="text-sm text-gray-600">
-                                    <i className="fas fa-envelope text-orange-500"></i> info@themona.global
+                                    <i className="fas fa-envelope text-orange-500"></i> petcare@gmail.com
                                 </p>
                             </div>
 
                             <p className="text-sm text-gray-600">
-                                <i className="fas fa-map-marker-alt text-orange-500"></i> 1073/23 Cách Mạng Tháng 8, P.7,
-                                Q.Tân Bình, TP.HCM
+                                <i className="fas fa-map-marker-alt text-orange-500"></i> E62, đường số 2, khu đô thị mới Hưng Phú, Phường Hưng Thạnh, quận Cái Răng, TPCT
                             </p>
                             <p className="text-sm text-gray-600">
-                                <i className="fas fa-phone text-orange-500"></i> 0313728397
+                                <i className="fas fa-phone text-orange-500"></i> 0844233799
                             </p>
                             <p className="text-sm text-gray-600">
-                                <i className="fas fa-envelope text-orange-500"></i> info@themona.global
+                                <i className="fas fa-envelope text-orange-500"></i> petcare@gmail.com
                             </p>
                             <h3 className="font-semibold text-lg text-gray-800">Kết nối với chúng tôi</h3>
                             <div className="flex space-x-4">
@@ -163,13 +136,19 @@ export default function RenderFooter() {
                             <h3 className="font-semibold text-lg text-gray-800">Liên kết nhanh</h3>
                             <ul className="space-y-2 text-sm text-gray-600">
                                 <li>
-                                    <a className="hover:text-orange-500" href="#">Trang chủ</a>
+                                    <Link className="hover:text-orange-500" to="/">Trang chủ</Link>
                                 </li>
                                 <li>
-                                    <a className="hover:text-orange-500" href="#">Giới thiệu</a>
+                                    <Link className="hover:text-orange-500" to="/introduce">Giới thiệu</Link>
                                 </li>
                                 <li>
-                                    <a className="hover:text-orange-500" href="#">Dịch vụ doanh nghiệp</a>
+                                    <Link className="hover:text-orange-500" to="/newsPage">Tin tức</Link>
+                                </li>
+                                <li>
+                                    <Link className="hover:text-orange-500" to="/guide">Hướng dẫn mua hàng</Link>
+                                </li>
+                                <li>
+                                    <Link className="hover:text-orange-500" to="/contact">Liên hệ</Link>
                                 </li>
                             </ul>
                         </div>
