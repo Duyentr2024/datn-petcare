@@ -1,12 +1,12 @@
-import {useEffect, useState, useMemo} from "react";
+import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
-import {toast} from "react-toastify";
-import {useAuth} from "../../context/AuthContext";
+import { toast } from "react-toastify";
+import { useAuth } from "../../context/AuthContext";
 import GHNService from "../../service/addressService/GHNService.jsx";
 
 const Address = () => {
-    const {user} = useAuth();
+    const { user } = useAuth();
     const [addresses, setAddresses] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState("");
@@ -37,8 +37,10 @@ const Address = () => {
         fetchProvinces();
 
         const fetchAddresses = async () => {
+            if (!user?.userId) return;
+
             try {
-                const res = await axios.get("http://localhost:8080/api/addresses");
+                const res = await axios.get(`http://localhost:8080/api/addresses/user/${user.userId}`);
                 setAddresses(Array.isArray(res.data) ? res.data : []);
             } catch {
                 setError("Không thể tải danh sách địa chỉ");
@@ -47,8 +49,9 @@ const Address = () => {
                 setIsLoading(false);
             }
         };
+
         fetchAddresses();
-    }, []);
+    }, [user.userId]);
 
     const fetchDistricts = async (provinceId) => {
         if (!provinceId) {
@@ -94,19 +97,19 @@ const Address = () => {
     };
 
     const handleInputChange = (e) => {
-        const {name, value, type, checked} = e.target;
+        const { name, value, type, checked } = e.target;
         setFormData((prev) => ({
             ...prev,
             [name]: type === "checkbox" ? checked : value,
         }));
 
         if (name === "province") {
-            setFormData((prev) => ({...prev, district: "", ward: ""}));
+            setFormData((prev) => ({ ...prev, district: "", ward: "" }));
             fetchDistricts(value);
         }
 
         if (name === "district") {
-            setFormData((prev) => ({...prev, ward: ""}));
+            setFormData((prev) => ({ ...prev, ward: "" }));
             fetchWards(value);
         }
     };
@@ -128,16 +131,8 @@ const Address = () => {
         const districtObj = districts.find((d) => d.DistrictID.toString() === formData.district);
         const wardObj = wards.find((w) => w.WardCode.toString() === formData.ward);
 
-        if (!provinceObj) {
-            Swal.fire("Lỗi!", "Không tìm thấy thông tin tỉnh/thành phố", "error");
-            return;
-        }
-        if (!districtObj) {
-            Swal.fire("Lỗi!", "Không tìm thấy thông tin quận/huyện", "error");
-            return;
-        }
-        if (!wardObj) {
-            Swal.fire("Lỗi!", "Không tìm thấy thông tin phường/xã", "error");
+        if (!provinceObj || !districtObj || !wardObj) {
+            Swal.fire("Lỗi!", "Thông tin địa chỉ không hợp lệ", "error");
             return;
         }
 
@@ -157,7 +152,7 @@ const Address = () => {
                 : "http://localhost:8080/api/addresses";
 
             const res = await apiMethod(url, formattedData, {
-                headers: {"Content-Type": "application/json"},
+                headers: { "Content-Type": "application/json" },
             });
 
             setAddresses((prev) =>
@@ -185,8 +180,7 @@ const Address = () => {
             setDistricts([]);
             setWards([]);
         } catch (err) {
-            console.error("❌ Lỗi API:", err.response?.data);
-            Swal.fire("Lỗi!", err.response?.data?.message || "Có lỗi xảy ra trong quá trình xử lý", "error");
+            Swal.fire("Lỗi!", err.response?.data?.message || "Có lỗi xảy ra", "error");
         }
     };
 
@@ -229,7 +223,6 @@ const Address = () => {
             let wardData = [];
             let wardId = "";
 
-            // Fetch districts if provinceId exists
             districtData = districtCache.has(provinceId)
                 ? districtCache.get(provinceId)
                 : await GHNService.getDistricts(provinceId);
@@ -244,7 +237,6 @@ const Address = () => {
                 return;
             }
 
-            // Fetch wards if districtId exists
             wardData = wardCache.has(districtId)
                 ? wardCache.get(districtId)
                 : await GHNService.getWards(districtId);
@@ -269,53 +261,51 @@ const Address = () => {
 
             setShowForm(true);
         } catch (error) {
-            console.error("❌ Lỗi khi tải dữ liệu địa chỉ:", error);
             toast.error("Lỗi khi tải dữ liệu địa chỉ để chỉnh sửa");
         }
     };
 
     return (
-        <div className="flex flex-col bg-white overflow-hidden h-full">
+        <div className="flex flex-col bg-white h-full">
             {/* Header */}
-            <h2 className="text-xl font-bold text-[#FBB321] text-center">
+            <h2 className="text-2xl font-bold text-[#FBB321] mb-6">
                 Danh sách địa chỉ
             </h2>
 
-            {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-4">
-                {isLoading ? (
-                    <p className="text-center text-gray-500">Đang tải...</p>
-                ) : error ? (
-                    <p className="text-center text-red-500">{error}</p>
-                ) : addresses.length === 0 ? (
-                    <p className="text-center text-gray-500">Bạn chưa có địa chỉ nào. Hãy thêm địa chỉ mới!</p>
-                ) : (
-                    <ul className="space-y-3 max-h-[382px] overflow-y-auto">
+            {/* Address List */}
+            {isLoading ? (
+                <p className="text-center text-gray-500">Đang tải...</p>
+            ) : error ? (
+                <p className="text-center text-red-500">{error}</p>
+            ) : addresses.length === 0 && !showForm ? (
+                <p className="text-center text-gray-500">Bạn chưa có địa chỉ nào. Hãy thêm địa chỉ mới!</p>
+            ) : (
+                !showForm && (
+                    <ul className="space-y-4 mb-6">
                         {addresses.map((address) => (
                             <li
                                 key={address.addressId}
-                                className="p-3 border border-gray-200 rounded-lg bg-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center shadow-sm hover:shadow-md transition-shadow duration-200"
+                                className="p-4 border border-gray-300 rounded-md shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center hover:shadow-md transition-shadow duration-200"
                             >
                                 <div className="mb-2 sm:mb-0">
                                     <p className="text-gray-800 font-medium text-sm">
                                         {address.street}, {address.ward}, {address.district}, {address.province}
                                     </p>
                                     {address.isDefault && (
-                                        <span
-                                            className="inline-block mt-1 px-2 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded-full">
+                                        <span className="inline-block mt-1 px-2 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded-full">
                                             Mặc định
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex space-x-2">
+                                <div className="flex space-x-3">
                                     <button
-                                        className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-600 transition-colors duration-200"
+                                        className="bg-[#FBB321] text-white py-1 px-4 rounded-full shadow-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FBB321] text-sm"
                                         onClick={() => handleEdit(address)}
                                     >
                                         Sửa
                                     </button>
                                     <button
-                                        className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-600 transition-colors duration-200"
+                                        className="bg-red-500 text-white py-1 px-4 rounded-full shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 text-sm"
                                         onClick={() => handleDelete(address.addressId)}
                                     >
                                         Xóa
@@ -324,50 +314,34 @@ const Address = () => {
                             </li>
                         ))}
                     </ul>
-                )}
-            </div>
+                )
+            )}
 
             {/* Toggle Form Button */}
-            <div className="p-4 pt-2">
-                <button
-                    className={`w-full text-white py-2 rounded-lg font-semibold transition-colors duration-200 ${
-                        showForm
-                            ? "bg-red-500 hover:bg-red-600"
-                            : "bg-[#FBB321] hover:bg-yellow-500"
-                    }`}
-                    onClick={() => {
-                        setShowForm(!showForm);
-                        if (showForm) {
-                            setEditingAddress(null);
-                            setFormData({
-                                province: "",
-                                district: "",
-                                ward: "",
-                                street: "",
-                                isDefault: false,
-                            });
-                            setDistricts([]);
-                            setWards([]);
-                        }
-                    }}
-                >
-                    {showForm ? "Hủy" : "Thêm địa chỉ mới"}
-                </button>
-            </div>
+            {!showForm && (
+                <div className="p-4">
+                    <button
+                        className="w-full bg-[#FBB321] text-white py-2 px-4 rounded-full shadow-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FBB321] transition-colors duration-200"
+                        onClick={() => setShowForm(true)}
+                    >
+                        Thêm địa chỉ mới
+                    </button>
+                </div>
+            )}
 
-            {/* Address Form (Overlay when shown) */}
+            {/* Address Form */}
             {showForm && (
-                <div className="h-[460px] absolute inset-0 bg-white p-4 flex flex-col overflow-y-auto">
-                    <h3 className="text-lg font-bold text-[#FBB321] mb-4">
+                <div className="p-6">
+                    <h3 className="text-2xl font-bold text-[#FBB321] mb-6">
                         {editingAddress ? "Chỉnh sửa địa chỉ" : "Thêm địa chỉ mới"}
                     </h3>
-                    <form onSubmit={handleSubmit} className="space-y-3 flex-1">
-                        <div>
-                            <label className="block text-gray-700 font-medium text-sm mb-1">Tỉnh/Thành phố</label>
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="flex flex-col">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Tỉnh/Thành phố</label>
                             <select
                                 name="province"
                                 value={formData.province}
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FBB321] transition-all duration-200 text-sm"
+                                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#FBB321] focus:border-[#FBB321] sm:text-sm"
                                 onChange={handleInputChange}
                                 required
                             >
@@ -380,12 +354,12 @@ const Address = () => {
                             </select>
                         </div>
 
-                        <div>
-                            <label className="block text-gray-700 font-medium text-sm mb-1">Quận/Huyện</label>
+                        <div className="flex flex-col">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Quận/Huyện</label>
                             <select
                                 name="district"
                                 value={formData.district}
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FBB321] transition-all duration-200 text-sm"
+                                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#FBB321] focus:border-[#FBB321] sm:text-sm"
                                 onChange={handleInputChange}
                                 required
                                 disabled={!formData.province}
@@ -399,12 +373,12 @@ const Address = () => {
                             </select>
                         </div>
 
-                        <div>
-                            <label className="block text-gray-700 font-medium text-sm mb-1">Phường/Xã</label>
+                        <div className="flex flex-col">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Phường/Xã</label>
                             <select
                                 name="ward"
                                 value={formData.ward}
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FBB321] transition-all duration-200 text-sm"
+                                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#FBB321] focus:border-[#FBB321] sm:text-sm"
                                 onChange={handleInputChange}
                                 required
                                 disabled={!formData.district}
@@ -418,25 +392,46 @@ const Address = () => {
                             </select>
                         </div>
 
-                        <div>
-                            <label className="block text-gray-700 font-medium text-sm mb-1">Tên đường</label>
+                        <div className="flex flex-col">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Tên đường</label>
                             <input
                                 type="text"
                                 name="street"
                                 placeholder="Đường"
-                                className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FBB321] transition-all duration-200 text-sm"
+                                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#FBB321] focus:border-[#FBB321] sm:text-sm"
                                 value={formData.street}
                                 onChange={handleInputChange}
                                 required
                             />
                         </div>
 
-                        <button
-                            type="submit"
-                            className="w-full bg-[#FBB321] text-white py-2 rounded-lg font-semibold hover:bg-yellow-500 transition-colors duration-200 mt-auto"
-                        >
-                            {editingAddress ? "Cập nhật" : "Lưu"}
-                        </button>
+                        <div className="flex space-x-4">
+                            <button
+                                type="button"
+                                className="w-full bg-red-500 text-white py-2 px-4 rounded-full shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                onClick={() => {
+                                    setShowForm(false);
+                                    setEditingAddress(null);
+                                    setFormData({
+                                        province: "",
+                                        district: "",
+                                        ward: "",
+                                        street: "",
+                                        isDefault: false,
+                                    });
+                                    setDistricts([]);
+                                    setWards([]);
+                                }}
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                type="submit"
+                                className="w-full bg-[#FBB321] text-white py-2 px-4 rounded-full shadow-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FBB321]"
+                            >
+                                {editingAddress ? "Cập nhật" : "Lưu"}
+                            </button>
+                        </div>
                     </form>
                 </div>
             )}

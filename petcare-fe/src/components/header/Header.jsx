@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { gsap } from "gsap";
 import {
-  FaPhoneAlt,
   FaSearch,
   FaShoppingCart,
   FaUser,
@@ -15,14 +14,9 @@ import { useCookies } from "react-cookie";
 import { useAuth } from "../../context/AuthContext"; // Import hook useAuth từ context
 import logo from "../../assets/images/banner1.png";
 import { motion } from "framer-motion";
-import CartDetailsService from "../../service/CartDetailsService/CartDetailsService.jsx";
-import axios from "axios"; // Thêm axios để gọi API
 
 export default function Header() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const inputRef = useRef(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeMenuItem, setActiveMenuItem] = useState("");
   const menuRef = useRef(null);
@@ -62,7 +56,7 @@ export default function Header() {
   // Xử lý tìm kiếm
   const handleSearch = () => {
     if (searchTerm.trim() !== "") {
-      navigate(`/search?query=${encodeURIComponent(searchTerm)}`);
+      navigate(`/search?query=${encodeURIComponent(searchTerm)}&status=true`);
     }
   };
 
@@ -138,7 +132,6 @@ export default function Header() {
     try {
       console.log("Đánh dấu thông báo đã đọc:", notificationId);
       await markNotificationAsRead(notificationId);
-
       // Cập nhật state ngay lập tức
       setNotifications((prevNotifications) =>
         prevNotifications.map((notif) =>
@@ -151,7 +144,6 @@ export default function Header() {
       console.error("Lỗi khi đánh dấu thông báo là đã đọc:", error);
     }
   };
-
 
   // Hàm xử lý chuyển hướng đến lịch sử đơn hàng và chọn tab
   const extractOrderIdFromMessage = (message) => {
@@ -378,119 +370,114 @@ export default function Header() {
                   </div>
                 </Link>
 
-                {/* Thông báo */}
                 <div
-                  className="flex items-center space-x-3 cursor-pointer"
-                  ref={dropdownRef} // Đảm bảo ref được đặt đúng nếu cần
-                  onClick={() => setIsOpen(!isOpen)}
-                >
-                  <div className="bg-yellow-100 p-3 rounded-full flex items-center justify-center relative">
-                    <motion.div
-                      initial={{ rotate: 0 }} // Định nghĩa trạng thái ban đầu (góc 0°)
-                      animate={
-                        isShaking
-                          ? { rotate: [-10, 10, -10, 10, 0] } // Hiệu ứng lắc
-                          : { rotate: 0 } // Quay về góc 0° khi isShaking là false
-                      }
-                      transition={{
-                        duration: 0.5,
-                        repeat: isShaking ? 3 : 0, // Chỉ lặp khi isShaking là true
-                        ease: "easeInOut", // Thêm ease cho chuyển động mượt mà
-                      }}
-                    >
-                      <FaBell className="text-yellow-500 text-xl" />
-                    </motion.div>
-                    {unreadCount > 0 && (
-                      <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
-                        {unreadCount}
-                      </span>
-                    )}
-                  </div>
+  className="flex items-center space-x-3 cursor-pointer"
+  ref={dropdownRef}
+  onClick={() => setIsOpen(!isOpen)}
+>
+  <div className="bg-yellow-100 p-3 rounded-full flex items-center justify-center relative">
+    <motion.div
+      initial={{ rotate: 0 }}
+      animate={
+        isShaking
+          ? { rotate: [-10, 10, -10, 10, 0] }
+          : { rotate: 0 }
+      }
+      transition={{
+        duration: 0.5,
+        repeat: isShaking ? 3 : 0,
+        ease: "easeInOut",
+      }}
+    >
+      <FaBell className="text-yellow-500 text-xl" />
+    </motion.div>
+    {unreadCount > 0 && (
+      <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+        {unreadCount}
+      </span>
+    )}
+  </div>
+</div>
+
+{/* Dropdown thông báo */}
+{isOpen && (
+  <div
+    className="absolute top-20 right-[132px] w-80 bg-white shadow-2xl rounded-xl p-4 border border-gray-200 z-99 animate-slideDown"
+    ref={dropdownRef}
+  >
+    <div className="absolute -top-2 right-10 w-4 h-4 bg-white border-l border-t border-gray-200 rotate-45"></div>
+    <h3 className="font-semibold text-gray-800 text-lg mb-3 text-center flex items-center justify-center gap-2">
+      <FaBell className="text-yellow-500" /> Thông báo
+    </h3>
+    <div className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 custom-scrollbar">
+      <ul className="space-y-3">
+        {notifications.length > 0 ? (
+          [...notifications]
+            .sort((a, b) => a.isRead - b.isRead)
+            .map((notif) => (
+              <li
+                key={notif.id}
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  console.log("Click vào thông báo:", notif.id);
+
+                  // Đánh dấu thông báo là đã đọc
+                  await handleMarkSingleAsRead(notif.id);
+
+                  // Điều hướng đến OrderHistory với notificationId
+                  handleNavigateToOrderHistory(notif.id);
+
+                  setIsOpen(false); // Đóng dropdown
+                }}
+                className={`flex items-start space-x-3 p-4 rounded-lg transition-all duration-200 ease-in-out cursor-pointer hover:shadow-md ${
+                  notif.isRead
+                    ? "bg-gray-100 text-gray-600"
+                    : "bg-yellow-50 hover:bg-yellow-100 text-gray-800"
+                }`}
+              >
+                <div className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow">
+                  <FaBell
+                    className={
+                      notif.isRead
+                        ? "text-gray-400"
+                        : "text-yellow-500"
+                    }
+                  />
                 </div>
-
-                {/* Dropdown thông báo */}
-                {isOpen && (
-                  <div
-                    className="absolute top-20 right-[132px] w-80 bg-white shadow-2xl rounded-xl p-4 border border-gray-200 z-99 animate-slideDown"
-                    ref={dropdownRef}
-                  >
-                    <div className="absolute -top-2 right-10 w-4 h-4 bg-white border-l border-t border-gray-200 rotate-45"></div>
-                    <h3 className="font-semibold text-gray-800 text-lg mb-3 text-center flex items-center justify-center gap-2">
-                      <FaBell className="text-yellow-500" /> Thông báo
-                    </h3>
-                    <div className="max-h-60 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 custom-scrollbar">
-                      <ul className="space-y-3">
-                        {notifications.length > 0 ? (
-                          // Sắp xếp thông báo: thông báo mới (isRead: false) lên đầu
-                          [...notifications]
-                            .sort((a, b) => a.isRead - b.isRead) // Thông báo chưa đọc (false) lên đầu
-                            .map((notif, index) => (
-                              <li
-                                key={notif.id}
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  console.log("Click vào thông báo:", notif.id);
-
-                                  await handleMarkSingleAsRead(notif.id); // Gửi ID thay vì index
-
-                                  const orderId =
-                                    notif.orderId ||
-                                    extractOrderIdFromMessage(notif.message);
-                                  if (orderId) {
-                                    handleNavigateToOrderHistory(orderId);
-                                  }
-
-                                  setIsOpen(false); // Đóng dropdown
-                                }}
-                                className={`flex items-start space-x-3 p-4 rounded-lg transition-all duration-200 ease-in-out cursor-pointer hover:shadow-md ${
-                                  notif.isRead
-                                    ? "bg-gray-100 text-gray-600"
-                                    : "bg-yellow-50 hover:bg-yellow-100 text-gray-800"
-                                }`}
-                              >
-                                <div className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow">
-                                  <FaBell
-                                    className={
-                                      notif.isRead
-                                        ? "text-gray-400"
-                                        : "text-yellow-500"
-                                    }
-                                  />
-                                </div>
-                                <div className="flex-1">
-                                  <p className="font-medium text-sm line-clamp-2">
-                                    {notif.message}
-                                  </p>
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    {new Date(
-                                      notif.timestamp || notif.id
-                                    ).toLocaleString()}
-                                  </p>
-                                </div>
-                              </li>
-                            ))
-                        ) : (
-                          <li className="text-gray-500 p-3 text-center">
-                            Không có thông báo nào
-                          </li>
-                        )}
-                      </ul>
-                    </div>
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={(e) => {
-                          console.log("Mark all as read clicked, event:", e);
-                          handleMarkAllAsRead();
-                          setIsOpen(false); // Đóng dropdown khi đánh dấu tất cả đã đọc
-                          e.stopPropagation(); // Ngăn sự kiện bubbling lên parent
-                        }}
-                        className="mt-3 w-full py-2 bg-[#fbb321] text-white rounded-lg hover:bg-blue-600 transition-all duration-200 text-sm font-medium"
-                      >
-                        Đánh dấu tất cả đã đọc
-                      </button>
-                    )}
-                  </div>
-                )}
+                <div className="flex-1">
+                  <p className="font-medium text-sm line-clamp-2">
+                    {notif.message}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {new Date(
+                      notif.timestamp || notif.id
+                    ).toLocaleString()}
+                  </p>
+                </div>
+              </li>
+            ))
+        ) : (
+          <li className="text-gray-500 p-4 text-center">
+            Không có thông báo nào
+          </li>
+        )}
+      </ul>
+    </div>
+    {unreadCount > 0 && (
+      <button
+        onClick={(e) => {
+          console.log("Mark all as read clicked, event:", e);
+          handleMarkAllAsRead();
+          setIsOpen(false);
+          e.stopPropagation();
+        }}
+        className="mt-3 w-full py-2 bg-[#fbb321] text-white rounded-lg hover:bg-blue-600 transition-all duration-200 text-sm font-medium"
+      >
+        Đánh dấu tất cả đã đọc
+      </button>
+    )}
+  </div>
+)}
 
                 {/* Mobile Menu Toggle */}
                 <div className="lg:hidden flex items-center">
@@ -511,7 +498,7 @@ export default function Header() {
                   to="/"
                   className="menu-item font-bold flex items-center space-x-1 relative"
                 >
-                  Trang chủ 
+                  Trang chủ
                   <span className="underline absolute left-0 bottom-0 h-0.5 bg-yellow-500 w-0"></span>
                 </Link>
                 <Link
@@ -560,9 +547,8 @@ export default function Header() {
 
       {/* Mobile Menu */}
       <div
-        className={`fixed z-50 top-0 left-0 w-[250px] h-full bg-white transform ${
-          isMenuOpen ? "translate-x-0" : "-translate-x-full"
-        } transition-all duration-300 ease-in-out shadow-lg lg:hidden`}
+        className={`fixed z-50 top-0 left-0 w-[250px] h-full bg-white transform ${isMenuOpen ? "translate-x-0" : "-translate-x-full"
+          } transition-all duration-300 ease-in-out shadow-lg lg:hidden`}
       >
         <div className="flex justify-between items-center pl-3 mt-10">
           <span className="text-lg font-bold">Menu</span>
@@ -577,9 +563,8 @@ export default function Header() {
           <div className="border-b w-full">
             <Link
               to="/login"
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "home" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "home" ? "text-yellow-500" : ""
+                }`}
               onClick={() => {
                 setActiveMenuItem("home");
                 toggleMobileMenu();
@@ -591,9 +576,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "about" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "about" ? "text-yellow-500" : ""
+                }`}
               href="#about"
               onClick={() => {
                 setActiveMenuItem("about");
@@ -606,9 +590,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "products" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "products" ? "text-yellow-500" : ""
+                }`}
               href="#products"
               onClick={() => {
                 setActiveMenuItem("products");
@@ -621,9 +604,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "services" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "services" ? "text-yellow-500" : ""
+                }`}
               href="#services"
               onClick={() => {
                 setActiveMenuItem("services");
@@ -636,9 +618,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "news" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "news" ? "text-yellow-500" : ""
+                }`}
               href="#news"
               onClick={() => {
                 setActiveMenuItem("news");
@@ -651,9 +632,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "policy" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "policy" ? "text-yellow-500" : ""
+                }`}
               href="#policy"
               onClick={() => {
                 setActiveMenuItem("policy");
@@ -666,9 +646,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "guides" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "guides" ? "text-yellow-500" : ""
+                }`}
               href="#guides"
               onClick={() => {
                 setActiveMenuItem("guides");
@@ -681,9 +660,8 @@ export default function Header() {
           </div>
           <div className="border-b w-full">
             <a
-              className={`menu-item text-sm relative ${
-                activeMenuItem === "contact" ? "text-yellow-500" : ""
-              }`}
+              className={`menu-item text-sm relative ${activeMenuItem === "contact" ? "text-yellow-500" : ""
+                }`}
               href="#contact"
               onClick={() => {
                 setActiveMenuItem("contact");

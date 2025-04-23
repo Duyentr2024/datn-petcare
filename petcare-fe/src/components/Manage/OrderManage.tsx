@@ -124,7 +124,7 @@ const OrderManage = () => {
               ? {
                   ...order,
                   statusId: parseInt(newStatus),
-                  statusUpdateDate: new Date().toISOString(), // Thêm thời gian cập nhật trạng thái
+                  statusUpdateDate: new Date().toISOString(),
                   paymentStatus:
                     parseInt(newStatus) === statusMap["completed"]
                       ? "Đã thanh toán"
@@ -133,6 +133,11 @@ const OrderManage = () => {
               : order
           )
         );
+
+        // Nếu là hủy đơn hàng, chuyển sang tab "Đã hủy"
+        if (newStatus === statusMap["cancelled"]) {
+          setActiveTab("cancelled");
+        }
 
         setIsLoading(false);
         Swal.fire({
@@ -156,11 +161,14 @@ const OrderManage = () => {
 
   const filteredOrders = orders
     .filter((order) => {
-      return (
-        (activeTab === "all" || order.statusId === statusMap[activeTab]) &&
-        (searchTerm === "" || order.orderId.toString().includes(searchTerm)) &&
-        (filterStatus === "" || order.statusId === parseInt(filterStatus))
-      );
+      if (activeTab === "all") return true;
+      if (activeTab === "pending") return order.statusId === statusMap["pending"];
+      if (activeTab === "shipping") return order.statusId === statusMap["shipping"];
+      if (activeTab === "waiting") return order.statusId === statusMap["waiting"];
+      if (activeTab === "completed") return order.statusId === statusMap["completed"];
+      if (activeTab === "cancelled") return order.statusId === statusMap["cancelled"];
+      if (activeTab === "returned") return order.statusId === statusMap["returned"];
+      return false;
     })
     .sort((a, b) => {
       if (activeTab === "all" || activeTab === "pending") {
@@ -227,14 +235,14 @@ const OrderManage = () => {
       {/* Order Table */}
       <div className="bg-white p-4 rounded-lg shadow-lg">
         <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-200">
-              <th className="p-3 border">Mã đơn hàng</th>
-              <th className="p-3 border">Khách hàng</th>
-              <th className="p-3 border">Ngày đặt</th>
-              <th className="p-3 border">Tổng tiền</th>
-              {activeTab === "all" && <th className="p-3 border">Trạng thái</th>}
-              <th className="p-3 border">Thao tác</th>
+        <thead className="bg-[#f0b040] text-white text-sm">
+            <tr>
+              <th className="py-3 px-5">Mã đơn hàng</th>
+              <th className="py-3 px-5">Khách hàng</th>
+              <th className="py-3 px-5">Ngày đặt</th>
+              <th className="py-3 px-5">Tổng tiền</th>
+              {activeTab === "all" && <th className="py-3 px-5">Trạng thái</th>}
+              <th className="py-3 px-5">Thao tác</th>
             </tr>
           </thead>
           <tbody>
