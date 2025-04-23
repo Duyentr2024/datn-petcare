@@ -33,6 +33,17 @@ const ManageProductSize = () => {
         if (size.length < 1 || size.length > 10) {
             return "Kích thước phải có từ 1 đến 10 ký tự";
         }
+
+        // Kiểm tra trùng lặp (không phân biệt hoa thường)
+        const isDuplicate = sizes.some(
+            (existingSize) =>
+                existingSize.sizeValue.toLowerCase() === size.trim().toLowerCase() &&
+                (!editingSize || editingSize.productSizeId !== existingSize.productSizeId)
+        );
+        if (isDuplicate) {
+            return "Kích thước đã tồn tại";
+        }
+
         return "";
     };
 
@@ -140,10 +151,10 @@ const ManageProductSize = () => {
                 <table className="w-full text-left bg-white">
                     <thead className="bg-[#f0b040] text-white text-sm">
                         <tr>
-                            <th className="py-3 px-5  text-xs uppercase tracking-wide w-[80px]">ID</th>
-                            <th className="py-3 px-5  text-xs uppercase tracking-wide">Kích thước</th>
-                            <th className="py-3 px-5  text-xs uppercase tracking-wide w-[150px]">Trạng thái</th>
-                            <th className="py-3 px-5  text-xs uppercase tracking-wide w-[200px] text-center">Hành động</th>
+                            <th className="py-3 px-5 text-xs uppercase tracking-wide w-[80px]">ID</th>
+                            <th className="py-3 px-5 text-xs uppercase tracking-wide">Kích thước</th>
+                            <th className="py-3 px-5 text-xs uppercase tracking-wide w-[150px]">Trạng thái</th>
+                            <th className="py-3 px-5 text-xs uppercase tracking-wide w-[200px] text-center">Hành động</th>
                         </tr>
                     </thead>
                     <tbody className="text-gray-600 text-sm divide-y divide-gray-200">
@@ -165,7 +176,7 @@ const ManageProductSize = () => {
                                 <td className="p-3">
                                     <button
                                         onClick={() => handleChangeSizeStatus(size)}
-                                        className={`px-2 py-1 rounded-full text-xs font-medium  ${
+                                        className={`px-2 py-1 rounded-full text-xs font-medium ${
                                             size.status 
                                                 ? "bg-green-100 text-green-700" 
                                                 : "bg-red-100 text-red-700"
@@ -173,11 +184,11 @@ const ManageProductSize = () => {
                                     >
                                         {size.status ? (
                                             <>
-                                                 Đang hoạt động
+                                                Đang hoạt động
                                             </>
                                         ) : (
                                             <>
-                                               Tạm ngưng
+                                                Tạm ngưng
                                             </>
                                         )}
                                     </button>

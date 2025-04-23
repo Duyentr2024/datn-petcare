@@ -10,7 +10,7 @@ const ManageProductWeights = () => {
     const [editingWeight, setEditingWeight] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage] = useState(10);
+    const [itemsPerPage] = useState(5);
 
     useEffect(() => {
         fetchWeights();
@@ -33,6 +33,17 @@ const ManageProductWeights = () => {
         if (isNaN(weight) || weight <= 0) {
             return "Trọng lượng phải là số dương hợp lệ";
         }
+
+        // Kiểm tra trùng lặp
+        const isDuplicate = weights.some(
+            (existingWeight) =>
+                parseFloat(existingWeight.weightValue) === parseFloat(weight) &&
+                (!editingWeight || editingWeight.weightId !== existingWeight.weightId)
+        );
+        if (isDuplicate) {
+            return "Trọng lượng đã tồn tại";
+        }
+
         return "";
     };
 
@@ -198,7 +209,7 @@ const ManageProductWeights = () => {
                                                 }}
                                                 className="px-2 py-1 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors duration-200 flex items-center gap-1 whitespace-nowrap"
                                             >
-                                                <FiEdit /> Sửa
+                                                <FiEdit />
                                             </button>
                                         )}
                                     </div>

@@ -1,11 +1,9 @@
-import React, { useRef, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext"; // Import hook useAuth từ context
 import "react-image-crop/dist/ReactCrop.css";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { useCookies } from "react-cookie"; // Import useCookies
 import Swal from "sweetalert2";
-import { storage, ref, uploadBytesResumable, getDownloadURL } from "../../firebaseConfig"; 
 import { decodeToken } from "../utils/jwt"; // Hàm decodeToken đã viết
 import UserUpdateService from "../../service/accountService/UserUpdateService";
 const AccountInfo = () => {

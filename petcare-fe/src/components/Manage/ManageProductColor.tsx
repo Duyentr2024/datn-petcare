@@ -35,8 +35,18 @@ const ManageProductColor = () => {
             return "Tên màu không được chứa ký tự đặc biệt hoặc số";
         }
 
-        if (color.length < 3 || color.length > 50) {
+        if (color.length < 2 || color.length > 50) {
             return "Tên màu phải có từ 3 đến 50 ký tự";
+        }
+
+        // Kiểm tra trùng lặp (không phân biệt hoa thường)
+        const isDuplicate = colors.some(
+            (existingColor) =>
+                existingColor.colorValue.toLowerCase() === color.trim().toLowerCase() &&
+                (!editingColor || editingColor.productColorId !== existingColor.productColorId)
+        );
+        if (isDuplicate) {
+            return "Tên màu đã tồn tại";
         }
 
         return "";

@@ -33,6 +33,15 @@ const ManageProductBrand = () => {
         if (brand.trim().length < 3) {
             return "Tên thương hiệu phải có ít nhất 3 ký tự";
         }
+        // Kiểm tra trùng lặp (không phân biệt hoa thường)
+        const isDuplicate = brands.some(
+            (existingBrand) =>
+                existingBrand.brandName.toLowerCase() === brand.trim().toLowerCase() &&
+                (!editingBrand || editingBrand.brandId !== existingBrand.brandId)
+        );
+        if (isDuplicate) {
+            return "Tên thương hiệu đã tồn tại";
+        }
         return "";
     };
 

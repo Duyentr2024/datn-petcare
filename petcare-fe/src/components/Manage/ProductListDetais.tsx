@@ -598,7 +598,7 @@ const ProductListDetails = () => {
                         {errors.quantity && <p className="text-red-500 text-sm">{errors.quantity}</p>}
 
                         <div className="flex justify-end space-x-2">
-                            <button onClick={handleAddProductDetail} className="p-2 bg-green-500 text-white rounded">Thêm biến thể</button>
+                            <button onClick={handleAddProductDetail} className="p-2 bg-[#f0b040] text-white rounded hover:bg-[#e0a030]">Thêm biến thể</button>
                         </div>
                     </div>
                 </div>
@@ -670,7 +670,7 @@ const ProductListDetails = () => {
                         {errors.quantity && <p className="text-red-500 text-sm">{errors.quantity}</p>}
 
                         <div className="flex justify-end space-x-2">
-                            <button onClick={handleUpdateProductDetail} className="p-2 bg-blue-500 text-white rounded">Cập nhật</button>
+                            <button onClick={handleUpdateProductDetail} className="p-2 bg-[#f0b040] text-white rounded">Cập nhật</button>
                         </div>
                     </div>
                 </div>

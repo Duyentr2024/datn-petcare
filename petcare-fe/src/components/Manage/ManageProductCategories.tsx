@@ -33,6 +33,15 @@ const ManageProductCategories = () => {
         if (category.trim().length < 3) {
             return "Tên danh mục phải có ít nhất 3 ký tự";
         }
+        // Kiểm tra trùng lặp (không phân biệt hoa thường)
+        const isDuplicate = categories.some(
+            (existingCategory) =>
+                existingCategory.categoryName.toLowerCase() === category.trim().toLowerCase() &&
+                (!editingCategory || editingCategory.categoryId !== existingCategory.categoryId)
+        );
+        if (isDuplicate) {
+            return "Tên danh mục đã tồn tại";
+        }
         return "";
     };
 
@@ -136,7 +145,9 @@ const ManageProductCategories = () => {
                 />
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <div className="overflow-x-auto rounded-lg border border-gray-
+
+200">
                 <table className="w-full text-left bg-white">
                     <thead className="bg-[#f0b040] text-white text-sm">
                         <tr>
