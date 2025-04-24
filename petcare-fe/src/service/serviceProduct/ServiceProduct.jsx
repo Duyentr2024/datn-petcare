@@ -65,7 +65,7 @@ const ServiceProduct = () => {
 
                     <div className="w-[25%] h-[200px] left-[50%] top-0 absolute overflow-hidden"> {/* Adjusted width and position */}
                         <div className="w-[95%] h-[200px] left-[6px] top-0 absolute opacity-20 bg-[#039aff] rounded-2xl" />
-                        <div className="w-[288px] h-[30px] left-[36px] top-[20px] absolute text-[#039aff] text-[1.5rem] font-bold font-['Quicksand'] leading-normal whitespace-nowrap">Spa thú y</div>
+                        <div className="w-[288px] h-[30px] left-[36px] top-[20px] absolute text-[#039aff] text-[1.5rem] font-bold font-['Quicksand'] leading-normal whitespace-nowrap">Spa Grooming</div>
                         <div className="w-[288px] h-[20px] left-[36px] top-[60px] absolute text-[#444444] text-sm font-medium font-['Quicksand'] leading-snug whitespace-nowrap">Đặt lịch hẹn chăm sóc thú cưng của bạn</div>
                         <div className="w-[288px] h-[20px] left-[36px] top-[90px] absolute text-[#039aff] text-sm font-bold font-['Quicksand'] leading-snug whitespace-nowrap">#Grooming</div>
                         <button className="w-[90px] h-[40px] left-[149.28px] top-[110px] absolute bg-[#039aff] rounded-full hover:bg-[#0273d8] transition-all duration-300 transform hover:scale-110">

@@ -39,8 +39,8 @@ export const AuthProvider = ({ children }) => {
           registration_date: decoded.registration_date || "",
           imageUrl: decoded.imageUrl || "",
           totalSpent:
-            decoded.totalSpent ||
-            "Chưa có điểm tích lũy, vui lòng hãy mua sắm!",
+              decoded.totalSpent ||
+              "Chưa có điểm tích lũy, vui lòng hãy mua sắm!",
         });
       } catch (error) {
         console.error("Error decoding token:", error);
@@ -77,12 +77,12 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const response = await axios.get(
-        `http://localhost:8080/api/notifications/user/${user.userId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+          `http://localhost:8080/api/notifications/user/${user.userId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
       );
       console.log("Notifications fetched with isRead field:", response.data);
       const normalizedNotifications = response.data.map((notif) => ({
@@ -91,16 +91,16 @@ export const AuthProvider = ({ children }) => {
       }));
       setNotifications(normalizedNotifications);
       setUnreadCount(
-        normalizedNotifications.filter((notif) => !notif.isRead).length
+          normalizedNotifications.filter((notif) => !notif.isRead).length
       );
     } catch (error) {
       console.error("Error fetching notifications:", error);
       if (error.response) {
         console.error(
-          "Response status:",
-          error.response.status,
-          "Data:",
-          error.response.data
+            "Response status:",
+            error.response.status,
+            "Data:",
+            error.response.data
         );
       }
     }
@@ -154,7 +154,6 @@ export const AuthProvider = ({ children }) => {
     try {
       const notificationData = JSON.parse(messageBody);
       console.log("Received WebSocket message:", messageBody);
-
       const newNotification = {
         id: notificationData.id,
         message: notificationData.message,
@@ -162,12 +161,10 @@ export const AuthProvider = ({ children }) => {
         orderId: notificationData.orderId || null,
         timestamp: new Date().toISOString(),
       };
-
       setNotifications((prev) => {
         const updatedNotifications = [newNotification, ...prev];
         return updatedNotifications;
       });
-
       setUnreadCount((prev) => prev + 1);
       setIsShaking(true);
       setTimeout(() => setIsShaking(false), 1500);
@@ -180,7 +177,6 @@ export const AuthProvider = ({ children }) => {
       console.error("Error parsing WebSocket message:", error);
     }
   };
-
 
   // Hàm đăng xuất
   const logout = () => {
@@ -201,23 +197,23 @@ export const AuthProvider = ({ children }) => {
   const markNotificationAsRead = async (notificationId) => {
     try {
       await axios.put(
-        `http://localhost:8080/api/notifications/${notificationId}/read`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+          `http://localhost:8080/api/notifications/${notificationId}/read`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
       );
       fetchNotifications(); // Cập nhật lại danh sách thông báo sau khi đánh dấu
     } catch (error) {
       console.error("Error marking notification as read:", error);
       if (error.response) {
         console.error(
-          "Response status:",
-          error.response.status,
-          "Data:",
-          error.response.data
+            "Response status:",
+            error.response.status,
+            "Data:",
+            error.response.data
         );
       }
     }
@@ -229,24 +225,22 @@ export const AuthProvider = ({ children }) => {
    */
   const handleViewNotification = async (index) => {
     console.log(
-      "Xử lý khi nhấn vào thông báo, vị trí:",
-      index,
-      "Danh sách thông báo:",
-      notifications
+        "Xử lý khi nhấn vào thông báo, vị trí:",
+        index,
+        "Danh sách thông báo:",
+        notifications
     );
     if (index < 0 || index >= notifications.length) {
       console.error("Vị trí thông báo không hợp lệ:", index);
       return;
     }
-
     const notification = notifications[index];
     console.log(
-      "Thông báo được nhấn:",
-      notification,
-      "trạng thái đã đọc:",
-      notification.isRead
+        "Thông báo được nhấn:",
+        notification,
+        "trạng thái đã đọc:",
+        notification.isRead
     );
-
     try {
       console.log("Đánh dấu thông báo đã đọc, ID:", notification.id);
       await markNotificationAsRead(notification.id); // Gọi API PUT bất kể isRead
@@ -257,28 +251,26 @@ export const AuthProvider = ({ children }) => {
       console.error("Lỗi khi đánh dấu thông báo đã đọc:", error);
       if (error.response) {
         console.error(
-          "Mã trạng thái phản hồi:",
-          error.response.status,
-          "Dữ liệu phản hồi:",
-          error.response.data
+            "Mã trạng thái phản hồi:",
+            error.response.status,
+            "Dữ liệu phản hồi:",
+            error.response.data
         );
       }
     }
   };
-
-
   // Hàm lấy số lượng giỏ hàng ban đầu từ backend
   const fetchCartCount = async () => {
     if (!user?.userId || !token) return;
 
     try {
       const response = await axios.get(
-        `http://localhost:8080/api/cart-details/user/${user.userId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+          `http://localhost:8080/api/cart-details/user/${user.userId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
       );
       const cartDetails = response.data;
       setCartCount(cartDetails.length); // Cập nhật cartCount dựa trên số lượng sản phẩm

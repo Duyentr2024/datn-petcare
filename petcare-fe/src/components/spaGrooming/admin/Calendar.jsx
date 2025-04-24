@@ -1,4 +1,3 @@
-// Calendar.jsx
 import React, { useState, useEffect } from "react";
 import { PawPrint, Plus, X } from "lucide-react";
 import {
@@ -12,6 +11,7 @@ import {
   Modal,
   Form,
   Input,
+  message,
 } from "antd";
 import dayjs from "dayjs";
 import "dayjs/locale/vi";
@@ -32,15 +32,20 @@ const Calendar = () => {
   const [selectedPetType, setSelectedPetType] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [staffOptions, setStaffOptions] = useState([]);
+  const [loadingStaff, setLoadingStaff] = useState(false);
 
   useEffect(() => {
     const fetchStaff = async () => {
       try {
+        setLoadingStaff(true);
         const employees = await BookingService.getEmployees();
         setStaffOptions(employees);
       } catch (error) {
         console.error("Lỗi khi lấy danh sách nhân viên:", error);
+        message.error('Không thể tải danh sách nhân viên');
         setStaffOptions([]);
+      } finally {
+        setLoadingStaff(false);
       }
     };
     fetchStaff();
@@ -68,14 +73,26 @@ const Calendar = () => {
     }
   };
 
-  const fetchBookedSlots = async (date) => {
+  const fetchBookedSlots = async (date, time) => {
     try {
-      const response = await BookingService.getConfirmedAppointmentsByDate(date.format('YYYY-MM-DD'));
-      setBookedSlots(response.map(appointment => ({
+      let appointments = [];
+      if (time) {
+        const response = await BookingService.getConfirmedAppointmentsByDateAndTime(
+          date.format('YYYY-MM-DD'),
+          time
+        );
+        appointments = response;
+      } else {
+        const response = await BookingService.getConfirmedAppointmentsByDate(
+          date.format('YYYY-MM-DD')
+        );
+        appointments = response;
+      }
+      setBookedSlots(appointments.map(appointment => ({
         key: appointment.appointmentId,
         customerName: appointment.customerName,
         phone: appointment.phone,
-        quantity: appointment.pets.length,
+        quantity: appointment.petCount,
         status: appointment.status.toLowerCase(),
       })));
     } catch (error) {
@@ -86,8 +103,8 @@ const Calendar = () => {
 
   useEffect(() => {
     fetchSlotStatus(selectedDate);
-    fetchBookedSlots(selectedDate);
-  }, [selectedDate]);
+    fetchBookedSlots(selectedDate, selectedTime);
+  }, [selectedDate, selectedTime]);
 
   const getSlotStatusColor = (slot) => {
     const { total, booked } = slot;
@@ -99,19 +116,20 @@ const Calendar = () => {
   const handleTimeSelect = (time) => {
     setSelectedTime(time);
     setSelectedCustomer(null);
+    setSlotDetails([]);
   };
 
   const handleSelectBookedSlot = async (record) => {
     setSelectedCustomer(record);
     try {
-      const response = await BookingService.getAppointmentById(record.key);
+      const response = await BookingService.getPetsByAppointmentId(record.key);
       setSlotDetails(
-        response.pets.map((pet) => ({
+        response.map((pet) => ({
           key: pet.id,
           petId: pet.id,
-          petType: pet.petType,
-          petName: pet.namePet,
-          service: pet.petService?.name,
+          petType: pet.type,
+          petName: pet.name,
+          service: pet.service,
           staffId: pet.employee?.employeeId,
           price: pet.price,
         }))
@@ -262,13 +280,21 @@ const Calendar = () => {
       dataIndex: "staffId",
       key: "staffId",
       width: 150,
-      render: (staffId) => (
+      render: (staffId, record) => (
         <Select
           className="w-full"
           size="small"
           value={staffId}
           options={staffOptions}
           placeholder="Chọn nhân viên"
+          loading={loadingStaff}
+          onChange={(value) => {
+            setSlotDetails(prev =>
+              prev.map(detail =>
+                detail.key === record.key ? { ...detail, staffId: value } : detail
+              )
+            );
+          }}
         />
       ),
     },
@@ -472,17 +498,18 @@ const Calendar = () => {
         open={isAddModalVisible}
         onOk={handleAddModalOk}
         onCancel={() => setIsAddModalVisible(false)}
-        width={600}>
+        width={600}
+      >
         <Form
           form={addServiceForm}
           layout="vertical"
-          initialValues={{ isNewPet: false }}>
+          initialValues={{ isNewPet: false }}
+        >
           <Form.Item
             name="petType"
             label="Loại thú cưng"
-            rules={[
-              { required: true, message: "Vui lòng chọn loại thú cưng" },
-            ]}>
+            rules={[{ required: true, message: "Vui lòng chọn loại thú cưng" }]}
+          >
             <Select
               placeholder="Chọn loại thú cưng"
               onChange={handlePetSelectionChange}
@@ -495,13 +522,15 @@ const Calendar = () => {
           <Form.Item
             name="petName"
             label="Tên thú cưng"
-            rules={[{ required: true, message: "Vui lòng nhập tên thú cưng" }]}>
+            rules={[{ required: true, message: "Vui lòng nhập tên thú cưng" }]}
+          >
             <Input placeholder="Nhập tên thú cưng" />
           </Form.Item>
           <Form.Item
             name="serviceId"
             label="Dịch vụ"
-            rules={[{ required: true, message: "Vui lòng chọn dịch vụ" }]}>
+            rules={[{ required: true, message: "Vui lòng chọn dịch vụ" }]}
+          >
             <Select
               placeholder="Chọn dịch vụ"
               options={[
@@ -514,8 +543,13 @@ const Calendar = () => {
           <Form.Item
             name="staffId"
             label="Nhân viên"
-            rules={[{ required: true, message: "Vui lòng chọn nhân viên" }]}>
-            <Select placeholder="Chọn nhân viên" options={staffOptions} />
+            rules={[{ required: true, message: "Vui lòng chọn nhân viên" }]}
+          >
+            <Select
+              placeholder="Chọn nhân viên"
+              options={staffOptions}
+              loading={loadingStaff}
+            />
           </Form.Item>
         </Form>
       </Modal>

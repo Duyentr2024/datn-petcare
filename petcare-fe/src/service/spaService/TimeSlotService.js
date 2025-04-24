@@ -1,79 +1,131 @@
-// TimeSlotService.js
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
-  ? `${import.meta.env.VITE_API_BASE_URL}/api`
-  : 'http://localhost:8080/api';
+// Function to validate URL
+const isValidUrl = (string) => {
+    try {
+        new URL(string);
+        return true;
+    } catch (_) {
+        return false;
+    }
+};
+
+// Get environment variable
+const envApiUrl = import.meta.env.VITE_API_BASE_URL;
+
+// Debug log
+console.log('Environment API URL:', envApiUrl);
+
+// Determine the API base URL with fallbacks and validation
+let API_BASE_URL;
+if (envApiUrl && isValidUrl(envApiUrl)) {
+    API_BASE_URL = `${envApiUrl}/api`;
+} else if (envApiUrl && !isValidUrl(envApiUrl)) {
+    if (envApiUrl === 'api') {
+        API_BASE_URL = 'http://localhost:8080/api';
+        console.warn('Warning: Fixed invalid API_BASE_URL "api" to "http://localhost:8080/api"');
+    } else if (!envApiUrl.startsWith('http')) {
+        API_BASE_URL = `http://${envApiUrl}/api`;
+        console.warn(`Warning: Added missing protocol to API_BASE_URL: ${API_BASE_URL}`);
+    } else {
+        API_BASE_URL = 'http://localhost:8080/api';
+        console.warn(`Warning: Invalid API_BASE_URL "${envApiUrl}", using default: ${API_BASE_URL}`);
+    }
+} else {
+    API_BASE_URL = 'http://localhost:8080/api';
+    console.warn(`Warning: No API_BASE_URL provided, using default: ${API_BASE_URL}`);
+}
+
+console.log('Final API_BASE_URL:', API_BASE_URL);
 
 const TimeSlotService = {
-  getTimeSlots: async (date) => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/time-slots`, {
-        params: { date },
-      });
-      if (!response.data || (!response.data.morning && !response.data.afternoon)) {
-        throw new Error('Dữ liệu khung giờ không hợp lệ');
-      }
-      return response.data;
-    } catch (error) {
-      const errorMessage = error.response
-        ? `Error ${error.response.status}: ${error.response.data?.message || error.response.statusText}`
-        : error.message || 'Unknown error';
-      console.error('Error fetching time slots:', errorMessage);
-      throw new Error(errorMessage);
-    }
-  },
-
-  bookAppointment: async (payload) => {
-    try {
-      const response = await axios.post(`${API_BASE_URL}/appointments`, payload);
-      return response.data;
-    } catch (error) {
-      const errorMessage = error.response
-        ? `Error ${error.response.status}: ${error.response.data?.message || error.response.statusText}`
-        : error.message || 'Unknown error';
-      console.error('Error booking appointment:', errorMessage);
-      throw new Error(errorMessage);
-    }
-  },
-
-  getBookingStatus: async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/booking-enabled`);
-      return response.data; // Trả về trực tiếp response.data (true/false)
-    } catch (error) {
-      const errorMessage = error.response
-        ? `Error ${error.response.status}: ${error.response.data?.message || error.response.statusText}`
-        : error.message || 'Unknown error';
-      console.error('Error fetching booking status:', errorMessage);
-      throw new Error(errorMessage);
-    }
-  },
-
-  updateBookingStatus: async (status, token) => {
-    try {
-      const response = await axios.put(
-        `${API_BASE_URL}/staff/booking-enabled`,
-        null,
-        {
-          params: { status },
-          headers: {
-            Authorization: token.startsWith('Bearer ') ? token : `Bearer ${token}`,
-          },
+    getTimeSlots: async (date) => {
+        try {
+            console.log('Fetching time slots for date:', date);
+            const response = await axios.get(`${API_BASE_URL}/time-slots`, {
+                params: { date },
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            console.log('Time slots response:', response.data);
+            if (!response.data || (!response.data.morning && !response.data.afternoon)) {
+                throw new Error('Dữ liệu khung giờ không hợp lệ');
+            }
+            return response.data;
+        } catch (error) {
+            let errorMessage = 'Unknown error';
+            if (error.response) {
+                try {
+                    errorMessage = error.response.data?.message || error.response.statusText || 'Unknown server error';
+                } catch (parseError) {
+                    errorMessage = `Error ${error.response.status}: Server returned invalid response`;
+                }
+            } else {
+                errorMessage = error.message || 'Unknown error';
+            }
+            console.error('Error fetching time slots:', errorMessage);
+            throw new Error(errorMessage);
         }
-      );
-      return response.data;
-    } catch (error) {
-      const errorMessage = error.response
-        ? `Error ${error.response.status}: ${error.response.data || error.response.statusText}`
-        : error.message || 'Unknown error';
-      console.error('Error updating booking status:', errorMessage, error);
-      if (error.response?.status === 401) {
-        throw new Error("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại");
-      }
-      throw new Error(errorMessage);
+    },
+
+    getBookingStatus: async () => {
+        try {
+            console.log('Fetching booking status');
+            const response = await axios.get(`${API_BASE_URL}/booking-enabled`, {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            console.log('Booking status response:', response.data);
+            return response.data; // true/false
+        } catch (error) {
+            let errorMessage = 'Unknown error';
+            if (error.response) {
+                try {
+                    errorMessage = error.response.data?.message || error.response.statusText || 'Unknown server error';
+                } catch (parseError) {
+                    errorMessage = `Error ${error.response.status}: Server returned invalid response`;
+                }
+            } else {
+                errorMessage = error.message || 'Unknown error';
+            }
+            console.error('Error fetching booking status:', errorMessage);
+            throw new Error(errorMessage);
+        }
+    },
+
+    updateBookingStatus: async (status, token) => {
+        try {
+            console.log('Updating booking status to:', status);
+            const response = await axios.put(
+                `${API_BASE_URL}/staff/booking-enabled`,
+                null,
+                {
+                    params: { status },
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    }
+                }
+            );
+            console.log('Update booking status response:', response.data);
+            return response.data;
+        } catch (error) {
+            let errorMessage = 'Unknown error';
+            if (error.response) {
+                try {
+                    errorMessage = error.response.data?.message || error.response.statusText || 'Unknown server error';
+                } catch (parseError) {
+                    errorMessage = `Error ${error.response.status}: Server returned invalid response`;
+                }
+            } else {
+                errorMessage = error.message || 'Unknown error';
+            }
+            console.error('Error updating booking status:', errorMessage);
+            throw new Error(errorMessage);
+        }
     }
-  },
 };
 
 export default TimeSlotService;

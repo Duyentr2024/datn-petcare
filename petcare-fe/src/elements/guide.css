@@ -1,0 +1,43 @@
+/* Keyframe Animation for Guide Component */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Hover effects for purchase method cards */
+.bg-white.rounded-lg.shadow-md:hover {
+  transform: translateY(-5px);
+  transition: transform 0.3s ease;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Responsive styling */
+@media (max-width: 768px) {
+  .shopping-steps {
+    flex-direction: column;
+  }
+  
+  .shopping-step {
+    margin-bottom: 1.5rem;
+  }
+}
+
+/* Styling for process circles */
+.process-circle {
+  box-shadow: 0 0 0 3px rgba(251, 179, 33, 0.2);
+}
+
+/* Gradient background for notes */
+.border-l-4.border-\[\#FBB321\] {
+  background: linear-gradient(to right, rgba(251, 179, 33, 0.05), transparent);
+} 
