@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import TimeSlotService from '../../../service/spaService/TimeSlotService';
 
+
 const ManageSlot = () => {
   const timeSlots = Array.from({ length: 12 }, (_, i) => {
     const hour = i + 9;

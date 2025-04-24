@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import TimeSlotService from "../services/TimeSlotService";
+import TimeSlotService from "../../../service/spaService/TimeSlotService";
 
 const BookingToggle = () => {
   const { token, user, logout } = useAuth();
