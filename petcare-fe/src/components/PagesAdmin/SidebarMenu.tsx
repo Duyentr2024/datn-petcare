@@ -17,6 +17,7 @@ import logo from "../../assets/images/banner1.png";
 const SidebarMenu = () => {
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
+  const [isInvoiceDropdownOpen, setIsInvoiceDropdownOpen] = useState(false); // New state for invoice dropdown
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
 
@@ -37,6 +38,10 @@ const SidebarMenu = () => {
 
   const toggleProductDropdown = () => {
     setIsProductDropdownOpen(!isProductDropdownOpen);
+  };
+
+  const toggleInvoiceDropdown = () => {
+    setIsInvoiceDropdownOpen(!isInvoiceDropdownOpen); // New toggle function
   };
 
   return (
@@ -75,24 +80,45 @@ const SidebarMenu = () => {
                 <span className="ml-3">Trang tổng quan</span>
               </Link>
             </li>
+
+            {/* Invoice Management Dropdown */}
             <li>
-              <Link
-                to="/admin/invoice-management"
-                className="flex items-center p-3 bg-[#E0F7FA] text-[#4B5563] rounded-lg hover:bg-[#80DEEA] transition duration-300"
+              <div
+                className="flex items-center justify-between p-3 bg-[#E0F7FA] text-[#4B5563] rounded-lg hover:bg-[#80DEEA] cursor-pointer transition duration-300"
+                onClick={toggleInvoiceDropdown}
               >
-                <FiFileText className="w-5 h-5 flex-shrink-0" />
-                <span className="ml-3">Hóa đơn offline</span>
-              </Link>
+                <div className="flex items-center">
+                  <FiFileText className="w-5 h-5 flex-shrink-0" />
+                  <span className="ml-3">Hóa đơn</span>
+                </div>
+                {isInvoiceDropdownOpen ? (
+                  <FiChevronUp className="w-4 h-4 flex-shrink-0" />
+                ) : (
+                  <FiChevronDown className="w-4 h-4 flex-shrink-0" />
+                )}
+              </div>
+              {isInvoiceDropdownOpen && (
+                <ul className="mt-2 ml-6 space-y-2">
+                  <li>
+                    <Link
+                      to="/admin/invoice-management"
+                      className="block p-2 rounded-lg hover:bg-[#80DEEA] transition duration-300"
+                    >
+                      Hóa đơn offline
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin/invoice-online"
+                      className="block p-2 rounded-lg hover:bg-[#80DEEA] transition duration-300"
+                    >
+                      Hóa đơn online
+                    </Link>
+                  </li>
+                </ul>
+              )}
             </li>
-            <li>
-              <Link
-                to="/admin/invoice-online"
-                className="flex items-center p-3 bg-[#E0F7FA] text-[#4B5563] rounded-lg hover:bg-[#80DEEA] transition duration-300"
-              >
-                <FiFileText className="w-5 h-5 flex-shrink-0" />
-                <span className="ml-3">Hóa đơn online</span>
-              </Link>
-            </li>
+
             <li>
               <Link
                 to="/admin/warehouse"
@@ -102,6 +128,7 @@ const SidebarMenu = () => {
                 <span className="ml-3">Kho hàng</span>
               </Link>
             </li>
+
             {/* User Management Dropdown */}
             <li>
               <div
