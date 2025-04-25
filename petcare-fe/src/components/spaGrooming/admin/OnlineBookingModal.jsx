@@ -1,9 +1,8 @@
-// OnlineBookingModal.jsx
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Input, Checkbox, Select, message, Tooltip, Dropdown, Space, Badge, Drawer, Tag, Popconfirm, Avatar } from 'antd';
-import { SearchOutlined, CheckOutlined, EditOutlined, DeleteOutlined, CaretDownOutlined, MoreOutlined, PlusOutlined, UserOutlined, ExclamationCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { Modal, Button, Input, Checkbox, message, Tooltip, Dropdown, Space, Badge, Drawer, Tag, Popconfirm, Avatar } from 'antd';
+import { SearchOutlined, CheckOutlined, EditOutlined, DeleteOutlined, CaretDownOutlined, MoreOutlined, UserOutlined, ExclamationCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import UpdatePetServiceModal from './UpdatePetServiceModal';
-import BookingService from "../../../service/spaService/BookingService";
+import BookingService from '../../../service/spaService/BookingService';
 import dayjs from 'dayjs';
 
 const formatDate = (dateString) => (dateString ? dayjs(dateString).format('DD/MM/YYYY') : '-');
@@ -12,7 +11,6 @@ const formatTime = (timeString) => (timeString || '-');
 const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, refreshBookings }) => {
   const [isUpdateModalVisible, setIsUpdateModalVisible] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [staffOptions, setStaffOptions] = useState([]);
   const [searchValue, setSearchValue] = useState('');
   const [selectedBookings, setSelectedBookings] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -25,7 +23,7 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
     ? [...onlineBookings].sort((a, b) => {
         const dateTimeA = dayjs(`${a.date} ${a.time}`, 'YYYY-MM-DD HH:mm');
         const dateTimeB = dayjs(`${b.date} ${b.time}`, 'YYYY-MM-DD HH:mm');
-        return dateTimeA - dateTimeB; // Sắp xếp tăng dần (tương lai trước)
+        return dateTimeA - dateTimeB;
       })
     : [];
 
@@ -43,20 +41,6 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
   useEffect(() => {
     setSelectedBookings([]);
   }, [isVisible, onlineBookings]);
-
-  useEffect(() => {
-    const fetchStaff = async () => {
-      try {
-        const employees = await BookingService.getEmployees();
-        setStaffOptions(employees);
-      } catch (error) {
-        console.error('Error fetching staff list:', error);
-        message.error('Không thể tải danh sách nhân viên');
-        setStaffOptions([]);
-      }
-    };
-    if (isVisible) fetchStaff();
-  }, [isVisible]);
 
   const handleEditClick = (booking) => {
     setSelectedBooking(booking);
@@ -82,28 +66,17 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
   const handleConfirmSelection = async () => {
     try {
       setLoading(true);
-      
-      // Tự động gán nhân viên đầu tiên trong danh sách cho các lịch đã chọn
-      const defaultStaffId = staffOptions.length > 0 ? staffOptions[0].value : null;
-      
-      if (!defaultStaffId) {
-        message.error('Không có nhân viên nào trong hệ thống');
-        setLoading(false);
+      if (selectedBookings.length === 0) {
+        message.warning('Vui lòng chọn ít nhất một lịch hẹn');
         return;
       }
-      
-      const bookingsToConfirm = selectedBookings.map(appointmentId => ({
-        appointmentId,
-        staffId: defaultStaffId
-      }));
-      
-      await onConfirm(bookingsToConfirm);
+      await BookingService.confirmAppointments(selectedBookings);
       setSelectedBookings([]);
       message.success('Đã xác nhận lịch hẹn thành công');
       refreshBookings();
     } catch (error) {
       console.error('Error confirming appointments:', error);
-      message.error('Không thể xác nhận lịch hẹn');
+      message.error(error.message || 'Không thể xác nhận lịch hẹn');
     } finally {
       setLoading(false);
     }
@@ -111,7 +84,7 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
 
   const handleCancelAppointment = async (appointmentId) => {
     try {
-      await BookingService.cancelAppointment(appointmentId, "Huỷ bởi quản trị viên");
+      await BookingService.cancelAppointment(appointmentId, 'Huỷ bởi quản trị viên');
       message.success('Đã huỷ lịch hẹn thành công');
       refreshBookings();
     } catch (error) {
@@ -137,11 +110,7 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
       setLoading(true);
       await BookingService.removePetFromAppointment(appointmentId, petId);
       message.success(`Đã xóa thú cưng khỏi lịch hẹn #${appointmentId}`);
-      
-      // Cập nhật UI
       setSelectedAppointmentPets(prev => prev.filter(pet => pet.id !== petId));
-      
-      // Refresh danh sách lịch hẹn
       refreshBookings();
     } catch (error) {
       console.error('Error removing pet from appointment:', error);
@@ -155,8 +124,6 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
     try {
       await BookingService.updatePetName(petId, name);
       message.success('Đã cập nhật tên thú cưng');
-      
-      // Cập nhật UI
       setSelectedAppointmentPets(prev => 
         prev.map(pet => pet.id === petId ? {...pet, name} : pet)
       );
@@ -187,7 +154,7 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
             Xác nhận lịch đã chọn
           </Button>,
         ]}
-        width={1000}
+        width={1100}
       >
         <div className="py-4">
           <Input
@@ -279,20 +246,14 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
                               size="small"
                               icon={<CheckOutlined />}
                               className="bg-green-500 hover:bg-green-600" 
-                              onClick={() => {
-                                const defaultStaffId = staffOptions.length > 0 ? staffOptions[0].value : null;
-                                if (defaultStaffId) {
-                                  onConfirm([{ appointmentId: booking.appointmentId, staffId: defaultStaffId }])
-                                    .then(() => {
-                                      message.success('Đã xác nhận lịch hẹn thành công');
-                                      refreshBookings();
-                                    })
-                                    .catch(err => {
-                                      console.error('Error confirming appointment:', err);
-                                      message.error('Không thể xác nhận lịch hẹn');
-                                    });
-                                } else {
-                                  message.warning('Không có nhân viên nào trong hệ thống');
+                              onClick={async () => {
+                                try {
+                                  await BookingService.confirmAppointments([booking.appointmentId]);
+                                  message.success('Đã xác nhận lịch hẹn thành công');
+                                  refreshBookings();
+                                } catch (error) {
+                                  console.error('Error confirming appointment:', error);
+                                  message.error('Không thể xác nhận lịch hẹn');
                                 }
                               }}
                             />
@@ -305,7 +266,6 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
                               onClick={() => handleEditClick(booking)}
                             />
                           </Tooltip>
-                          
                           {petCount > 1 ? (
                             <Dropdown
                               menu={{

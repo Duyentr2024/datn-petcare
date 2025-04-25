@@ -1,4 +1,3 @@
-// AdminAppointment.js
 import React, { useState, useEffect } from 'react';
 import { Select, Input, DatePicker, Button, Radio, Badge, message, notification, Tabs } from 'antd';
 import { PlusOutlined, SearchOutlined, LeftOutlined, RightOutlined, BellOutlined, HistoryOutlined, CalendarOutlined } from '@ant-design/icons';
@@ -44,7 +43,15 @@ const AdminAppointment = () => {
       }
     } catch (error) {
       console.error('Error fetching online bookings:', error);
-      message.error(error.message || 'Không thể tải danh sách lịch hẹn. Vui lòng kiểm tra kết nối hoặc thử lại sau.');
+      let errorMessage = 'Không thể tải danh sách lịch hẹn. Vui lòng kiểm tra kết nối hoặc thử lại sau.';
+      if (error.response) {
+        if (error.response.status === 500) {
+          errorMessage = 'Lỗi server: Không thể lấy danh sách lịch hẹn. Vui lòng kiểm tra backend.';
+        } else if (error.response.status === 404) {
+          errorMessage = 'Không tìm thấy endpoint lấy lịch hẹn. Vui lòng kiểm tra backend.';
+        }
+      }
+      message.error(errorMessage);
       setOnlineBookings([]);
       setNotificationCount(0);
     }
@@ -52,17 +59,20 @@ const AdminAppointment = () => {
 
   useEffect(() => {
     fetchOnlineBookings();
-    webSocketService.connect();
+    
+    if (!webSocketService.connected) {
+      webSocketService.connect();
+    }
 
     const unsubscribeNew = webSocketService.onNewAppointment((appointment) => {
       notification.info({
         message: 'Lịch hẹn mới cần xác nhận',
         description: (
           <div>
-            <p>Khách hàng <strong>{appointment.customerName}</strong> đã đặt lịch spa</p>
-            <p>Ngày: {dayjs(appointment.date).format('DD/MM/YYYY')}</p>
-            <p>Giờ: {appointment.time}</p>
-            <p>Đã thanh toán: {appointment.paidAmount ? `${appointment.paidAmount.toLocaleString('vi-VN')}đ` : 'Chưa thanh toán'}</p>
+            <p>Khách hàng <strong>{appointment?.customerName || 'Không xác định'}</strong> đã đặt lịch spa</p>
+            <p>Ngày: {appointment?.date ? dayjs(appointment.date).format('DD/MM/YYYY') : 'Không xác định'}</p>
+            <p>Giờ: {appointment?.time || 'Không xác định'}</p>
+            <p>Đã thanh toán: {appointment?.paidAmount ? `${appointment.paidAmount.toLocaleString('vi-VN')}đ` : 'Chưa thanh toán'}</p>
             <p><strong>Bấm vào đây để xác nhận lịch hẹn</strong></p>
           </div>
         ),
@@ -130,7 +140,6 @@ const AdminAppointment = () => {
     }
   };
 
-  // Render the appointment management content
   const renderAppointmentContent = () => (
     <div className="tab-content-container">
       <div className="mb-6 space-y-4">
@@ -224,7 +233,6 @@ const AdminAppointment = () => {
     </div>
   );
 
-  // CSS for tabs
   const tabBarStyle = {
     marginBottom: '24px',
     padding: '0 4px',
@@ -232,14 +240,14 @@ const AdminAppointment = () => {
 
   return (
     <div className="p-6">
-      <Tabs
-        activeKey={activeTab}
+      <Tabs 
+        activeKey={activeTab} 
         onChange={setActiveTab}
         tabBarStyle={tabBarStyle}
         className="appointment-tabs"
         tabBarGutter={24}
       >
-        <TabPane
+        <TabPane 
           tab={
             <span className="tab-label flex items-center">
               <CalendarOutlined className="mr-2" />
@@ -248,18 +256,18 @@ const AdminAppointment = () => {
                 <Badge count={notificationCount} className="ml-2" />
               )}
             </span>
-          }
+          } 
           key="1"
         >
           {renderAppointmentContent()}
         </TabPane>
-        <TabPane
+        <TabPane 
           tab={
             <span className="tab-label flex items-center">
               <HistoryOutlined className="mr-2" />
               <span>Lịch sử chỉnh sửa</span>
             </span>
-          }
+          } 
           key="2"
         >
           <div className="tab-content-container">

@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { FaHome, FaShoppingCart, FaFacebookF, FaInstagram, FaPhoneAlt, FaMapMarkerAlt, FaArrowRight, FaInfoCircle, FaCommentDots } from 'react-icons/fa';
+import './guide.css';
 
 const Guide = () => {
   useEffect(() => {
@@ -10,118 +12,215 @@ const Guide = () => {
     <div className="max-w-4xl mx-auto px-4 py-8">
       {/* Breadcrumb */}
       <nav className="flex mb-6 text-sm text-gray-500">
-        <Link to="/" className="hover:text-[#ffb321]">Trang chủ</Link>
+        <Link to="/" className="hover:text-[#FBB321] flex items-center">
+          <FaHome className="mr-1" />
+          Trang chủ
+        </Link>
         <span className="mx-2">/</span>
-        <span className="text-[#ffb321]">Hướng dẫn mua hàng Online</span>
+        <span className="text-[#FBB321]">Hướng dẫn mua hàng Online</span>
       </nav>
 
-      {/* Main Content */}
-      <div className="bg-white rounded-lg shadow-lg p-6 md:p-8">
-        <h1 className="text-3xl font-bold text-[#ffb321] mb-8">
-          Hướng dẫn mua hàng Online
-        </h1>
+      {/* Header Section */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-[#FBB321] mb-2">Hướng dẫn mua hàng online Petcare</h1>
+        <p className="text-gray-600">Khám phá các cách dễ dàng để mua sắm cho thú cưng của bạn</p>
+      </div>
 
-        {/* Cách 1: Hotline */}
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold text-[#ffb321] mb-3">
-            Cách 1: Hotline
-          </h2>
-          <p className="text-gray-700 mb-2">
-            Gọi điện đến Hotline <a href="tel:0313728397" className="text-[#ffb321] font-medium">0313728397</a> từ 9h đến 20h tất cả các ngày trong tuần. Nhân viên bán hàng sẽ ghi nhận thông tin đặt hàng của bạn
-          </p>
-        </section>
+      {/* Introduction */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <p className="text-gray-800 leading-relaxed">
+          Petcare cung cấp nhiều phương thức mua hàng tiện lợi để bạn dễ dàng chăm sóc thú cưng. 
+          Hãy chọn cách phù hợp nhất với bạn từ mua online, nhắn tin, gọi hotline, hoặc đến trực tiếp 
+          cửa hàng tại Cái Răng, Cần Thơ.
+        </p>
+      </div>
 
-        {/* Cách 2: Mạng xã hội */}
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold text-[#ffb321] mb-3">
-            Cách 2: Mạng xã hội
-          </h2>
-          <ul className="space-y-2 text-gray-700">
-            <li className="flex items-start">
-              <span className="text-[#ffb321] mr-2">•</span>
-              Truy cập vào trang Facebook hoặc Instagram chính thức của PetCare
-            </li>
-            <li className="flex items-start">
-              <span className="text-[#ffb321] mr-2">•</span>
-              Chọn mục "Nhắn tin" để được nhân viên trực chat tư vấn về các loại sản phẩm và nhận đơn đặt hàng
-            </li>
-          </ul>
-        </section>
+      {/* Purchase Methods Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 animate-fadeIn">
 
-        {/* Cách 3: Website */}
-        <section className="mb-8">
-          <h2 className="text-xl font-semibold text-[#ffb321] mb-3">
-            Cách 3: Website
-          </h2>
-          <ul className="space-y-2 text-gray-700 mb-4">
-            <li className="flex items-start">
-              <span className="text-[#ffb321] mr-2">•</span>
-              Truy cập vào website
-            </li>
-            <li className="flex items-start">
-              <span className="text-[#ffb321] mr-2">•</span>
-              Tìm kiếm sản phẩm:
-            </li>
-          </ul>
-
-          <div className="pl-6 space-y-3 mb-4">
-            <p className="text-gray-700">+ Nhập loại trái cây bạn mong muốn vào ô tìm kiếm, bạn sẽ có kết quả ngay sau khi hoàn thành.</p>
-            <p className="text-gray-700">+ Click vào từng danh mục sản phẩm để tìm kiếm</p>
+        {/* Method 1: Message via Facebook/Instagram */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 h-full">
+          <div className="p-6 flex flex-col h-full">
+            <div className="flex items-center mb-4">
+              <div className="bg-[#fff8e6] p-3 rounded-full mr-3">
+                <FaFacebookF className="text-[#FBB321] text-xl" />
+              </div>
+              <h3 className="text-xl font-bold text-[#FBB321]">Nhắn tin qua Facebook/Instagram</h3>
+            </div>
+            
+            <div className="space-y-3 mb-4 flex-grow">
+              <p className="text-gray-700">
+                Liên hệ với chúng tôi qua Messenger hoặc Instagram của Petcare. Gửi tin nhắn với sản phẩm bạn muốn mua, số lượng, và địa chỉ giao hàng.
+              </p>
+              <p className="text-gray-600 font-medium">
+                Facebook: @PetcareOfficial | Instagram: @Petcare_VN
+              </p>
+              <div className="flex mt-2">
+                <FaFacebookF className="text-[#FBB321] text-lg mr-2" />
+                <FaInstagram className="text-[#FBB321] text-lg" />
+              </div>
+            </div>
+            
+            <a href="https://www.facebook.com/PetcareOfficial" target="_blank" rel="noopener noreferrer" className="inline-block bg-[#FBB321] hover:bg-[#e09a0d] text-white font-bold py-2 px-4 rounded-md transition-colors">
+              Nhắn tin ngay
+            </a>
           </div>
+          <div className="h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
+        </div>
 
-          <ul className="space-y-3 text-gray-700 mb-4">
-            <li className="flex items-start">
-              <span className="text-[#ffb321] mr-2">•</span>
-              Với mỗi sản phẩm ưng ý, bạn bấm nút CHỌN MUA, sản phẩm sẽ tự động được thêm vào GIỎ HÀNG
-            </li>
-            <li className="flex items-start">
-              <span className="text-[#ffb321] mr-2">•</span>
-              Tại giỏ hàng, bạn có thể bấm nút "Xoá" nếu muốn huỷ sản phẩm đã chọn để mua sản phẩm khác
-            </li>
-            <li className="flex items-start">
-              <span className="text-[#ffb321] mr-2">•</span>
-              Sau khi đã chọn được các loại trái cây cần mua, bấm vào THANH TOÁN, và điền đầy đủ, chính xác thông tin cá nhân trong bảng thông tin
-            </li>
-            <li className="flex items-start">
-              <span className="text-[#ffb321] mr-2">•</span>
-              Chọn hình thức thanh toán
-            </li>
-          </ul>
-
-          <div className="pl-6 space-y-3 mb-4">
-            <p className="text-gray-700">+ Thanh toán khi nhận hàng</p>
-            <p className="text-gray-700">+ Thanh toán qua cổng Napas bằng thẻ ATM nội địa</p>
-            <p className="text-gray-700">+ Thanh toán qua cổng Napas bằng thẻ Visa/ Master Card</p>
+        {/* Method 2: Purchase on Website */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 h-full">
+          <div className="p-6 flex flex-col h-full">
+            <div className="flex items-center mb-4">
+              <div className="bg-[#fff8e6] p-3 rounded-full mr-3">
+                <FaShoppingCart className="text-[#FBB321] text-xl" />
+              </div>
+              <h3 className="text-xl font-bold text-[#FBB321]">Mua hàng trên Website</h3>
+            </div>
+            
+            <div className="space-y-3 mb-4 flex-grow">
+              <p className="text-gray-700">
+                Truy cập www.petcare.vn, chọn sản phẩm, thêm vào giỏ hàng, và thanh toán online bằng thẻ tín dụng, ví điện tử, hoặc COD.
+              </p>
+              <p className="text-[#FBB321] font-medium">
+                Nhận ưu đãi giảm giá khi mua online!
+              </p>
+            </div>
+            
+            <Link to="/productPage/*" className="inline-block bg-[#FBB321] hover:bg-[#e09a0d] text-white font-bold py-2 px-4 rounded-md transition-colors">
+              Mua ngay
+            </Link>
           </div>
+          <div className="h-1 bg-gradient-to-r from-yellow-400 to-orange-500"></div>
+        </div>
 
-          <ul className="space-y-3 text-gray-700">
-            <li className="flex items-start">
-              <span className="text-[#ffb321] mr-2">•</span>
-              Sau khi điền đầy đủ thông tin và kiểm tra đơn hàng, giá tiền, bạn bấm vào nút HOÀN TẤT ĐƠN HÀNG gửi về cho PetCare
-            </li>
-            <li className="flex items-start">
-              <span className="text-[#ffb321] mr-2">•</span>
-              PetCare sẽ gửi cho bạn email hoặc gọi điện xác nhận đơn hàng.
-            </li>
-          </ul>
-        </section>
+        {/* Method 3: Call Hotline */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 h-full">
+          <div className="p-6 flex flex-col h-full">
+            <div className="flex items-center mb-4">
+              <div className="bg-[#fff8e6] p-3 rounded-full mr-3">
+                <FaPhoneAlt className="text-[#FBB321] text-xl" />
+              </div>
+              <h3 className="text-xl font-bold text-[#FBB321]">Gọi hotline 0844 233 799</h3>
+            </div>
+            
+            <div className="space-y-3 mb-4 flex-grow">
+              <p className="text-gray-700">
+                Liên hệ số hotline 0844 233 799 để đặt hàng hoặc được tư vấn. Nhân viên sẽ hỗ trợ bạn chọn sản phẩm và sắp xếp giao hàng.
+              </p>
+              <p className="text-gray-600 font-medium">
+                Hoạt động từ 9:00 - 20:00 hàng ngày.
+              </p>
+            </div>
+            
+            <a href="tel:0844233799" className="inline-block bg-[#FBB321] hover:bg-[#e09a0d] text-white font-bold py-2 px-4 rounded-md transition-colors">
+              Gọi ngay
+            </a>
+          </div>
+          <div className="h-1 bg-gradient-to-r from-green-400 to-cyan-500"></div>
+        </div>
 
-        {/* Contact Box */}
-        <div className="bg-gray-50 p-6 rounded-lg mt-8">
-          <p className="text-gray-700 mb-3">
-            Nếu cần hỗ trợ thêm, vui lòng liên hệ:
-          </p>
-          <a 
-            href="tel:0313728397" 
-            className="inline-flex items-center text-[#ffb321] hover:underline"
-          >
-            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-            </svg>
-            0313728397 (9h - 20h)
-          </a>
+        {/* Method 4: Buy at Store */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300 h-full">
+          <div className="p-6 flex flex-col h-full">
+            <div className="flex items-center mb-4">
+              <div className="bg-[#fff8e6] p-3 rounded-full mr-3">
+                <FaMapMarkerAlt className="text-[#FBB321] text-xl" />
+              </div>
+              <h3 className="text-xl font-bold text-[#FBB321]">Mua tại cửa hàng</h3>
+            </div>
+            
+            <div className="space-y-3 mb-4 flex-grow">
+              <p className="text-gray-700">
+                Ghé thăm cửa hàng Petcare tại Cái Răng, Cần Thơ để mua sắm trực tiếp. Nhân viên sẽ tư vấn và hỗ trợ bạn chọn sản phẩm phù hợp.
+              </p>
+              <p className="text-gray-600 font-medium">
+                Địa chỉ: PetCare, Cái Răng, Cần Thơ.
+              </p>
+            </div>
+            
+            <a href="https://maps.google.com/?q=Cái+Răng,+Cần+Thơ" target="_blank" rel="noopener noreferrer" className="inline-block bg-[#FBB321] hover:bg-[#e09a0d] text-white font-bold py-2 px-4 rounded-md transition-colors">
+              Xem bản đồ
+            </a>
+          </div>
+          <div className="h-1 bg-gradient-to-r from-red-500 to-pink-500"></div>
         </div>
       </div>
+
+      {/* Important Notes */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-8 border-l-4 border-[#FBB321]">
+        <div className="flex items-start">
+          <FaInfoCircle className="text-[#FBB321] text-xl mr-4 mt-1 flex-shrink-0" />
+          <div>
+            <h3 className="text-xl font-bold text-[#FBB321] mb-2">Lưu ý</h3>
+            <p className="text-gray-700 italic">
+              Vui lòng kiểm tra kỹ sản phẩm trước khi nhận hàng. Thời gian giao hàng dự kiến: 2-5 ngày tùy khu vực. 
+              Đối với các sản phẩm thức ăn và vật dụng có kích thước lớn, có thể phát sinh phí vận chuyển tùy theo khu vực và khối lượng.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Visual Guide */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-8 animate-fadeIn">
+        <h3 className="text-xl font-bold text-[#FBB321] mb-6 text-center">Quy trình đặt hàng online</h3>
+        
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-6 shopping-steps">
+          <div className="flex flex-col items-center text-center w-full md:w-1/4 shopping-step">
+            <div className="w-16 h-16 rounded-full bg-[#fff8e6] flex items-center justify-center mb-3 process-circle">
+              <span className="text-[#FBB321] text-xl font-bold">1</span>
+            </div>
+            <h4 className="font-medium text-gray-800 mb-1">Chọn sản phẩm</h4>
+            <p className="text-sm text-gray-600">Duyệt qua danh mục sản phẩm và chọn mặt hàng bạn cần</p>
+          </div>
+          
+          <div className="hidden md:block text-[#FBB321]"><FaArrowRight /></div>
+          <div className="block md:hidden text-[#FBB321] rotate-90"><FaArrowRight /></div>
+          
+          <div className="flex flex-col items-center text-center w-full md:w-1/4 shopping-step">
+            <div className="w-16 h-16 rounded-full bg-[#fff8e6] flex items-center justify-center mb-3 process-circle">
+              <span className="text-[#FBB321] text-xl font-bold">2</span>
+            </div>
+            <h4 className="font-medium text-gray-800 mb-1">Thêm vào giỏ</h4>
+            <p className="text-sm text-gray-600">Thêm sản phẩm vào giỏ hàng và điều chỉnh số lượng</p>
+          </div>
+          
+          <div className="hidden md:block text-[#FBB321]"><FaArrowRight /></div>
+          <div className="block md:hidden text-[#FBB321] rotate-90"><FaArrowRight /></div>
+          
+          <div className="flex flex-col items-center text-center w-full md:w-1/4 shopping-step">
+            <div className="w-16 h-16 rounded-full bg-[#fff8e6] flex items-center justify-center mb-3 process-circle">
+              <span className="text-[#FBB321] text-xl font-bold">3</span>
+            </div>
+            <h4 className="font-medium text-gray-800 mb-1">Thanh toán</h4>
+            <p className="text-sm text-gray-600">Chọn phương thức thanh toán và điền thông tin giao hàng</p>
+          </div>
+          
+          <div className="hidden md:block text-[#FBB321]"><FaArrowRight /></div>
+          <div className="block md:hidden text-[#FBB321] rotate-90"><FaArrowRight /></div>
+          
+          <div className="flex flex-col items-center text-center w-full md:w-1/4 shopping-step">
+            <div className="w-16 h-16 rounded-full bg-[#fff8e6] flex items-center justify-center mb-3 process-circle">
+              <span className="text-[#FBB321] text-xl font-bold">4</span>
+            </div>
+            <h4 className="font-medium text-gray-800 mb-1">Nhận hàng</h4>
+            <p className="text-sm text-gray-600">Theo dõi đơn hàng và nhận sản phẩm tại nhà</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Call to Action */}
+      <div className="flex flex-col md:flex-row gap-4 justify-center items-center">
+        <Link to="/productPage/*" className="bg-[#FBB321] hover:bg-[#e09a0d] text-white font-bold py-3 px-8 rounded-md transition-colors flex items-center justify-center w-full md:w-auto">
+          <FaShoppingCart className="mr-2" />
+          Bắt đầu mua sắm
+        </Link>
+        <Link to="/contact" className="bg-white hover:bg-gray-100 text-[#FBB321] font-bold py-3 px-8 rounded-md border border-[#FBB321] transition-colors flex items-center justify-center w-full md:w-auto">
+          <FaCommentDots className="mr-2" />
+          Hỗ trợ thêm
+        </Link>
+      </div>
+      
     </div>
   );
 };

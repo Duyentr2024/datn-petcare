@@ -9,6 +9,8 @@ class WebSocketService {
     this.callbacks = {
       onNewAppointment: [],
       onAppointmentUpdated: [],
+      onAppointmentConfirmed: [],
+      onSlotsUpdated: [],
       onConnect: [],
       onDisconnect: []
     };
@@ -29,15 +31,14 @@ class WebSocketService {
       // Extract the host from API URL
       const apiUrl = new URL(API_BASE_URL);
       const baseUrl = `${apiUrl.protocol}//${apiUrl.host}`;
-      const wsUrl = `${baseUrl}/ws`; // Endpoint /ws (không phải /api/ws)
+      const wsUrl = `${baseUrl}/ws`;
       
       console.log(`Connecting to WebSocket at ${wsUrl}`);
       
-      // Sử dụng Client từ stompjs thay vì Stomp.over
       this.stompClient = new Client({
         webSocketFactory: () => new SockJS(wsUrl),
         debug: function (str) {
-          // console.log(str); // Đã tắt debug logs
+          // console.log(str);
         },
         reconnectDelay: 5000,
         heartbeatIncoming: 4000,
@@ -47,7 +48,6 @@ class WebSocketService {
       this.stompClient.onConnect = this.handleConnect.bind(this);
       this.stompClient.onStompError = this.handleError.bind(this);
       
-      // Bắt đầu kết nối
       this.stompClient.activate();
     } catch (error) {
       console.error('Error establishing WebSocket connection:', error);
@@ -73,8 +73,11 @@ class WebSocketService {
     this.connected = true;
     this.reconnectAttempts = 0;
     
-    // Subscribe to topic channels
-    this.stompClient.subscribe('/topic/appointments', this.handleAppointmentMessage.bind(this));
+    // Subscribe to topic channels only if connected
+    if (this.connected) {
+      this.stompClient.subscribe('/topic/appointments', this.handleAppointmentMessage.bind(this));
+      this.stompClient.subscribe('/topic/slots', this.handleSlotsMessage.bind(this));
+    }
     
     this.callbacks.onConnect.forEach(callback => callback());
   }
@@ -82,15 +85,27 @@ class WebSocketService {
   handleAppointmentMessage(message) {
     try {
       const data = JSON.parse(message.body);
-      console.log('WebSocket message received:', data);
+      console.log('WebSocket message received on /topic/appointments:', data);
       
       if (data.type === 'NEW_APPOINTMENT') {
         this.callbacks.onNewAppointment.forEach(callback => callback(data.appointment));
       } else if (data.type === 'APPOINTMENT_UPDATED') {
         this.callbacks.onAppointmentUpdated.forEach(callback => callback(data.appointment));
+      } else if (data.type === 'APPOINTMENT_CONFIRMED') {
+        this.callbacks.onAppointmentConfirmed.forEach(callback => callback(data));
       }
     } catch (error) {
       console.error('Error processing WebSocket message:', error);
+    }
+  }
+  
+  handleSlotsMessage(message) {
+    try {
+      const data = JSON.parse(message.body);
+      console.log('WebSocket message received on /topic/slots:', data);
+      this.callbacks.onSlotsUpdated.forEach(callback => callback(data));
+    } catch (error) {
+      console.error('Error processing WebSocket slots message:', error);
     }
   }
   
@@ -116,8 +131,22 @@ class WebSocketService {
       this.connect();
     }, delay);
   }
-  
-  // Event subscription methods
+
+  notifyAppointmentConfirmed() {
+    if (this.stompClient && this.connected) {
+      this.stompClient.publish({
+        destination: '/topic/appointments',
+        body: JSON.stringify({ type: 'APPOINTMENT_CONFIRMED' })
+      });
+      this.stompClient.publish({
+        destination: '/topic/slots',
+        body: JSON.stringify({ type: 'SLOTS_UPDATED' })
+      });
+    } else {
+      console.error('Cannot notify: WebSocket is not connected');
+    }
+  }
+
   onNewAppointment(callback) {
     this.callbacks.onNewAppointment.push(callback);
     return () => {
@@ -129,6 +158,20 @@ class WebSocketService {
     this.callbacks.onAppointmentUpdated.push(callback);
     return () => {
       this.callbacks.onAppointmentUpdated = this.callbacks.onAppointmentUpdated.filter(cb => cb !== callback);
+    };
+  }
+  
+  onAppointmentConfirmed(callback) {
+    this.callbacks.onAppointmentConfirmed.push(callback);
+    return () => {
+      this.callbacks.onAppointmentConfirmed = this.callbacks.onAppointmentConfirmed.filter(cb => cb !== callback);
+    };
+  }
+
+  onSlotsUpdated(callback) {
+    this.callbacks.onSlotsUpdated.push(callback);
+    return () => {
+      this.callbacks.onSlotsUpdated = this.callbacks.onSlotsUpdated.filter(cb => cb !== callback);
     };
   }
   
@@ -147,7 +190,6 @@ class WebSocketService {
   }
 }
 
-// Create a singleton instance
 const webSocketService = new WebSocketService();
 
-export default webSocketService; 
+export default webSocketService;

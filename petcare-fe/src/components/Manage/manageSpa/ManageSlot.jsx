@@ -1,181 +1,201 @@
 import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import TimeSlotService from '../../../service/spaService/TimeSlotService';
+
 
 const ManageSlot = () => {
-  // Time slots from 9:00 to 20:00
   const timeSlots = Array.from({ length: 12 }, (_, i) => {
     const hour = i + 9;
     return `${hour.toString().padStart(2, '0')}:00`;
   });
-  
-  // State management
+
   const [selectedTimeSlot, setSelectedTimeSlot] = useState(timeSlots[0]);
   const [slotQuantity, setSlotQuantity] = useState(1);
-  const [dateOption, setDateOption] = useState('all');
   const [selectedDates, setSelectedDates] = useState([]);
-  const [slotsConfig, setSlotsConfig] = useState(() => {
-    return timeSlots.map(time => ({
-      time,
-      quantity: 4, // Default quantity
-      isDefault: true,
-      note: 'Mặc định',
-      isActive: true,
-      isModified: false
-    }));
-  });
+  const [slotsConfig, setSlotsConfig] = useState([]);
   const [notification, setNotification] = useState({ show: false, message: '', type: '' });
   const [activeTab, setActiveTab] = useState('active');
-  
-  // Calculate dates for current month
+
   const today = new Date();
   const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  const datesInMonth = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-  
-  // Filter slots based on active tab
-  const filteredSlots = slotsConfig.filter(slot => 
-    activeTab === 'all' || (activeTab === 'active' && slot.isActive) || (activeTab === 'inactive' && !slot.isActive)
+  const tomorrow = today.getDate() + 1;
+  const futureDates = Array.from(
+      { length: daysInMonth - today.getDate() },
+      (_, i) => tomorrow + i
   );
-  
-  // Add a new date selection
-  const handleAddDate = () => {
-    setSelectedDates([...selectedDates, today.getDate()]);
+
+  const filteredSlots = slotsConfig.filter(slot =>
+      activeTab === 'all' || (activeTab === 'active' && slot.isActive) || (activeTab === 'inactive' && !slot.isActive)
+  );
+
+  useEffect(() => {
+    fetchSlotsConfig();
+  }, []);
+
+  useEffect(() => {
+    if (notification.show) {
+      const timer = setTimeout(() => setNotification({ ...notification, show: false }), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification.show]);
+
+  const fetchSlotsConfig = async () => {
+    try {
+      const date = today.toISOString().split('T')[0];
+      const response = await TimeSlotService.getTimeSlots(date);
+      const apiSlots = [...response.morning, ...response.afternoon];
+
+      const adjustmentsResponse = await TimeSlotService.getAllSlotAdjustmentsInMonth(today.getFullYear(), today.getMonth() + 1);
+      const adjustments = adjustmentsResponse;
+
+      const updatedSlots = timeSlots.map(time => {
+        const apiSlot = apiSlots.find(slot => slot.hour === time);
+        const defaultEntry = { 
+          date: null, 
+          quantity: apiSlot ? apiSlot.totalSlots : 4, 
+          note: 'Mặc định', 
+          isDefault: true 
+        };
+        
+        const entries = [defaultEntry];
+        const timeAdjustments = adjustments.filter(adj => adj.time === time);
+        timeAdjustments.forEach(adj => {
+          const adjDate = new Date(adj.date);
+          const day = adjDate.getDate();
+          entries.push({
+            date: adj.date,
+            quantity: adj.slotCount,
+            note: `Áp dụng cho ngày ${day}/${today.getMonth() + 1}/${today.getFullYear()}`,
+            isDefault: false,
+          });
+        });
+
+        return {
+          time,
+          entries,
+          isActive: apiSlot ? apiSlot.active : true,
+        };
+      });
+
+      setSlotsConfig(updatedSlots);
+    } catch (error) {
+      showNotification('Lỗi khi tải danh sách slot: ' + error.message, 'error');
+    }
   };
-  
-  // Remove a date selection
-  const handleRemoveDate = (index) => {
-    const newDates = [...selectedDates];
-    newDates.splice(index, 1);
-    setSelectedDates(newDates);
+
+  const handleAddSlots = async () => {
+    if (selectedDates.length === 0) {
+      showNotification('Vui lòng chọn ít nhất một ngày', 'error');
+      return;
+    }
+    try {
+      for (const day of selectedDates) {
+        const date = new Date(today.getFullYear(), today.getMonth(), day).toISOString().split('T')[0];
+        await TimeSlotService.addSlots(date, selectedTimeSlot, slotQuantity);
+      }
+      await fetchSlotsConfig();
+      showNotification(`Đã thêm ${slotQuantity} slot cho khung giờ ${selectedTimeSlot}`, 'success');
+      if (window.updateAppointment) window.updateAppointment();
+    } catch (error) {
+      showNotification('Lỗi khi thêm slot: ' + error.message, 'error');
+    }
   };
-  
-  // Update selected date value
+
+  const handleRemoveSlots = async () => {
+    if (selectedDates.length === 0) {
+      showNotification('Vui lòng chọn ít nhất một ngày', 'error');
+      return;
+    }
+    try {
+      for (const day of selectedDates) {
+        const date = new Date(today.getFullYear(), today.getMonth(), day).toISOString().split('T')[0];
+        const slot = slotsConfig.find(s => s.time === selectedTimeSlot);
+        const currentEntry = slot.entries.find(e => e.date === date) || slot.entries[0];
+        const newQuantity = currentEntry.quantity - slotQuantity;
+
+        if (newQuantity < 0) {
+          showNotification('Số lượng slot không thể nhỏ hơn 0', 'error');
+          return;
+        }
+
+        if (newQuantity <= 4) {
+          const updatedSlots = slotsConfig.map(s => {
+            if (s.time === selectedTimeSlot) {
+              const updatedEntries = s.entries.map(e => 
+                e.date === date ? { ...e, quantity: newQuantity } : e
+              );
+              if (!updatedEntries.some(e => e.date === date)) {
+                updatedEntries.push({ date, quantity: newQuantity, note: `Áp dụng cho ngày ${day}/${today.getMonth() + 1}/${today.getFullYear()}`, isDefault: false });
+              }
+              return { ...s, entries: updatedEntries };
+            }
+            return s;
+          });
+          setSlotsConfig(updatedSlots);
+        } else {
+          await TimeSlotService.removeSlots(date, selectedTimeSlot, slotQuantity);
+        }
+      }
+      await fetchSlotsConfig();
+      showNotification(`Đã xóa ${slotQuantity} slot cho khung giờ ${selectedTimeSlot}`, 'success');
+      if (window.updateAppointment) window.updateAppointment();
+    } catch (error) {
+      showNotification('Lỗi khi xóa slot: ' + error.message, 'error');
+    }
+  };
+
+  const resetSlotToDefault = async (time, date) => {
+    try {
+      await TimeSlotService.resetToDefault(date, time);
+      await fetchSlotsConfig();
+      showNotification(`Đã khôi phục khung giờ ${time} về mặc định (4 slot) cho ngày ${new Date(date).getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`, 'success');
+      if (window.updateAppointment) window.updateAppointment();
+    } catch (error) {
+      showNotification('Lỗi khi khôi phục slot: ' + error.message, 'error');
+    }
+  };
+
+  const toggleSlotVisibility = async (time) => {
+    try {
+      const slot = slotsConfig.find((s) => s.time === time);
+      if (!slot) return;
+
+      const newIsActive = !slot.isActive;
+      // Đồng bộ định dạng thời gian với BE
+      const formattedTime = time + ":00"; // Chuyển "09:00" thành "09:00:00"
+      await TimeSlotService.toggleSlotVisibility(formattedTime, newIsActive);
+
+      await fetchSlotsConfig();
+      if (activeTab === "active" && !newIsActive) setActiveTab("inactive");
+      else if (activeTab === "inactive" && newIsActive) setActiveTab("active");
+
+      showNotification(`Đã ${newIsActive ? "bật" : "tắt"} hiển thị khung giờ ${time}`, "success");
+      if (window.updateAppointment) window.updateAppointment();
+    } catch (error) {
+      showNotification("Lỗi khi cập nhật trạng thái hiển thị: " + error.message, "error");
+    }
+  };
+
   const handleDateChange = (index, value) => {
     const newDates = [...selectedDates];
     newDates[index] = parseInt(value);
     setSelectedDates(newDates);
   };
-  
-  // Add slots
-  const handleAddSlots = () => {
-    if (dateOption === 'specific' && selectedDates.length === 0) {
-      showNotification('Vui lòng chọn ít nhất một ngày', 'error');
-      return;
-    }
-    
-    const updatedConfig = [...slotsConfig];
-    const timeSlotIndex = updatedConfig.findIndex(slot => slot.time === selectedTimeSlot);
-    
-    if (timeSlotIndex !== -1) {
-      const currentQuantity = updatedConfig[timeSlotIndex].quantity;
-      const newQuantity = currentQuantity + slotQuantity;
-      
-      const updatedSlot = {
-        ...updatedConfig[timeSlotIndex],
-        quantity: newQuantity,
-        isDefault: dateOption === 'all',
-        note: dateOption === 'all' 
-          ? 'Mặc định' 
-          : `Áp dụng cho ngày ${selectedDates.map(d => `${d}/${today.getMonth() + 1}/${today.getFullYear()}`).join(', ')}`,
-        isActive: true,
-        isModified: newQuantity !== 4 // Mark as modified if not the default quantity
-      };
-      
-      updatedConfig[timeSlotIndex] = updatedSlot;
-      setSlotsConfig(updatedConfig);
-      
-      // Reset form if adding specific dates
-      if (dateOption === 'specific') {
-        setSelectedDates([]);
-      }
-      
-      showNotification(`Đã thêm ${slotQuantity} slot cho khung giờ ${selectedTimeSlot}`, 'success');
-    }
+
+  const handleAddDate = () => {
+    setSelectedDates([...selectedDates, tomorrow]);
   };
-  
-  // Remove slots
-  const handleRemoveSlots = () => {
-    const updatedConfig = [...slotsConfig];
-    const timeSlotIndex = updatedConfig.findIndex(slot => slot.time === selectedTimeSlot);
-    
-    if (timeSlotIndex !== -1) {
-      const currentQuantity = updatedConfig[timeSlotIndex].quantity;
-      
-      if (currentQuantity < slotQuantity) {
-        showNotification(`Không thể xóa ${slotQuantity} slot vì chỉ có ${currentQuantity} slot cho khung giờ này`, 'error');
-        return;
-      }
-      
-      const newQuantity = Math.max(0, currentQuantity - slotQuantity);
-      const updatedSlot = {
-        ...updatedConfig[timeSlotIndex],
-        quantity: newQuantity,
-        isDefault: dateOption === 'all',
-        note: dateOption === 'all' 
-          ? 'Mặc định' 
-          : `Áp dụng cho ngày ${selectedDates.map(d => `${d}/${today.getMonth() + 1}/${today.getFullYear()}`).join(', ')}`,
-        isModified: newQuantity !== 4 // Mark as modified if not the default quantity
-      };
-      
-      updatedConfig[timeSlotIndex] = updatedSlot;
-      setSlotsConfig(updatedConfig);
-      
-      showNotification(`Đã xóa ${slotQuantity} slot cho khung giờ ${selectedTimeSlot}`, 'success');
-    }
+
+  const handleRemoveDate = (index) => {
+    const newDates = [...selectedDates];
+    newDates.splice(index, 1);
+    setSelectedDates(newDates);
   };
-  
-  // Reset slot to default quantity
-  const resetSlotToDefault = (time) => {
-    const updatedConfig = slotsConfig.map(slot => 
-      slot.time === time ? { 
-        ...slot, 
-        quantity: 4, 
-        note: 'Mặc định',
-        isDefault: true,
-        isModified: false 
-      } : slot
-    );
-    setSlotsConfig(updatedConfig);
-    
-    showNotification(`Đã khôi phục khung giờ ${time} về mặc định (4 slot)`, 'success');
-  };
-  
-  // Display notification
+
   const showNotification = (message, type) => {
     setNotification({ show: true, message, type });
-    
-    // Auto hide after 3 seconds
-    setTimeout(() => {
-      setNotification({ show: false, message: '', type: '' });
-    }, 3000);
   };
-  
-  // Toggle slot visibility
-  const toggleSlotVisibility = (time) => {
-    const updatedConfig = slotsConfig.map(slot => 
-      slot.time === time ? { ...slot, isActive: !slot.isActive } : slot
-    );
-    setSlotsConfig(updatedConfig);
-    
-    const slot = slotsConfig.find(s => s.time === time);
-    if (slot) {
-      showNotification(
-        `Đã ${slot.isActive ? 'tắt' : 'bật'} hiển thị khung giờ ${time}`,
-        'success'
-      );
-    }
-  };
-  
-  // Automatically hide notification after 3 seconds
-  useEffect(() => {
-    if (notification.show) {
-      const timer = setTimeout(() => {
-        setNotification((prev) => ({ ...prev, show: false }));
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [notification.show]);
-  
+
+  // Giữ nguyên phần return (UI) như cũ
   return (
     <div className="bg-white rounded-xl">
       {/* Notification */}
@@ -190,29 +210,12 @@ const ManageSlot = () => {
           >
             <div className="flex-shrink-0">
               {notification.type === 'success' ? (
-                <svg
-                  className="h-6 w-6"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
+                <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                 </svg>
               ) : (
-                <svg
-                  className="h-6 w-6"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
+                <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               )}
             </div>
@@ -231,32 +234,20 @@ const ManageSlot = () => {
           </div>
         </div>
       )}
-      
+
       {/* Form Section */}
       <div className="py-5">
         <div className="flex items-center mb-5">
           <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center mr-3">
-            <svg
-              className="h-5 w-5 text-indigo-600"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
+            <svg className="h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
           <h3 className="text-lg font-semibold text-gray-800">Quản lý số lượng slot</h3>
         </div>
-        
+
         <div className="bg-gray-50 rounded-xl p-5 shadow-inner">
           <div className="grid md:grid-cols-2 gap-6 mb-6">
-            {/* Time slot selection */}
             <div>
               <label htmlFor="timeSlot" className="block text-sm font-medium text-gray-700 mb-2">
                 Chọn khung giờ <span className="text-red-500">*</span>
@@ -281,8 +272,7 @@ const ManageSlot = () => {
                 </div>
               </div>
             </div>
-            
-            {/* Slot quantity */}
+
             <div>
               <label htmlFor="slotQuantity" className="block text-sm font-medium text-gray-700 mb-2">
                 Số lượng slot (1-100) <span className="text-red-500">*</span>
@@ -305,109 +295,75 @@ const ManageSlot = () => {
               </div>
             </div>
           </div>
-          
-          {/* Date selection options */}
+
           <div className="mb-5">
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              Chọn cách áp dụng thay đổi <span className="text-red-500">*</span>
+              Chọn ngày cụ thể <span className="text-red-500">*</span>
             </label>
-            <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm space-y-3">
-              <div className="flex items-center">
-                <input
-                  id="all-days"
-                  name="date-option"
-                  type="radio"
-                  checked={dateOption === 'all'}
-                  onChange={() => setDateOption('all')}
-                  className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                />
-                <label htmlFor="all-days" className="ml-3 block text-sm font-medium text-gray-700">
-                  Mặc định cho tất cả các ngày
-                </label>
-              </div>
-              <div className="flex items-center">
-                <input
-                  id="specific-date"
-                  name="date-option"
-                  type="radio"
-                  checked={dateOption === 'specific'}
-                  onChange={() => setDateOption('specific')}
-                  className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
-                />
-                <label htmlFor="specific-date" className="ml-3 block text-sm font-medium text-gray-700">
-                  Chọn ngày cụ thể
-                </label>
-              </div>
+            <div className="flex justify-between items-center mb-3">
+              <label className="block text-sm font-medium text-gray-700">
+                Chọn ngày trong tháng {today.getMonth() + 1}/{today.getFullYear()}
+              </label>
+              <button
+                type="button"
+                onClick={handleAddDate}
+                className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                <svg className="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Thêm ngày
+              </button>
             </div>
-          </div>
-          
-          {/* Specific date selection */}
-          {dateOption === 'specific' && (
-            <div className="mb-5">
-              <div className="flex justify-between items-center mb-3">
-                <label className="block text-sm font-medium text-gray-700">
-                  Chọn ngày trong tháng {today.getMonth() + 1}/{today.getFullYear()}
-                </label>
-                <button
-                  type="button"
-                  onClick={handleAddDate}
-                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  <svg className="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Thêm ngày
-                </button>
-              </div>
-              
-              {selectedDates.length === 0 ? (
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md">
-                  <div className="flex">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <p className="text-sm text-yellow-700">
-                        Chưa có ngày nào được chọn. Vui lòng nhấn "Thêm ngày".
-                      </p>
-                    </div>
+
+            {selectedDates.length === 0 && (
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg className="h-
+
+5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-yellow-700">
+                      Chưa có ngày nào được chọn. Vui lòng nhấn "Thêm ngày".
+                    </p>
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {selectedDates.map((date, index) => (
-                    <div key={index} className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
-                      <select
-                        value={date}
-                        onChange={(e) => handleDateChange(index, e.target.value)}
-                        className="flex-grow p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                      >
-                        {datesInMonth.map(day => (
-                          <option key={day} value={day}>
-                            {day} tháng {today.getMonth() + 1}/{today.getFullYear()}
-                          </option>
-                        ))}
-                      </select>
-                      
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveDate(index)}
-                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-full focus:outline-none"
-                      >
-                        <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          
-          {/* Action buttons */}
+              </div>
+            )}
+            {selectedDates.length > 0 && (
+              <div className="space-y-3">
+                {selectedDates.map((date, index) => (
+                  <div key={index} className="flex items-center space-x-2 bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
+                    <select
+                      value={date}
+                      onChange={(e) => handleDateChange(index, e.target.value)}
+                      className="flex-grow p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                      {futureDates.map(day => (
+                        <option key={day} value={day}>
+                          {day} tháng {today.getMonth() + 1}/{today.getFullYear()}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveDate(index)}
+                      className="p-1.5 text-red-600 hover:bg-red-50 rounded-full focus:outline-none"
+                    >
+                      <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="mt-6 flex space-x-4">
             <button
               type="button"
@@ -419,7 +375,6 @@ const ManageSlot = () => {
               </svg>
               Thêm slot
             </button>
-            
             <button
               type="button"
               onClick={handleRemoveSlots}
@@ -433,8 +388,7 @@ const ManageSlot = () => {
           </div>
         </div>
       </div>
-      
-      {/* Slots Table Section */}
+
       <div className="py-5 border-t border-gray-200">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center">
@@ -445,7 +399,6 @@ const ManageSlot = () => {
             </div>
             <h3 className="text-lg font-semibold text-gray-800">Danh sách slot đã thiết lập</h3>
           </div>
-          
           <div className="flex items-center space-x-2">
             <label htmlFor="status-filter" className="text-sm font-medium text-gray-700">
               Trạng thái:
@@ -462,7 +415,7 @@ const ManageSlot = () => {
             </select>
           </div>
         </div>
-        
+
         <div className="shadow overflow-hidden border border-gray-200 sm:rounded-lg">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -487,76 +440,71 @@ const ManageSlot = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredSlots.length > 0 ? (
                 filteredSlots.map((slot) => (
-                  <tr key={slot.time} className={`hover:bg-gray-50 ${!slot.isActive ? 'bg-gray-50' : ''}`}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {slot.time}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {slot.quantity} slots
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                      {slot.note}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          slot.isActive
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {slot.isActive ? 'Đang hiển thị' : 'Đã tắt hiển thị'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end space-x-2">
-                        {slot.isModified && (
-                          <button
-                            onClick={() => resetSlotToDefault(slot.time)}
-                            className="text-yellow-600 hover:text-yellow-900 transition-colors duration-200 flex items-center"
-                          >
-                            <svg 
-                              className="h-4 w-4 mr-1" 
-                              xmlns="http://www.w3.org/2000/svg" 
-                              fill="none" 
-                              viewBox="0 0 24 24" 
-                              stroke="currentColor"
-                            >
-                              <path 
-                                strokeLinecap="round" 
-                                strokeLinejoin="round" 
-                                strokeWidth={2} 
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
-                              />
-                            </svg>
-                            <span>Khôi phục</span>
-                          </button>
+                  slot.entries.map((entry, index) => (
+                    <tr key={`${slot.time}-${entry.date || 'default'}`} 
+                        className={`hover:bg-gray-50 ${!slot.isActive ? 'bg-gray-100 opacity-75 border-l-4 border-red-400' : ''}`}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {slot.time}
+                        {!slot.isActive && (
+                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                            Đã tắt
+                          </span>
                         )}
-                        <button
-                          onClick={() => toggleSlotVisibility(slot.time)}
-                          className="text-indigo-600 hover:text-indigo-900 transition-colors duration-200 flex items-center"
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {entry.quantity} slots
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                        {entry.note}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            slot.isActive
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}
                         >
-                          <svg
-                            className="h-4 w-4 mr-1"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
-                            />
-                          </svg>
-                          <span>{slot.isActive ? 'Tắt hiển thị' : 'Bật hiển thị'}</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                          {slot.isActive ? 'Đang hiển thị' : 'Đã tắt hiển thị'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex justify-end space-x-2">
+                          {!entry.isDefault && (
+                            <button
+                              onClick={() => resetSlotToDefault(slot.time, entry.date)}
+                              className="text-yellow-600 hover:text-yellow-900 transition-colors duration-200 flex items-center"
+                            >
+                              <svg className="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                              <span>Khôi phục</span>
+                            </button>
+                          )}
+                          {index === 0 && (
+                            <button
+                              onClick={() => toggleSlotVisibility(slot.time)}
+                              className={`${slot.isActive ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'} transition-colors duration-200 flex items-center`}
+                            >
+                              <svg className="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d={slot.isActive 
+                                    ? "M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" 
+                                    : "M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"}
+                                />
+                              </svg>
+                              <span>{slot.isActive ? 'Tắt hiển thị' : 'Bật hiển thị'}</span>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
                 ))
               ) : (
                 <tr>

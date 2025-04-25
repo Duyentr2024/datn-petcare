@@ -5,7 +5,7 @@ import { FaChevronDown, FaChevronUp, FaBoxOpen, FaCut, FaClinicMedical, FaQuesti
 const Policy = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [expandedFaqs, setExpandedFaqs] = useState([]);
-
+  
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);

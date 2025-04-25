@@ -67,7 +67,7 @@ const OrderOffline = () => {
       paymentMethod: 'CASH',
       error: '',
       customerPhone: '',
-      customerName: 'Khách lẻ',
+      customerName: 'Khách vãng lai',
       accumulatePoints: false,
       totalPoints: 0,
       pointsToUse: 0
@@ -102,6 +102,7 @@ const OrderOffline = () => {
         setStaffId(decoded.userId);
         setStaffName(decoded.fullName || "Nhân viên");
         setIsAuthenticated(true);
+        fetchOfflineCartDetails(decoded.userId); // Lấy giỏ hàng offline
       } else {
         navigate("/login");
       }
