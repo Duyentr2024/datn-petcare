@@ -140,9 +140,9 @@ const ManageVoucher = () => {
         <h2 className="text-xl font-bold text-gray-700">Quản lý Voucher</h2>
         <Link
           to="/admin/voucher-management-create"
-          className="bg-green-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-600 transition duration-200"
+          className="bg-[#f0b040] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#e0a030] transition duration-200"
         >
-          + Thêm Voucher
+          <i className="fas fa-plus mr-2"></i> Thêm Voucher
         </Link>
       </div>
 
@@ -172,36 +172,36 @@ const ManageVoucher = () => {
       </div>
 
       <table className="w-full border-collapse border border-gray-300 table-auto">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border p-2 min-w-[120px]">Tên</th>
-            <th className="border p-2 min-w-[100px]">Ngày BĐ</th>
-            <th className="border p-2 min-w-[100px]">Ngày KT</th>
-            <th className="border p-2 min-w-[80px]">Số lượng</th>
-            <th className="border p-2 min-w-[80px]">Giảm giá</th>
-            <th className="border p-2 min-w-[120px]">Điều kiện</th>
-            <th className="border p-2 min-w-[100px]">Trạng thái</th>
-            <th className="border p-2 min-w-[150px]">Thao tác</th>
+      <thead className="bg-[#f0b040] text-white text-sm">
+          <tr>
+            <th className="py-3 px-5 min-w-[120px]">Tên</th>
+            <th className="py-3 px-5 min-w-[100px]">Ngày BĐ</th>
+            <th className="py-3 px-5 min-w-[100px]">Ngày KT</th>
+            <th className="py-3 px-5 min-w-[80px]">Số lượng</th>
+            <th className="py-3 px-5 min-w-[80px]">Giảm giá</th>
+            <th className="py-3 px-5 min-w-[120px]">Điều kiện</th>
+            <th className="py-3 px-5 min-w-[100px]">Trạng thái</th>
+            <th className="py-3 px-5 min-w-[150px]">Thao tác</th>
           </tr>
         </thead>
         <tbody>
           {currentVouchers.length > 0 ? (
             currentVouchers.map((voucher) => (
-              <tr key={voucher.voucherId} className="text-center">
-                <td className="border p-2">{voucher.name || "N/A"}</td>
-                <td className="border p-2">{voucher.startDate || "N/A"}</td>
-                <td className="border p-2">{voucher.endDate || "N/A"}</td>
-                <td className="border p-2">{voucher.quantity || 0}</td>
-                <td className="border p-2">{voucher.percents || 0}%</td>
-                <td className="border p-2">{formatCurrency(voucher.condition)}</td>
+              <tr key={voucher.voucherId} className="text-center border">
+                <td className="py-3 px-5">{voucher.name || "N/A"}</td>
+                <td className="py-3 px-5">{voucher.startDate || "N/A"}</td>
+                <td className="py-3 px-5">{voucher.endDate || "N/A"}</td>
+                <td className="py-3 px-5">{voucher.quantity || 0}</td>
+                <td className="py-3 px-5">{voucher.percents || 0}%</td>
+                <td className="py-3 px-5">{formatCurrency(voucher.condition)}</td>
                 <td
-                  className={`border p-2 ${
+                  className={`py-3 px-5 ${
                     voucher.status ? "text-green-500" : "text-red-500"
                   }`}
                 >
                   {getStatusText(voucher.status)}
                 </td>
-                <td className="border p-2 flex justify-center gap-2">
+                <td className="py-3 px-5 flex justify-center gap-2">
                   <button
                     onClick={() => openEditModal(voucher)}
                     className="bg-yellow-500 text-white px-3 py-1 rounded"

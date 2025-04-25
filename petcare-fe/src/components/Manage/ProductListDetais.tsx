@@ -7,6 +7,7 @@ import ProductSizeService from "../../service/manageService/ProductSizeService";
 import ProductWeightsService from "../../service/manageService/ProductWeightsService";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { FiEdit, FiEye } from "react-icons/fi";
 
 const ProductListDetails = () => {
     const { productId } = useParams();
@@ -202,7 +203,7 @@ const ProductListDetails = () => {
         try {
             const data = await ProductDetailsService.getAllProductDetailsDTOByProductId(productId);
             setProductDetails(data);
-            console.log("Dữ liệu API:", data);
+            console.log("Dữ liệu productDetails từ API:", data); // Kiểm tra cấu trúc dữ liệu
         } catch (err) {
             setError("Lỗi khi tải dữ liệu sản phẩm.");
             console.error(err);
@@ -234,10 +235,9 @@ const ProductListDetails = () => {
     const handleAddProductDetail = async () => {
         let newErrors = {};
 
+        // Kiểm tra các trường bắt buộc
         if (!newDetail.productId) newErrors.productId = "Vui lòng chọn sản phẩm!";
-        if (!newDetail.colorId) newErrors.colorId = "Vui lòng chọn màu!";
-        if (!newDetail.sizeId) newErrors.sizeId = "Vui lòng chọn kích cỡ!";
-        if (!newDetail.weightId) newErrors.weightId = "Vui lòng chọn cân nặng!";
+
         if (!newDetail.price || isNaN(newDetail.price) || Number(newDetail.price) <= 0)
             newErrors.price = "Giá không được để trống và phải lớn hơn 0!";
         if (!newDetail.quantity || isNaN(newDetail.quantity) || Number(newDetail.quantity) <= 0)
@@ -248,21 +248,51 @@ const ProductListDetails = () => {
             return;
         }
 
+        // Chuyển đổi các giá trị sang Number để so sánh chính xác
+        const newColorId = Number(newDetail.colorId);
+        const newSizeId = Number(newDetail.sizeId);
+        const newWeightId = Number(newDetail.weightId);
+        const newProductId = Number(newDetail.productId);
+
+        // Ánh xạ các giá trị hiển thị từ danh sách colors, sizes, weights
+        const selectedColor = colors.find(c => c.productColorId === newColorId);
+        const selectedSize = sizes.find(s => s.productSizeId === newSizeId);
+        const selectedWeight = weights.find(w => w.weightId === newWeightId);
+
+        // Kiểm tra trùng lặp dựa trên ID hoặc giá trị hiển thị
+        const isDuplicate = productDetails.some((detail) => {
+            const detailColorId = colors.find(c => c.colorValue === detail.colorValue)?.productColorId;
+            const detailSizeId = sizes.find(s => s.sizeValue === detail.sizeValue)?.productSizeId;
+            const detailWeightId = weights.find(w => w.weightValue === detail.weightValue)?.weightId;
+
+            return (
+                detailColorId === newColorId &&
+                detailSizeId === newSizeId &&
+                detailWeightId === newWeightId &&
+                (detail.productId ? detail.productId === newProductId : true) // Kiểm tra productId nếu có
+            );
+        });
+
+        if (isDuplicate) {
+            toast.error("Biến thể với màu, kích cỡ và cân nặng này đã tồn tại!");
+            return;
+        }
+
         setErrors({});
 
         const payload = {
             quantity: Number(newDetail.quantity),
             price: Number(newDetail.price),
-            products: { productId: Number(newDetail.productId) },
-            weights: newDetail.weightId ? { weightId: Number(newDetail.weightId) } : null,
-            productSizes: newDetail.sizeId ? { productSizeId: Number(newDetail.sizeId) } : null,
-            productColors: newDetail.colorId ? { productColorId: Number(newDetail.colorId) } : null,
+            products: { productId: newProductId },
+            weights: newWeightId ? { weightId: newWeightId } : null,
+            productSizes: newSizeId ? { productSizeId: newSizeId } : null,
+            productColors: newColorId ? { productColorId: newColorId } : null,
             status: newDetail.status
         };
 
         try {
             await ProductDetailsService.createProductDetail(payload);
-            fetchProductDetails();
+            fetchProductDetails(); // Cập nhật danh sách
             toast.success("Thêm biến thể thành công!");
             setNewDetail({
                 productId: productId,
@@ -274,9 +304,10 @@ const ProductListDetails = () => {
                 status: true
             });
             setIsModalOpen(false);
-            setCurrentPage(1); // Reset về trang đầu sau khi thêm mới
+            setCurrentPage(1); // Reset về trang đầu
         } catch (error) {
             console.error("Lỗi khi thêm biến thể:", error);
+            toast.error("Lỗi khi thêm biến thể!");
         }
     };
 
@@ -340,24 +371,24 @@ const ProductListDetails = () => {
             <div className="flex justify-between mb-4">
                 <button
                     onClick={() => window.history.back()}
-                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                    className="bg-[#f0b040] text-white px-4 py-2 rounded hover:bg-[#e0a030]"
                 >
                     ← Quay về
                 </button>
 
                 <button
                     onClick={() => setIsModalOpen(true)}
-                    className="px-4 py-2 bg-green-500 text-white rounded-md"
+                    className="px-5 py-2 bg-[#f0b040] text-white rounded-md font-medium transition-colors hover:bg-[#e0a030]"
                 >
-                    Thêm biến thể
+                    <i className="fas fa-plus mr-2"></i> Thêm
                 </button>
             </div>
 
             <div className="flex border-b">
                 <button
                     className={`flex-1 py-2 text-center font-medium ${activeTab === "active"
-                        ? "border-b-2 border-green-600 text-green-600"
-                        : "text-gray-500 hover:text-green-600"
+                        ? "border-b-2 border-[#f0b040] text-[#f0b040]"
+                        : "text-gray-500 hover:text-[#e0a030]"
                         } transition-colors`}
                     onClick={() => setActiveTab("active")}
                 >
@@ -365,8 +396,8 @@ const ProductListDetails = () => {
                 </button>
                 <button
                     className={`flex-1 py-2 text-center font-medium ${activeTab === "inactive"
-                        ? "border-b-2 border-green-600 text-green-600"
-                        : "text-gray-500 hover:text-green-600"
+                        ? "border-b-2 border-[#f0b040] text-[#f0b040]"
+                        : "text-gray-500 hover:text-[#e0a030]"
                         } transition-colors`}
                     onClick={() => setActiveTab("inactive")}
                 >
@@ -375,21 +406,21 @@ const ProductListDetails = () => {
             </div>
 
             {filteredProductDetails.length > 0 ? (
-                <div className="mt-4">
+                <div className="">
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse border border-gray-200 rounded-lg shadow-sm">
-                            <thead>
-                                <tr className="bg-gray-100 text-gray-700 text-sm">
-                                    <th className="border border-gray-200 px-3 py-2">ID</th>
-                                    <th className="border border-gray-200 px-3 py-2">Tên sản phẩm</th>
-                                    <th className="border border-gray-200 px-3 py-2">Giá</th>
-                                    <th className="border border-gray-200 px-3 py-2">Màu</th>
-                                    <th className="border border-gray-200 px-3 py-2">Size</th>
-                                    <th className="border border-gray-200 px-3 py-2">Cân nặng</th>
-                                    <th className="border border-gray-200 px-3 py-2">Số lượng</th>
-                                    <th className="border border-gray-200 px-3 py-2">Trạng thái</th>
-                                    <th className="border border-gray-200 px-3 py-2">Hình ảnh</th>
-                                    <th className="border border-gray-200 px-3 py-2">Hành động</th>
+                            <thead className="bg-[#f0b040] text-white text-sm">
+                                <tr>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">ID</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Tên sản phẩm</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Giá</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Màu</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Size</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Cân nặng</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Số lượng</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Trạng thái</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Hình ảnh</th>
+                                    <th className="w-[60px] py-3 px-5 text-xs uppercase tracking-wide">Hành động</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -409,28 +440,32 @@ const ProductListDetails = () => {
                                         <td className="border border-gray-200 px-3 py-2">{product.quantity}</td>
                                         <td className="border border-gray-200 px-3 py-2">
                                             <button
-                                                className={`px-2 py-1 text-xs ${product.status ? 'bg-green-500' : 'bg-red-500'
-                                                    } text-white rounded-md`}
+                                                className={`px-2 py-1 rounded-full text-xs font-medium  ${product.status ? "bg-green-100 text-green-700"
+                                                    : "bg-red-100 text-red-700"
+                                                    }`}
                                                 onClick={() => handleToggleStatus(product.productDetailId, product.status)}
                                             >
                                                 {product.status ? 'Đang bán' : 'Ngừng bán'}
                                             </button>
                                         </td>
                                         <td className="border border-gray-200 px-3 py-2">
-                                            <Link
-                                                to={`/admin/products-list/manage-product-details/:productId/product-image/${product.productDetailId}`}
-                                                className="px-2 py-1 bg-blue-500 text-white rounded-md text-xs flex items-center justify-center gap-1"
-                                            >
-                                                👁️ Xem
-                                            </Link>
+                                            <div className="flex gap-1 justify-center">
+                                                <Link
+                                                    to={`/admin/products-list/manage-product-details/:productId/product-image/${product.productDetailId}`}
+                                                    className="p-2 bg-blue-600 text-white rounded-md text-xs font-medium hover:bg-blue-700 transition duration-200 flex items-center gap-2 whitespace-nowrap"     >
+                                                    <FiEye />
+                                                </Link>
+                                            </div>
+
                                         </td>
                                         <td className="border border-gray-200 px-3 py-2">
                                             <div className="flex gap-1 justify-center">
                                                 <button
-                                                    className="px-2 py-1 bg-yellow-500 text-white rounded-md text-xs"
+                                                    className="p-2 bg-amber-500 text-white rounded-md text-xs font-medium hover:bg-amber-600 transition duration-200 flex items-center gap-1 whitespace-nowrap"
+
                                                     onClick={() => openEditModal(product)}
                                                 >
-                                                    ✏️ Sửa
+                                                    <FiEdit />
                                                 </button>
                                             </div>
                                         </td>
@@ -481,7 +516,7 @@ const ProductListDetails = () => {
                             </button>
                             <button
                                 onClick={confirmToggleStatus}
-                                className="px-4 py-2 bg-green-500 text-white rounded-md"
+                                className="px-4 py-2 bg-[#f0b040] text-white rounded-md hover:bg-[#e0a030] transition whitespace-nowrap"
                             >
                                 Có
                             </button>
@@ -563,7 +598,7 @@ const ProductListDetails = () => {
                         {errors.quantity && <p className="text-red-500 text-sm">{errors.quantity}</p>}
 
                         <div className="flex justify-end space-x-2">
-                            <button onClick={handleAddProductDetail} className="p-2 bg-green-500 text-white rounded">Thêm biến thể</button>
+                            <button onClick={handleAddProductDetail} className="p-2 bg-[#f0b040] text-white rounded hover:bg-[#e0a030]">Thêm biến thể</button>
                         </div>
                     </div>
                 </div>
@@ -635,7 +670,7 @@ const ProductListDetails = () => {
                         {errors.quantity && <p className="text-red-500 text-sm">{errors.quantity}</p>}
 
                         <div className="flex justify-end space-x-2">
-                            <button onClick={handleUpdateProductDetail} className="p-2 bg-blue-500 text-white rounded">Cập nhật</button>
+                            <button onClick={handleUpdateProductDetail} className="p-2 bg-[#f0b040] text-white rounded">Cập nhật</button>
                         </div>
                     </div>
                 </div>

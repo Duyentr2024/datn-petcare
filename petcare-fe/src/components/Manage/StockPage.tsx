@@ -80,8 +80,8 @@ const StockPage = () => {
     const paginatedProducts = searchedProducts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
     return (
-        <div className="p-1 bg-gray-100 rounded-lg shadow-lg max-w-6xl mx-auto">
-            <h1 className="text-xl font-bold mb-1 text-center">📦 Sản phẩm tồn kho</h1>
+        <div className="mt-1 p-1 rounded-lg mx-auto">
+            <h1 className="text-xl font-bold mb-1 text-center">Sản phẩm tồn kho</h1>
             {/* Bộ lọc danh mục + Tìm kiếm + Tổng số sản phẩm */}
             <div className="mb-2 flex flex-col sm:flex-row items-center justify-between gap-2 bg-white p-2 rounded-lg shadow">
                 <div className="flex items-center gap-1">
@@ -102,15 +102,15 @@ const StockPage = () => {
                     </select>
 
                     <input
-                    type="text"
-                    placeholder="🔍 Tìm kiếm..."
-                    className="p-1 border border-gray-300 rounded text-sm w-full sm:w-auto"
-                    value={searchQuery}
-                    onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        setCurrentPage(1); // Reset về trang đầu
-                    }}
-                />
+                        type="text"
+                        placeholder="Tìm kiếm..."
+                        className="p-1 border border-gray-300 rounded text-sm w-full sm:w-auto"
+                        value={searchQuery}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setCurrentPage(1); // Reset về trang đầu
+                        }}
+                    />
                 </div>
 
 
@@ -131,29 +131,29 @@ const StockPage = () => {
                 <>
                     <div className="overflow-x-auto bg-white shadow-md rounded-lg p-1">
                         <table className="w-full border-collapse border border-gray-300 text-sm">
-                            <thead>
-                                <tr className="bg-gray-200">
-                                    <th className="border p-1 text-left">Ảnh</th>
-                                    <th className="border p-1 text-left">Tên</th>
-                                    <th className="border p-1 text-center">Màu</th>
-                                    <th className="border p-1 text-center">Size</th>
-                                    <th className="border p-1 text-center">Trọng lượng</th>
-                                    <th className="border p-1 text-center">Số lượng</th>
-                                    <th className="border p-1 text-right">Giá</th>
+                            <thead className="bg-[#f0b040] text-white text-sm">
+                                <tr>
+                                    <th className="p-1 text-left">Ảnh</th>
+                                    <th className="p-1 text-left">Tên</th>
+                                    <th className="p-1 text-center">Màu</th>
+                                    <th className="p-1 text-center">Size</th>
+                                    <th className="p-1 text-center">Trọng lượng</th>
+                                    <th className="p-1 text-center">Số lượng</th>
+                                    <th className="p-1 text-right">Giá</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {paginatedProducts.map((item, index) => (
-                                    <tr key={index} className="hover:bg-gray-100">
-                                        <td className="border p-1 text-left">
+                                    <tr key={index} className="hover:bg-gray-100 border">
+                                        <td className=" p-1 text-left">
                                             <img src={item.image} alt={item.productName} className="w-8 h-8 object-cover rounded" />
                                         </td>
-                                        <td className="border p-1 text-left truncate">{item.productName}</td>
-                                        <td className="border p-1 text-center">{item.colorValue}</td>
-                                        <td className="border p-1 text-center">{item.sizeValue}</td>
-                                        <td className="border p-1 text-center">{item.weightValue} kg</td>
-                                        <td className="border p-1 text-center font-semibold">{item.totalStock}</td>
-                                        <td className="border p-1 text-right font-semibold">{item.price.toLocaleString()} ₫</td>
+                                        <td className="p-1 text-left truncate">{item.productName}</td>
+                                        <td className="p-1 text-center">{item.colorValue}</td>
+                                        <td className="p-1 text-center">{item.sizeValue}</td>
+                                        <td className="p-1 text-center">{item.weightValue} kg</td>
+                                        <td className="p-1 text-center font-semibold">{item.totalStock}</td>
+                                        <td className="p-1 text-right font-semibold">{item.price.toLocaleString()} ₫</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -168,7 +168,7 @@ const StockPage = () => {
                                 disabled={currentPage === 1}
                                 onClick={() => setCurrentPage(currentPage - 1)}
                             >
-                                ⬅️ Trước
+                                Trước
                             </button>
                             <span className="text-xs font-semibold">{currentPage} / {totalPages}</span>
                             <button
@@ -176,7 +176,7 @@ const StockPage = () => {
                                 disabled={currentPage === totalPages}
                                 onClick={() => setCurrentPage(currentPage + 1)}
                             >
-                                Tiếp ➡️
+                                Tiếp 
                             </button>
                         </div>
                     )}

@@ -35,7 +35,7 @@ const HeaderAdmin = () => {
     return (
         <div className="flex justify-between items-center bg-gradient-to-r from-[#B2EBF2] to-[#FFCCBC] px-6 py-3 text-[#4B5563] shadow-md top-0">
             {/* Tiêu đề */}
-            <h1 className="text-xl font-semibold">Admin Dashboard</h1>
+            <h1 className="text-xl font-semibold">Admin</h1>
 
             {/* Khu vực phải */}
             <div className="flex items-center gap-6">
