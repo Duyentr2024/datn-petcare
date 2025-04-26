@@ -11,7 +11,8 @@ import OrderOffline from "./components/orderOffline/OrderOffline.jsx";
 import StaffPage from "./page/StaffPage.jsx";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import ManageSlot from "./components/Manage/ManageSpa/ManageSlot.jsx";
+import ManageSlot from "./components/Manage/manageSpa/ManageSlot.jsx";
+import HospitalPage from "./page/HospitalPage.jsx";
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
             {/* Chỉ admin và staff vào được */}
             <Route element={<PrivateRoute requiredRoles={["ADMIN", "STAFF"]} />}>
               <Route path="/admin/*" element={<Admin />} />
+              <Route path="/hospital/*" element={<HospitalPage />} />
 
               {/* Staff routes */}
               <Route path="/staff/*" element={<StaffPage />}>
