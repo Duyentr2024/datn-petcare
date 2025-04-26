@@ -5,11 +5,11 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import './AdminAppointment.css';
 import BookingService from "../../../service/spaService/BookingService";
-import webSocketService from "../../../service/WebSocketService";
 import AddAppointmentModal from './AddAppointmentModal';
 import OnlineBookingModal from './OnlineBookingModal';
 import Calendar from './Calendar';
 import AppointmentHistory from './AppointmentHistory';
+import webSocketService from "../../../service/WebSocketService";
 
 const { TabPane } = Tabs;
 
@@ -25,6 +25,8 @@ const AdminAppointment = () => {
   const [onlineBookings, setOnlineBookings] = useState([]);
   const [notificationCount, setNotificationCount] = useState(0);
   const [activeTab, setActiveTab] = useState("1");
+  const [refreshSlotDate, setRefreshSlotDate] = useState(null);
+  const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
 
   const fetchOnlineBookings = async () => {
     try {
@@ -35,6 +37,7 @@ const AdminAppointment = () => {
       if (response && Array.isArray(response.data)) {
         setOnlineBookings(response.data);
         setNotificationCount(response.data.length);
+        console.log('Updated onlineBookings:', response.data);
       } else {
         console.warn('Invalid response format:', response);
         message.warning('Không có lịch hẹn nào chờ xác nhận hoặc dữ liệu không hợp lệ.');
@@ -59,12 +62,39 @@ const AdminAppointment = () => {
 
   useEffect(() => {
     fetchOnlineBookings();
-    
+
+    // Polling ngắn hạn (3 giây) làm fallback nếu WebSocket không hoạt động
+    const intervalId = setInterval(fetchOnlineBookings, 3000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  // Tích hợp WebSocketService để lắng nghe lịch hẹn mới
+  useEffect(() => {
+    // Kết nối WebSocket
     if (!webSocketService.connected) {
       webSocketService.connect();
     }
 
-    const unsubscribeNew = webSocketService.onNewAppointment((appointment) => {
+    // Lắng nghe kết nối WebSocket
+    const unsubscribeConnect = webSocketService.onConnect(() => {
+      console.log('WebSocket connected via WebSocketService');
+      setIsWebSocketConnected(true);
+    });
+
+    // Lắng nghe ngắt kết nối WebSocket
+    const unsubscribeDisconnect = webSocketService.onDisconnect(() => {
+      console.log('WebSocket disconnected via WebSocketService');
+      setIsWebSocketConnected(false);
+      message.warning('WebSocket đã ngắt kết nối, chuyển sang chế độ polling mỗi 3 giây.');
+    });
+
+    // Lắng nghe thông báo lịch hẹn mới
+    const unsubscribeNew = webSocketService.onNewAppointment((data) => {
+      console.log('New appointment received via WebSocketService:', data);
+      const appointment = data.appointment; // Truy cập đúng vào appointment trong payload
       notification.info({
         message: 'Lịch hẹn mới cần xác nhận',
         description: (
@@ -81,23 +111,38 @@ const AdminAppointment = () => {
         onClick: () => setIsOnlineBookingModalVisible(true),
       });
       setNotificationCount(prev => prev + 1);
+      fetchOnlineBookings(); // Cập nhật danh sách lịch hẹn ngay lập tức
+    });
+
+    // Lắng nghe thông báo hủy lịch hẹn
+    const unsubscribeCancel = webSocketService.onAppointmentCancelled((data) => {
+      console.log('Appointment cancelled via WebSocket:', data);
+      notification.info({
+        message: 'Lịch hẹn đã bị hủy',
+        description: (
+          <div>
+            <p>Lịch hẹn #{data.appointmentId} đã bị hủy</p>
+            <p>Ngày: {data.date ? dayjs(data.date).format('DD/MM/YYYY') : '-'}</p>
+            <p>Giờ: {data.time || '-'}</p>
+            <p>Hoàn tiền: {data.refundAmount.toLocaleString('vi-VN')}đ</p>
+            {data.nonRefundedDeposit > 0 && (
+              <p>Cọc không hoàn: {data.nonRefundedDeposit.toLocaleString('vi-VN')}đ</p>
+            )}
+          </div>
+        ),
+        placement: 'topRight',
+        duration: 5,
+      });
+      setRefreshSlotDate(data.date);
       fetchOnlineBookings();
-      clearInterval(intervalId);
-      intervalId = setInterval(fetchOnlineBookings, 300000);
     });
-
-    const unsubscribeDisconnect = webSocketService.onDisconnect(() => {
-      console.log('WebSocket disconnected, switching to 30s polling');
-      clearInterval(intervalId);
-      intervalId = setInterval(fetchOnlineBookings, 30000);
-    });
-
-    let intervalId = setInterval(fetchOnlineBookings, 300000);
 
     return () => {
-      unsubscribeNew();
+      unsubscribeConnect();
       unsubscribeDisconnect();
-      clearInterval(intervalId);
+      unsubscribeNew();
+      unsubscribeCancel();
+      webSocketService.disconnect();
     };
   }, []);
 
@@ -210,7 +255,7 @@ const AdminAppointment = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow">
-        <Calendar />
+        <Calendar refreshSlotDate={refreshSlotDate} />
       </div>
 
       <AddAppointmentModal 
@@ -229,6 +274,7 @@ const AdminAppointment = () => {
         onlineBookings={onlineBookings}
         onConfirm={handleConfirmBookings}
         refreshBookings={fetchOnlineBookings}
+        setRefreshSlotDate={setRefreshSlotDate}
       />
     </div>
   );

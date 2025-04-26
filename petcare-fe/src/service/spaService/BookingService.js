@@ -101,6 +101,51 @@ const BookingService = {
         }
     },
 
+    getConfirmedSlots: async (date) => {
+        try {
+            console.log('Fetching confirmed slots for date:', date);
+            const response = await axios.get(`${API_BASE_URL}/time-slots/confirmed`, {
+                params: { date },
+                timeout: 10000,
+            });
+            console.log('Confirmed slots response:', response.data);
+            const result = response.data || { morning: [], afternoon: [] };
+            if (!Array.isArray(result.morning)) {
+                console.warn('Response morning slots is not an array, using empty array instead');
+                result.morning = [];
+            }
+            if (!Array.isArray(result.afternoon)) {
+                console.warn('Response afternoon slots is not an array, using empty array instead');
+                result.afternoon = [];
+            }
+            result.morning = result.morning.map(slot => {
+                if (slot.time && !slot.hour) {
+                    if (typeof slot.time === 'object' && slot.time.toString) {
+                        slot.hour = slot.time.toString();
+                    } else if (typeof slot.time === 'string') {
+                        slot.hour = slot.time;
+                    }
+                }
+                return slot;
+            });
+            result.afternoon = result.afternoon.map(slot => {
+                if (slot.time && !slot.hour) {
+                    if (typeof slot.time === 'object' && slot.time.toString) {
+                        slot.hour = slot.time.toString();
+                    } else if (typeof slot.time === 'string') {
+                        slot.hour = slot.time;
+                    }
+                }
+                return slot;
+            });
+            console.log('Processed confirmed slots result:', result);
+            return result;
+        } catch (error) {
+            console.error('Error fetching confirmed slots:', error);
+            return { morning: [], afternoon: [] };
+        }
+    },
+
     getPendingAppointments: async () => {
         try {
             const response = await axios.get(`${API_BASE_URL}/appointments/pending`, {
@@ -234,6 +279,18 @@ const BookingService = {
         } catch (error) {
             console.error('Error canceling appointment:', error);
             throw new Error('Không thể hủy lịch hẹn');
+        }
+    },
+
+    cancelAppointments: async (payload) => {
+        try {
+            console.log('Canceling appointments with payload:', payload);
+            const response = await axios.put(`${API_BASE_URL}/appointments/cancel`, payload);
+            console.log('Cancel appointments response:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Error canceling appointments:', error);
+            throw new Error(error.response?.data?.message || 'Không thể hủy lịch hẹn');
         }
     },
 

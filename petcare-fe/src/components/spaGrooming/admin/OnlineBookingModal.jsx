@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, Checkbox, message, Tooltip, Dropdown, Space, Badge, Drawer, Tag, Popconfirm, Avatar } from 'antd';
 import { SearchOutlined, CheckOutlined, EditOutlined, DeleteOutlined, CaretDownOutlined, MoreOutlined, UserOutlined, ExclamationCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import UpdatePetServiceModal from './UpdatePetServiceModal';
-import BookingService from '../../../service/spaService/BookingService';
+import BookingService from "../../../service/spaService/BookingService";
+import webSocketService from "../../../service/WebSocketService";
 import dayjs from 'dayjs';
 
 const formatDate = (dateString) => (dateString ? dayjs(dateString).format('DD/MM/YYYY') : '-');
 const formatTime = (timeString) => (timeString || '-');
 
-const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, refreshBookings }) => {
+const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookings, setRefreshSlotDate }) => {
   const [isUpdateModalVisible, setIsUpdateModalVisible] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [searchValue, setSearchValue] = useState('');
@@ -17,6 +18,18 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
   const [petDrawerVisible, setPetDrawerVisible] = useState(false);
   const [selectedAppointmentPets, setSelectedAppointmentPets] = useState([]);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
+
+  // Lắng nghe thông báo hủy từ WebSocket
+  useEffect(() => {
+    const unsubscribe = webSocketService.onAppointmentCancelled((data) => {
+      console.log('Appointment cancelled via WebSocket:', data);
+      message.info(`Lịch hẹn #${data.appointmentId} đã bị hủy. Hoàn tiền: ${data.refundAmount.toLocaleString('vi-VN')}đ`);
+      setRefreshSlotDate(data.date);
+      refreshBookings();
+    });
+
+    return () => unsubscribe();
+  }, [refreshBookings, setRefreshSlotDate]);
 
   // Sắp xếp danh sách lịch hẹn theo thời gian (tương lai trước)
   const sortedBookings = onlineBookings?.length 
@@ -38,9 +51,12 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
       })
     : [];
 
+  // Chỉ reset selectedBookings khi modal mở/đóng
   useEffect(() => {
-    setSelectedBookings([]);
-  }, [isVisible, onlineBookings]);
+    if (isVisible) {
+      setSelectedBookings([]); // Reset khi modal mở
+    }
+  }, [isVisible]);
 
   const handleEditClick = (booking) => {
     setSelectedBooking(booking);
@@ -73,6 +89,13 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
       await BookingService.confirmAppointments(selectedBookings);
       setSelectedBookings([]);
       message.success('Đã xác nhận lịch hẹn thành công');
+      
+      // Cập nhật refreshSlotDate với ngày của lịch hẹn đầu tiên trong danh sách được xác nhận
+      const firstBooking = filteredBookings.find(booking => selectedBookings.includes(booking.appointmentId));
+      if (firstBooking && firstBooking.date) {
+        setRefreshSlotDate(firstBooking.date);
+      }
+      
       refreshBookings();
     } catch (error) {
       console.error('Error confirming appointments:', error);
@@ -82,15 +105,93 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
     }
   };
 
+  const handleDeleteSelection = () => {
+    Modal.confirm({
+      title: 'Xác nhận hủy lịch hẹn',
+      icon: <ExclamationCircleOutlined />,
+      content: (
+        <div>
+          Bạn có chắc chắn muốn hủy {selectedBookings.length} lịch hẹn đã chọn không?
+          <ul className="mt-2">
+            {selectedBookings.map(id => {
+              const booking = filteredBookings.find(b => b.appointmentId === id);
+              const dateTime = dayjs(`${booking.date} ${booking.time}`, 'YYYY-MM-DD HH:mm');
+              const hoursUntil = dayjs().diff(dateTime, 'hour', true);
+              const isBefore12Hours = hoursUntil <= -12;
+              const refundAmount = isBefore12Hours ? booking.paidAmount : (booking.paidAmount - booking.depositAmount);
+              const nonRefundedDeposit = isBefore12Hours ? 0 : booking.depositAmount;
+              return (
+                <li key={id}>
+                  #{id}: Hoàn tiền: {refundAmount.toLocaleString('vi-VN')}đ
+                  {nonRefundedDeposit > 0 && `, Cọc không hoàn: ${nonRefundedDeposit.toLocaleString('vi-VN')}đ`}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ),
+      okText: 'Hủy lịch',
+      okButtonProps: { danger: true },
+      cancelText: 'Đóng',
+      onOk: async () => {
+        try {
+          setLoading(true);
+          const response = await BookingService.cancelAppointments({
+            appointmentIds: selectedBookings,
+            reason: "Hủy bởi quản trị viên"
+          });
+          setSelectedBookings([]);
+          message.success(`Đã hủy ${selectedBookings.length} lịch hẹn thành công`);
+          if (response.length > 0) {
+            setRefreshSlotDate(response[0].date);
+          }
+          refreshBookings();
+        } catch (error) {
+          console.error('Error deleting appointments:', error);
+          message.error('Không thể hủy các lịch hẹn');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+  };
+
   const handleCancelAppointment = async (appointmentId) => {
-    try {
-      await BookingService.cancelAppointment(appointmentId, 'Huỷ bởi quản trị viên');
-      message.success('Đã huỷ lịch hẹn thành công');
-      refreshBookings();
-    } catch (error) {
-      console.error('Error canceling appointment:', error);
-      message.error('Không thể huỷ lịch hẹn');
-    }
+    const booking = filteredBookings.find(b => b.appointmentId === appointmentId);
+    const dateTime = dayjs(`${booking.date} ${booking.time}`, 'YYYY-MM-DD HH:mm');
+    const hoursUntil = dayjs().diff(dateTime, 'hour', true);
+    const isBefore12Hours = hoursUntil <= -12;
+    const refundAmount = isBefore12Hours ? booking.paidAmount : (booking.paidAmount - booking.depositAmount);
+    const nonRefundedDeposit = isBefore12Hours ? 0 : booking.depositAmount;
+
+    Modal.confirm({
+      title: 'Xác nhận hủy lịch hẹn',
+      icon: <ExclamationCircleOutlined />,
+      content: (
+        <div>
+          Bạn có chắc chắn muốn hủy lịch hẹn #{appointmentId} của khách hàng {booking.customerName}?
+          <p>- Số tiền hoàn: {refundAmount.toLocaleString('vi-VN')}đ</p>
+          {nonRefundedDeposit > 0 && <p>- Tiền cọc không hoàn: {nonRefundedDeposit.toLocaleString('vi-VN')}đ</p>}
+        </div>
+      ),
+      okText: 'Hủy lịch',
+      okButtonProps: { danger: true },
+      cancelText: 'Đóng',
+      onOk: async () => {
+        try {
+          const response = await BookingService.cancelAppointments({
+            appointmentIds: [appointmentId],
+            reason: "Hủy bởi quản trị viên"
+          });
+          message.success('Đã hủy lịch hẹn thành công');
+          setRefreshSlotDate(booking.date);
+          refreshBookings();
+        } catch (error) {
+          console.error('Error canceling appointment:', error);
+          message.error('Không thể hủy lịch hẹn');
+        }
+      }
+    });
   };
 
   const showPetDetails = async (appointmentId) => {
@@ -143,6 +244,17 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
         onCancel={onCancel}
         footer={[
           <Button key="cancel" onClick={onCancel}>Đóng</Button>,
+          <Button 
+            key="delete" 
+            type="primary" 
+            danger
+            className="bg-red-500 hover:bg-red-600"
+            loading={loading}
+            disabled={selectedBookings.length === 0}
+            onClick={handleDeleteSelection}
+          >
+            Xóa
+          </Button>,
           <Button 
             key="submit" 
             type="primary" 
@@ -250,6 +362,7 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
                                 try {
                                   await BookingService.confirmAppointments([booking.appointmentId]);
                                   message.success('Đã xác nhận lịch hẹn thành công');
+                                  setRefreshSlotDate(booking.date);
                                   refreshBookings();
                                 } catch (error) {
                                   console.error('Error confirming appointment:', error);

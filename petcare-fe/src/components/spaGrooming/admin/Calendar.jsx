@@ -21,7 +21,7 @@ import "./Calendar.css";
 
 dayjs.locale("vi");
 
-const Calendar = () => {
+const Calendar = ({ refreshSlotDate }) => {
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [timeSlots, setTimeSlots] = useState({});
   const [selectedTime, setSelectedTime] = useState(null);
@@ -53,7 +53,7 @@ const Calendar = () => {
 
   const fetchSlotStatus = async (date) => {
     try {
-      const response = await BookingService.getAvailableSlots(
+      const response = await BookingService.getConfirmedSlots(
         date.format("YYYY-MM-DD")
       );
       const allSlots = [
@@ -68,7 +68,7 @@ const Calendar = () => {
       );
       setTimeSlots(slotMap);
     } catch (error) {
-      console.error("Error fetching slot status:", error);
+      console.error("Error fetching confirmed slot status:", error);
       setTimeSlots({});
     }
   };
@@ -105,6 +105,13 @@ const Calendar = () => {
     fetchSlotStatus(selectedDate);
     fetchBookedSlots(selectedDate, selectedTime);
   }, [selectedDate, selectedTime]);
+
+  // Lắng nghe refreshSlotDate để làm mới slot
+  useEffect(() => {
+    if (refreshSlotDate && refreshSlotDate === selectedDate.format('YYYY-MM-DD')) {
+      fetchSlotStatus(selectedDate);
+    }
+  }, [refreshSlotDate, selectedDate]);
 
   const getSlotStatusColor = (slot) => {
     const { total, booked } = slot;

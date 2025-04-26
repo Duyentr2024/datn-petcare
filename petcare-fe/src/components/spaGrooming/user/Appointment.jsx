@@ -64,7 +64,6 @@ const Appointment = () => {
     const fullNameRef = useRef(null);
     const phoneRef = useRef(null);
 
-    // Define showToast before fetchServicesAndWeights
     const showToast = (message, type = 'info') => {
         setToast({ show: true, message, type });
         setTimeout(() => {
@@ -81,7 +80,7 @@ const Appointment = () => {
                 setIsBookingEnabled(status);
             } catch (error) {
                 setBookingStatusError(error.message);
-                setIsBookingEnabled(true); // Default to enabled if error occurs
+                setIsBookingEnabled(true);
                 showToast("Không thể kiểm tra trạng thái hệ thống. Vui lòng thử lại sau.", "error");
             } finally {
                 setIsCheckingBookingStatus(false);
@@ -168,51 +167,62 @@ const Appointment = () => {
             
             const dateStr = selectedDate.toISOString().split("T")[0];
             const data = await BookingService.getAvailableSlots(dateStr);
-            console.log("Time slots from server:", data);
+            console.log("Dữ liệu thô từ server:", data);
 
-            // Ensure we have valid morning and afternoon arrays
             const morningSlots = Array.isArray(data?.morning) ? data.morning : [];
             const afternoonSlots = Array.isArray(data?.afternoon) ? data.afternoon : [];
 
-            console.log("Morning slots before processing:", morningSlots);
-            console.log("Afternoon slots before processing:", afternoonSlots);
+            console.log("Khung giờ buổi sáng trước khi xử lý:", morningSlots);
+            console.log("Khung giờ buổi chiều trước khi xử lý:", afternoonSlots);
 
-            // Process slots consistently, handling all possible field names
-            const processedMorning = morningSlots.map(slot => ({
-                hour: slot.hour || (slot.time ? (typeof slot.time === 'string' ? slot.time : slot.time.toString()) : ""),
-                totalSlots: slot.totalSlots || 4,
-                bookedSlots: slot.bookedSlots || 0,
-                availableSlots: Math.max(0, (slot.availableSlots !== undefined) ? slot.availableSlots : ((slot.totalSlots || 4) - (slot.bookedSlots || 0))),
-                active: slot.active !== false && slot.isActive !== false,
-                isMorning: slot.isMorning !== undefined ? slot.isMorning : true // Sử dụng giá trị isMorning từ BE
-            }));
+            const processedMorning = morningSlots
+                .filter(slot => {
+                    const hourStr = slot.hour.split(":")[0]; // Xử lý cả định dạng HH:mm:ss và HH:mm
+                    const hour = parseInt(hourStr, 10);
+                    return hour >= 9 && hour < 14;
+                })
+                .map(slot => {
+                    // Chuẩn hóa định dạng hour thành HH:mm
+                    const [hour, minute] = slot.hour.split(":").slice(0, 2);
+                    const normalizedHour = `${hour.padStart(2, "0")}:${minute}`;
+                    return {
+                        hour: normalizedHour,
+                        totalSlots: slot.totalSlots || 4,
+                        bookedSlots: slot.bookedSlots || 0,
+                        availableSlots: Math.max(0, (slot.availableSlots !== undefined) ? slot.availableSlots : ((slot.totalSlots || 4) - (slot.bookedSlots || 0))),
+                        active: slot.active !== false, // Chỉ kiểm tra slot.active
+                        isMorning: true
+                    };
+                });
 
-            const processedAfternoon = afternoonSlots.map(slot => ({
-                hour: slot.hour || (slot.time ? (typeof slot.time === 'string' ? slot.time : slot.time.toString()) : ""),
-                totalSlots: slot.totalSlots || 4,
-                bookedSlots: slot.bookedSlots || 0,
-                availableSlots: Math.max(0, (slot.availableSlots !== undefined) ? slot.availableSlots : ((slot.totalSlots || 4) - (slot.bookedSlots || 0))),
-                active: slot.active !== false && slot.isActive !== false,
-                isMorning: slot.isMorning !== undefined ? slot.isMorning : false // Sử dụng giá trị isMorning từ BE
-            }));
+            const processedAfternoon = afternoonSlots
+                .filter(slot => {
+                    const hourStr = slot.hour.split(":")[0];
+                    const hour = parseInt(hourStr, 10);
+                    return hour >= 14 && hour <= 20;
+                })
+                .map(slot => {
+                    const [hour, minute] = slot.hour.split(":").slice(0, 2);
+                    const normalizedHour = `${hour.padStart(2, "0")}:${minute}`;
+                    return {
+                        hour: normalizedHour,
+                        totalSlots: slot.totalSlots || 4,
+                        bookedSlots: slot.bookedSlots || 0,
+                        availableSlots: Math.max(0, (slot.availableSlots !== undefined) ? slot.availableSlots : ((slot.totalSlots || 4) - (slot.bookedSlots || 0))),
+                        active: slot.active !== false,
+                        isMorning: false
+                    };
+                });
 
-            const slot1800 = processedAfternoon.find(slot => slot.hour === "18:00");
-            if (slot1800) {
-                console.log("Processed slot 18:00 details:", slot1800);
-            } else {
-                console.log("Slot 18:00 not found in processed afternoon slots");
-            }
+            console.log("Khung giờ buổi sáng sau khi xử lý:", processedMorning);
+            console.log("Khung giờ buổi chiều sau khi xử lý:", processedAfternoon);
 
-            console.log("Processed morning slots:", processedMorning);
-            console.log("Processed afternoon slots:", processedAfternoon);
-
-            // Update state with processed slots
             setTimeSlotsState({ 
                 morning: processedMorning.length > 0 ? processedMorning : [], 
                 afternoon: processedAfternoon.length > 0 ? processedAfternoon : [] 
             });
         } catch (error) {
-            console.error("Error fetching time slots:", error);
+            console.error("Lỗi khi lấy khung giờ:", error);
             setError("Không thể tải thông tin khung giờ. Vui lòng thử lại sau.");
             setTimeSlotsState({ morning: [], afternoon: [] });
         } finally {
@@ -228,7 +238,7 @@ const Appointment = () => {
 
     useEffect(() => {
         const autoRefreshInterval = setInterval(() => {
-            console.log("Auto-refreshing slot data...");
+            console.log("Tự động làm mới dữ liệu slot...");
             fetchBookingStatusAndSlots();
         }, 30000);
         
@@ -240,7 +250,7 @@ const Appointment = () => {
         
         const handleStorageChange = (e) => {
             if (e.key === 'lastBookedSlots' || e.key === 'lastAppointmentDate') {
-                console.log("LocalStorage changed, refreshing data");
+                console.log("LocalStorage thay đổi, làm mới dữ liệu");
                 fetchBookingStatusAndSlots();
             }
         };
@@ -261,14 +271,14 @@ const Appointment = () => {
                 const catWeights = await PetWeightService.getWeightsByPetType("CAT");
                 const dogWeights = await PetWeightService.getWeightsByPetType("DOG");
 
-                console.log("Fetched CAT services:", catServices);
-                console.log("Fetched DOG services:", dogServices);
-                console.log("Fetched CAT weights:", catWeights);
-                console.log("Fetched DOG weights:", dogWeights);
+                console.log("Dịch vụ CAT lấy được:", catServices);
+                console.log("Dịch vụ DOG lấy được:", dogServices);
+                console.log("Cân nặng CAT lấy được:", catWeights);
+                console.log("Cân nặng DOG lấy được:", dogWeights);
 
                 const mapServices = (services) => {
                     if (!services || services.length === 0) {
-                        console.warn("No services available for this pet type");
+                        console.warn("Không có dịch vụ nào cho loại thú cưng này");
                         return [];
                     }
                     return services.map((service) => ({
@@ -280,7 +290,7 @@ const Appointment = () => {
 
                 const mapWeights = (weights) => {
                     if (!weights || weights.length === 0) {
-                        console.warn("No weights available for this pet type");
+                        console.warn("Không có thông tin cân nặng nào cho loại thú cưng này");
                         return [];
                     }
                     return weights.map((weight) => ({
@@ -300,8 +310,8 @@ const Appointment = () => {
                     dog: mapWeights(dogWeights),
                 };
 
-                console.log("Processed service options:", newServiceOptions);
-                console.log("Processed weight options:", newWeightOptions);
+                console.log("Tùy chọn dịch vụ đã xử lý:", newServiceOptions);
+                console.log("Tùy chọn cân nặng đã xử lý:", newWeightOptions);
 
                 setServiceOptions(newServiceOptions);
                 setWeightOptions(newWeightOptions);
@@ -313,7 +323,7 @@ const Appointment = () => {
                     showToast("Không có thông tin cân nặng nào khả dụng. Vui lòng liên hệ quản trị viên.", "warning");
                 }
             } catch (error) {
-                console.error("Error fetching services and weights:", error);
+                console.error("Lỗi khi lấy dịch vụ và cân nặng:", error);
                 showToast("Không thể tải dữ liệu dịch vụ và cân nặng. Vui lòng thử lại sau.", "error");
             }
         };
@@ -519,7 +529,7 @@ const Appointment = () => {
                 }))
             };
 
-            console.log("Sending payload to backend:", payload);
+            console.log("Gửi payload tới backend:", payload);
 
             const isAvailable = await BookingService.checkSlotAvailability(
                 payload.date,
@@ -541,7 +551,7 @@ const Appointment = () => {
                 },
             });
         } catch (error) {
-            console.error("Error processing booking:", error);
+            console.error("Lỗi khi xử lý đặt lịch:", error);
             showToast(`Đặt lịch thất bại: ${error.message || "Lỗi hệ thống"}`, "error");
             fetchBookingStatusAndSlots();
             setIsLoading(false);
@@ -599,7 +609,7 @@ const Appointment = () => {
                     try {
                         document.body.removeChild(messageToRemove);
                     } catch (error) {
-                        console.error("Error removing success message:", error);
+                        console.error("Lỗi khi xóa thông báo thành công:", error);
                     }
                 }
             };
@@ -611,21 +621,21 @@ const Appointment = () => {
         const isFromPayment = urlParams.get("source") === "payment";
         
         if (isFromPayment) {
-            console.log("Detected return from payment page!");
+            console.log("Phát hiện quay lại từ trang thanh toán!");
             setBookingSuccess(true);
             fetchBookingStatusAndSlots();
         }
     }, [location.search, selectedDate]);
 
     useEffect(() => {
-        console.log("Time slots state updated:", timeSlotsState);
+        console.log("Trạng thái khung giờ đã cập nhật:", timeSlotsState);
     }, [timeSlotsState]);
 
     useEffect(() => {
         if (!isCheckingBookingStatus) {
             fetchBookingStatusAndSlots();
             const intervalId = setInterval(() => {
-                console.log('Auto-refreshing slot data...');
+                console.log('Tự động làm mới dữ liệu slot...');
                 if (selectedDate) {
                     fetchBookingStatusAndSlots();
                 }
@@ -948,11 +958,11 @@ const Appointment = () => {
                                                             const totalSlots = currentTimeBlock.totalSlots || 4;
                                                             const availableSlots = currentTimeBlock.availableSlots || 0;
                                                             
-                                                            console.log(`Rendering slots for ${selectedTimeBlock}: Available=${availableSlots}, Total=${totalSlots}`);
+                                                            console.log(`Hiển thị slot cho ${selectedTimeBlock}: Khả dụng=${availableSlots}, Tổng=${totalSlots}`);
                                                             
                                                             const visibleSlotIndexes = Array.from({ length: totalSlots }, (_, i) => i);
                                                             
-                                                            console.log('Visible slot indexes:', visibleSlotIndexes);
+                                                            console.log('Chỉ số slot hiển thị:', visibleSlotIndexes);
                                                             
                                                             return visibleSlotIndexes.map((slotIndex) => {
                                                                 const slotId = `${selectedTimeBlock}-${slotIndex}`;

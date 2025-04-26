@@ -12,7 +12,8 @@ class WebSocketService {
       onAppointmentConfirmed: [],
       onSlotsUpdated: [],
       onConnect: [],
-      onDisconnect: []
+      onDisconnect: [],
+      onAppointmentCancelled: []
     };
     
     // Reconnection settings
@@ -38,7 +39,7 @@ class WebSocketService {
       this.stompClient = new Client({
         webSocketFactory: () => new SockJS(wsUrl),
         debug: function (str) {
-          // console.log(str);
+          console.log('WebSocket debug:', str);
         },
         reconnectDelay: 5000,
         heartbeatIncoming: 4000,
@@ -75,8 +76,9 @@ class WebSocketService {
     
     // Subscribe to topic channels only if connected
     if (this.connected) {
-      this.stompClient.subscribe('/topic/appointments', this.handleAppointmentMessage.bind(this));
+      this.stompClient.subscribe('/topic/new-appointment', this.handleAppointmentMessage.bind(this));
       this.stompClient.subscribe('/topic/slots', this.handleSlotsMessage.bind(this));
+      this.stompClient.subscribe('/topic/appointments', this.handleAppointmentCancelledMessage.bind(this));
     }
     
     this.callbacks.onConnect.forEach(callback => callback());
@@ -85,15 +87,10 @@ class WebSocketService {
   handleAppointmentMessage(message) {
     try {
       const data = JSON.parse(message.body);
-      console.log('WebSocket message received on /topic/appointments:', data);
+      console.log('WebSocket message received on /topic/new-appointment:', data);
       
-      if (data.type === 'NEW_APPOINTMENT') {
-        this.callbacks.onNewAppointment.forEach(callback => callback(data.appointment));
-      } else if (data.type === 'APPOINTMENT_UPDATED') {
-        this.callbacks.onAppointmentUpdated.forEach(callback => callback(data.appointment));
-      } else if (data.type === 'APPOINTMENT_CONFIRMED') {
-        this.callbacks.onAppointmentConfirmed.forEach(callback => callback(data));
-      }
+      // Gửi thông báo với type NEW_APPOINTMENT để khớp với callbacks
+      this.callbacks.onNewAppointment.forEach(callback => callback(data));
     } catch (error) {
       console.error('Error processing WebSocket message:', error);
     }
@@ -106,6 +103,18 @@ class WebSocketService {
       this.callbacks.onSlotsUpdated.forEach(callback => callback(data));
     } catch (error) {
       console.error('Error processing WebSocket slots message:', error);
+    }
+  }
+  
+  handleAppointmentCancelledMessage(message) {
+    try {
+      const data = JSON.parse(message.body);
+      console.log('WebSocket message received on /topic/appointments:', data);
+      if (data.type === 'APPOINTMENT_CANCELLED') {
+        this.callbacks.onAppointmentCancelled.forEach(callback => callback(data));
+      }
+    } catch (error) {
+      console.error('Error processing WebSocket appointment message:', error);
     }
   }
   
@@ -186,6 +195,13 @@ class WebSocketService {
     this.callbacks.onDisconnect.push(callback);
     return () => {
       this.callbacks.onDisconnect = this.callbacks.onDisconnect.filter(cb => cb !== callback);
+    };
+  }
+
+  onAppointmentCancelled(callback) {
+    this.callbacks.onAppointmentCancelled.push(callback);
+    return () => {
+      this.callbacks.onAppointmentCancelled = this.callbacks.onAppointmentCancelled.filter(cb => cb !== callback);
     };
   }
 }
