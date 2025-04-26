@@ -99,7 +99,7 @@ const ManageProductWeights = () => {
 
     return (
         <div className="p-6 bg-white shadow-lg rounded-lg">
-            <ToastContainer
+            <ToastContainer 
                 position="top-right"
                 autoClose={3000}
                 hideProgressBar={false}
@@ -112,7 +112,7 @@ const ManageProductWeights = () => {
             />
 
             <h2 className="text-2xl font-bold mb-6 text-gray-800">Quản lý trọng lượng</h2>
-
+            
             <div className="flex gap-4 mb-6">
                 <input
                     type="number"
@@ -155,24 +155,24 @@ const ManageProductWeights = () => {
                             <th className="py-3 px-5 text-xs uppercase tracking-wide">Trọng lượng</th>
                             <th className="py-3 px-5 text-xs uppercase tracking-wide w-[150px]">Trạng thái</th>
                             <th className="py-3 px-5 text-xs uppercase tracking-wide w-[200px] text-center">Hành động</th>
-                        </tr>
-                    </thead>
+                    </tr>
+                </thead>
                     <tbody className="text-gray-600 text-sm divide-y divide-gray-200">
-                        {paginateWeights().map((weight) => (
+                    {paginateWeights().map((weight) => (
                             <tr key={weight.weightId} className="hover:bg-gray-50 transition duration-150">
                                 <td className="p-3">{weight.weightId}</td>
                                 <td className="p-3">
-                                    {editingWeight && editingWeight.weightId === weight.weightId ? (
+                                {editingWeight && editingWeight.weightId === weight.weightId ? (
                                         <input
                                             type="number"
                                             value={weightInput}
                                             onChange={(e) => setWeightInput(e.target.value)}
                                             className="border border-gray-300 p-2 rounded-md w-full focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                         />
-                                    ) : (
-                                        weight.weightValue
-                                    )}
-                                </td>
+                                ) : (
+                                    weight.weightValue
+                                )}
+                            </td>
                                 <td className="p-3">
                                     <button
                                         onClick={() => handleChangeWeightStatus(weight)}
@@ -181,43 +181,43 @@ const ManageProductWeights = () => {
                                                 : "bg-red-100 text-red-700"
                                             }`}
                                     >
-                                        {weight.status ? (
+                                {weight.status ? (
                                             <>
                                                 Đang hoạt động
                                             </>
-                                        ) : (
+                                ) : (
                                             <>
                                                 Tạm ngưng
                                             </>
-                                        )}
+                                )}
                                     </button>
-                                </td>
+                            </td>
                                 <td className="p-3">
                                     <div className="flex justify-center gap-2">
-                                        {editingWeight && editingWeight.weightId === weight.weightId ? (
-                                            <button
-                                                onClick={() => setEditingWeight(null)}
+                                {editingWeight && editingWeight.weightId === weight.weightId ? (
+                                    <button
+                                        onClick={() => setEditingWeight(null)}
                                                 className="px-2 py-1 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors duration-200 whitespace-nowrap"
-                                            >
-                                                Hủy
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => {
-                                                    setEditingWeight(weight);
-                                                    setWeightInput(weight.weightValue);
-                                                }}
+                                    >
+                                        Hủy
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            setEditingWeight(weight);
+                                            setWeightInput(weight.weightValue);
+                                        }}
                                                 className="px-2 py-1 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors duration-200 flex items-center gap-1 whitespace-nowrap"
-                                            >
+                                    >
                                                 <FiEdit />
-                                            </button>
-                                        )}
+                                    </button>
+                                )}
                                     </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
             </div>
 
             <div className="mt-6 flex justify-between items-center">

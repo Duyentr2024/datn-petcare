@@ -97,7 +97,7 @@ const ManageProductCategories = () => {
 
     return (
         <div className="p-6 bg-white shadow-lg rounded-lg">
-            <ToastContainer
+            <ToastContainer 
                 position="top-right"
                 autoClose={3000}
                 hideProgressBar={false}
@@ -108,9 +108,9 @@ const ManageProductCategories = () => {
                 draggable
                 pauseOnHover
             />
-
+            
             <h2 className="text-2xl font-bold mb-6 text-gray-800">Quản lý danh mục</h2>
-
+            
             <div className="flex gap-4 mb-6">
                 <input
                     type="text"
@@ -155,24 +155,24 @@ const ManageProductCategories = () => {
                             <th className="py-3 px-5 text-xs uppercase tracking-wide">Tên danh mục</th>
                             <th className="py-3 px-5 text-xs uppercase tracking-wide w-[150px]">Trạng thái</th>
                             <th className="py-3 px-5 text-xs uppercase tracking-wide w-[200px] text-center">Hành động</th>
-                        </tr>
-                    </thead>
+                    </tr>
+                </thead>
                     <tbody className="text-gray-600 text-sm divide-y divide-gray-200">
-                        {paginateCategories().map((category) => (
+                    {paginateCategories().map((category) => (
                             <tr key={category.categoryId} className="hover:bg-gray-50 transition duration-150">
                                 <td className="p-3">{category.categoryId}</td>
                                 <td className="p-3">
-                                    {editingCategory && editingCategory.categoryId === category.categoryId ? (
+                                {editingCategory && editingCategory.categoryId === category.categoryId ? (
                                         <input
                                             type="text"
                                             value={categoryInput}
                                             onChange={(e) => setCategoryInput(e.target.value)}
                                             className="border border-gray-300 p-2 rounded-md w-full focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                         />
-                                    ) : (
-                                        category.categoryName
-                                    )}
-                                </td>
+                                ) : (
+                                    category.categoryName
+                                )}
+                            </td>
                                 <td className="p-3">
                                     <button
                                         onClick={() => handleChangeCategoryStatus(category)}
@@ -181,43 +181,43 @@ const ManageProductCategories = () => {
                                             : "bg-red-100 text-red-700"
                                             }`}
                                     >
-                                        {category.status ? (
+                                {category.status ? (
                                             <>
                                                 Đang hoạt động
                                             </>
-                                        ) : (
+                                ) : (
                                             <>
                                                 Tạm ngưng
                                             </>
-                                        )}
+                                )}
                                     </button>
-                                </td>
+                            </td>
                                 <td className="p-3">
                                     <div className="flex justify-center gap-2">
-                                        {editingCategory && editingCategory.categoryId === category.categoryId ? (
-                                            <button
-                                                onClick={() => setEditingCategory(null)}
+                                {editingCategory && editingCategory.categoryId === category.categoryId ? (
+                                    <button
+                                        onClick={() => setEditingCategory(null)}
                                                 className="px-2 py-1 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors duration-200 whitespace-nowrap"
-                                            >
-                                                Hủy
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => {
-                                                    setEditingCategory(category);
-                                                    setCategoryInput(category.categoryName);
-                                                }}
+                                    >
+                                        Hủy
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            setEditingCategory(category);
+                                            setCategoryInput(category.categoryName);
+                                        }}
                                                 className="px-2 py-1 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors duration-200 flex items-center gap-1 whitespace-nowrap"
-                                            >
+                                    >
                                                 <FiEdit />
-                                            </button>
-                                        )}
+                                    </button>
+                                )}
                                     </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
             </div>
 
             <div className="mt-6 flex justify-between items-center">

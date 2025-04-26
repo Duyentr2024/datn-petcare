@@ -112,7 +112,7 @@ const ManageProductSize = () => {
             />
             
             <h2 className="text-2xl font-bold mb-6 text-gray-800">Quản lý kích thước</h2>
-
+            
             <div className="flex gap-4 mb-6">
                 <input
                     type="text"
@@ -124,7 +124,7 @@ const ManageProductSize = () => {
                 <button
                     onClick={handleAddOrEditSize}
                     className="px-5 py-2 bg-[#f0b040] text-white rounded-md font-medium transition-colors hover:bg-[#e0a030]"
-                    >
+                >
                     {editingSize ? (
                         <>
                             Lưu
@@ -136,7 +136,7 @@ const ManageProductSize = () => {
                     )}
                 </button>
             </div>
-            
+
             <div className="flex justify-end mb-6">
                 <input
                     type="text"
@@ -155,24 +155,24 @@ const ManageProductSize = () => {
                             <th className="py-3 px-5 text-xs uppercase tracking-wide">Kích thước</th>
                             <th className="py-3 px-5 text-xs uppercase tracking-wide w-[150px]">Trạng thái</th>
                             <th className="py-3 px-5 text-xs uppercase tracking-wide w-[200px] text-center">Hành động</th>
-                        </tr>
-                    </thead>
+                    </tr>
+                </thead>
                     <tbody className="text-gray-600 text-sm divide-y divide-gray-200">
-                        {paginateSizes().map((size) => (
+                    {paginateSizes().map((size) => (
                             <tr key={size.productSizeId} className="hover:bg-gray-50 transition duration-150">
                                 <td className="p-3">{size.productSizeId}</td>
                                 <td className="p-3">
-                                    {editingSize && editingSize.productSizeId === size.productSizeId ? (
-                                        <input
-                                            type="text"
-                                            value={sizeInput}
-                                            onChange={(e) => setSizeInput(e.target.value)}
+                                {editingSize && editingSize.productSizeId === size.productSizeId ? (
+                                    <input
+                                        type="text"
+                                        value={sizeInput}
+                                        onChange={(e) => setSizeInput(e.target.value)}
                                             className="border border-gray-300 p-2 rounded-md w-full focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                                        />
-                                    ) : (
-                                        size.sizeValue
-                                    )}
-                                </td>
+                                    />
+                                ) : (
+                                    size.sizeValue
+                                )}
+                            </td>
                                 <td className="p-3">
                                     <button
                                         onClick={() => handleChangeSizeStatus(size)}
@@ -182,43 +182,43 @@ const ManageProductSize = () => {
                                                 : "bg-red-100 text-red-700"
                                         }`}
                                     >
-                                        {size.status ? (
+                                {size.status ? (
                                             <>
                                                 Đang hoạt động
                                             </>
-                                        ) : (
+                                ) : (
                                             <>
                                                 Tạm ngưng
                                             </>
-                                        )}
+                                )}
                                     </button>
-                                </td>
+                            </td>
                                 <td className="p-3">
                                     <div className="flex justify-center gap-2">
-                                        {editingSize && editingSize.productSizeId === size.productSizeId ? (
-                                            <button
-                                                onClick={() => setEditingSize(null)}
+                                {editingSize && editingSize.productSizeId === size.productSizeId ? (
+                                    <button
+                                        onClick={() => setEditingSize(null)}
                                                 className="px-2 py-1 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors duration-200 whitespace-nowrap"
-                                            >
-                                                Hủy
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => {
-                                                    setEditingSize(size);
-                                                    setSizeInput(size.sizeValue);
-                                                }}
+                                    >
+                                        Hủy
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            setEditingSize(size);
+                                            setSizeInput(size.sizeValue);
+                                        }}
                                                 className="px-2 py-1 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors duration-200 flex items-center gap-1 whitespace-nowrap"
-                                            >
+                                    >
                                                 <FiEdit /> 
-                                            </button>
-                                        )}
+                                    </button>
+                                )}
                                     </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
             </div>
 
             <div className="mt-6 flex justify-between items-center">

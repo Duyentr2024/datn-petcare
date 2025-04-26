@@ -104,7 +104,7 @@ const ManageProductColor = () => {
 
     return (
         <div className="p-6 bg-white shadow-lg rounded-lg">
-            <ToastContainer
+            <ToastContainer 
                 position="top-right"
                 autoClose={3000}
                 hideProgressBar={false}
@@ -115,7 +115,7 @@ const ManageProductColor = () => {
                 draggable
                 pauseOnHover
             />
-
+            
             <h2 className="text-2xl font-bold mb-6 text-gray-800">Quản lý màu sắc</h2>
 
             <div className="flex gap-4 mb-6">
@@ -160,24 +160,24 @@ const ManageProductColor = () => {
                             <th className="py-3 px-5 text-xs uppercase tracking-wide">Tên màu</th>
                             <th className="py-3 px-5 text-xs uppercase tracking-wide w-[150px]">Trạng thái</th>
                             <th className="py-3 px-5 text-xs uppercase tracking-wide w-[200px] text-center">Hành động</th>
-                        </tr>
-                    </thead>
+                    </tr>
+                </thead>
                     <tbody className="text-gray-600 text-sm divide-y divide-gray-200">
-                        {paginateColors().map((color) => (
+                    {paginateColors().map((color) => (
                             <tr key={color.productColorId} className="hover:bg-gray-50 transition duration-150">
                                 <td className="p-3">{color.productColorId}</td>
                                 <td className="p-3">
-                                    {editingColor && editingColor.productColorId === color.productColorId ? (
+                                {editingColor && editingColor.productColorId === color.productColorId ? (
                                         <input
                                             type="text"
                                             value={colorInput}
                                             onChange={(e) => setColorInput(e.target.value)}
                                             className="border border-gray-300 p-2 rounded-md w-full focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                         />
-                                    ) : (
-                                        color.colorValue
-                                    )}
-                                </td>
+                                ) : (
+                                    color.colorValue
+                                )}
+                            </td>
                                 <td className="p-3">
                                     <button
                                         onClick={() => handleChangeColorStatus(color)}
@@ -186,43 +186,43 @@ const ManageProductColor = () => {
                                             : "bg-red-100 text-red-700"
                                             }`}
                                     >
-                                        {color.status ? (
+                                {color.status ? (
                                             <>
                                                 Đang hoạt động
                                             </>
-                                        ) : (
+                                ) : (
                                             <>
                                                 Tạm ngưng
                                             </>
-                                        )}
+                                )}
                                     </button>
-                                </td>
+                            </td>
                                 <td className="p-3">
                                     <div className="flex justify-center gap-2">
-                                        {editingColor && editingColor.productColorId === color.productColorId ? (
-                                            <button
-                                                onClick={() => setEditingColor(null)}
+                                {editingColor && editingColor.productColorId === color.productColorId ? (
+                                    <button
+                                        onClick={() => setEditingColor(null)}
                                                 className="px-2 py-1 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors duration-200 whitespace-nowrap"
-                                            >
-                                                Hủy
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => {
-                                                    setEditingColor(color);
-                                                    setColorInput(color.colorValue);
-                                                }}
+                                    >
+                                        Hủy
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            setEditingColor(color);
+                                            setColorInput(color.colorValue);
+                                        }}
                                                 className="px-2 py-1 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors duration-200 flex items-center gap-1 whitespace-nowrap"
-                                            >
+                                    >
                                                 <FiEdit />
-                                            </button>
-                                        )}
+                                    </button>
+                                )}
                                     </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
             </div>
 
             <div className="mt-6 flex justify-between items-center">
