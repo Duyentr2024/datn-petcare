@@ -45,6 +45,39 @@ const VetOrderService = {
             throw error;
         }
     },
+
+    // Hàm lấy danh sách đơn hàng theo userId
+    async getOrdersByUserId(userId) {
+        try {
+            const response = await apiClient.get(`/userDTO/${userId}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching orders by user ID:', error.response?.data || error.message);
+            throw error;
+        }
+    },
+
+    // Hàm lấy tất cả đơn hàng
+    async getAllVetOrders() {
+        try {
+            const response = await apiClient.get(`/all-vet-service`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching orders:', error.response?.data || error.message);
+            throw error;
+        }
+    },
+
+    // Hàm lấy thông tin người dùng theo userId
+    async getUserById(userId) {
+        try {
+            const response = await apiClient.get(`/getUserName/${userId}`);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching user by ID:', error.response?.data || error.message);
+            throw error;
+        }
+    },
 };
 
 export default VetOrderService;
