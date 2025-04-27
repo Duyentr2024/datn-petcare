@@ -95,31 +95,77 @@ const OrderHistory = () => {
 
     setIsLoading(true);
     try {
+      // Kiểm tra xem đơn hàng thanh toán bằng phương thức gì
+      const order = orders.find(o => o.orderId === orderId);
+      const isMomoPay = order && order.paymentMethod === "MoMo";
+      
+      if (isMomoPay) {
+        // Hiển thị thông báo đang xử lý hoàn tiền
+        Swal.fire({
+          title: "Đang xử lý...",
+          html: "Đang hủy đơn hàng và yêu cầu hoàn tiền từ MoMo.<br>Vui lòng đợi trong giây lát.",
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+      }
+      
+      // Gọi API hủy đơn hàng (đã được cập nhật để xử lý hoàn tiền MoMo tự động)
       const result = await OrderHistoryService.cancelOrder(orderId, reason);
+      
+      // Cập nhật danh sách đơn hàng
       const updatedOrders = orders.map(order =>
         order.orderId === orderId
-          ? { ...order, statusName: result.status, cancelDate: new Date().toISOString() }
+          ? { 
+              ...order, 
+              statusName: result.newStatusName || "Đã hủy", 
+              cancelDate: new Date().toISOString(),
+              paymentStatus: result.paymentStatus || "Đã hủy thanh toán"
+            }
           : order
       );
+      
       const sortedOrders = updatedOrders.sort((a, b) => {
         if (a.statusName === "Đã hủy" && b.statusName === "Đã hủy") {
           return new Date(b.cancelDate || b.orderDate) - new Date(a.cancelDate || a.orderDate);
         }
         return new Date(b.orderDate) - new Date(a.orderDate);
       });
+      
       setOrders(sortedOrders);
 
-      Swal.fire({
-        title: "Đã hủy!",
-        text: "Đơn hàng đã được hủy thành công.",
-        icon: "success",
-        timer: 1500,
-        showConfirmButton: false,
-      });
+      // Hiển thị thông báo phù hợp với kết quả
+      if (isMomoPay && result.refundResult) {
+        if (result.refundResult.success) {
+          Swal.fire({
+            title: "Đã hủy đơn hàng!",
+            html: "Đơn hàng đã được hủy thành công.<br>Yêu cầu hoàn tiền đã được gửi tới MoMo và sẽ được xử lý trong vòng 24-48 giờ.",
+            icon: "success",
+            timer: 3000,
+            timerProgressBar: true,
+          });
+        } else {
+          Swal.fire({
+            title: "Đã hủy đơn hàng!",
+            html: `Đơn hàng đã được hủy thành công.<br>Yêu cầu hoàn tiền đã được ghi nhận, nhưng có thể mất thêm thời gian để xử lý.<br>Vui lòng liên hệ bộ phận hỗ trợ nếu không nhận được tiền trong vòng 3-5 ngày làm việc.`,
+            icon: "warning",
+          });
+        }
+      } else {
+        Swal.fire({
+          title: "Đã hủy!",
+          text: "Đơn hàng đã được hủy thành công.",
+          icon: "success",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      }
     } catch (error) {
+      console.error("Lỗi khi hủy đơn hàng:", error);
       Swal.fire({
         title: "Lỗi!",
-        text: error.message,
+        text: error.message || "Không thể hủy đơn hàng. Vui lòng thử lại sau.",
         icon: "error",
       });
     } finally {
