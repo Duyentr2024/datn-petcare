@@ -8,7 +8,7 @@ import Cookies from "js-cookie";
 import { useCookies } from "react-cookie";
 import { decodeToken } from "../utils/jwt";
 import { useNavigate } from "react-router-dom";
-import QRImage from '/src/assets/images/QR.jpg';
+import QRImage from '/src/assets/images/QR.jpg'; 
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import autoTable from 'jspdf-autotable';
@@ -200,30 +200,30 @@ const OrderOffline = () => {
                   const isSelected = selectedProducts.some(p => p.id === product.productDetailId);
                   const inStock = product.quantity > 0;
                   return (
-                    <tr
-                      key={product.productDetailId}
+                <tr
+                  key={product.productDetailId}
                       className={`border-b ${!inStock ? 'bg-gray-100 opacity-60' : isSelected ? 'bg-[#e8f5e9]' : 'hover:bg-[#f1f8e9]'} transition-colors duration-100 cursor-pointer`}
                       onClick={() => inStock ? handleAddProduct(product) : toast.warn(`Sản phẩm "${product.products?.productName}" đã hết hàng!`)}
-                    >
+                >
                       <td className="p-1 text-[10px]">{indexOfFirstProduct + index + 1}</td>
                       <td className="p-1">
                         <div className="relative">
-                          <img
+                    <img
                             src={product.products?.image || '/images/default-image.jpg'}
-                            alt={product.products?.productName || 'Sản phẩm'}
+                      alt={product.products?.productName || 'Sản phẩm'}
                             className="w-6 h-6 object-cover rounded border border-gray-200"
-                          />
+                    />
                           {!inStock && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded">
                               <span className="text-[8px] font-bold text-white">HẾT</span>
                             </div>
                           )}
                         </div>
-                      </td>
+                  </td>
                       <td className="p-1 text-[10px] font-medium">{product.products?.productName || 'N/A'}</td>
                       <td className="p-1 text-[10px] text-gray-600">
                         {`${product.productSizes?.sizeValue || ''} ${product.weights?.weightValue ? `| ${product.weights?.weightValue}kg` : ''} ${product.productColors?.colorValue ? `| ${product.productColors?.colorValue}` : ''}`}
-                      </td>
+                  </td>
                       <td className="p-1 text-right text-[10px] font-medium">{product.price?.toLocaleString() || '0'}đ</td>
                       <td className="p-1 text-right text-[10px]">
                         <span className={`${product.quantity < 5 && product.quantity > 0 ? 'text-orange-500' : product.quantity === 0 ? 'text-red-500' : 'text-[#2e7d32]'}`}>
@@ -239,9 +239,9 @@ const OrderOffline = () => {
                           inStock && (
                             <div className="bg-gray-100 hover:bg-[#2e7d32]/20 rounded-full w-4 h-4 mx-auto"></div>
                           )
-                        )}
-                      </td>
-                    </tr>
+                    )}
+                  </td>
+                </tr>
                   );
                 })
               ) : (
@@ -298,7 +298,7 @@ const OrderOffline = () => {
               }
 
               return (
-                <button
+          <button
                   key={i}
                   className={`w-4 h-4 mx-0.5 text-[9px] rounded-full ${currentPage === pageToShow ? 'bg-[#2e7d32] text-white' : 'bg-[#e8f5e9] text-[#2e7d32] hover:bg-[#2e7d32]/20'}`}
                   onClick={() => setCurrentPage(pageToShow)}
@@ -1111,16 +1111,16 @@ const OrderOffline = () => {
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-1">
               {/* Tabs hóa đơn */}
-              <div className="flex overflow-x-auto hide-scrollbar">
-                {tabs.map(tab => (
+          <div className="flex overflow-x-auto hide-scrollbar">
+            {tabs.map(tab => (
                   <div key={tab.id} className="relative flex items-center">
-                    <div
-                      onClick={() => handleTabChange(tab.id)}
+              <div
+                onClick={() => handleTabChange(tab.id)}
                       className={`flex items-center ${activeTab === tab.id ? 'bg-[#2e7d32] text-white' : 'bg-gray-100 text-gray-700 hover:bg-[#4caf50]/20'} 
                         px-2 py-1 rounded-t-lg border-b-2 
                         ${activeTab === tab.id ? 'border-[#2e7d32]' : 'border-transparent'} 
                         cursor-pointer min-w-max mr-1 transition-all duration-200`}
-                    >
+              >
                       <span className="text-xs">{tab.title}</span>
                       <button
                         onClick={(e) => {
@@ -1133,8 +1133,8 @@ const OrderOffline = () => {
                         <IoClose size={12} />
                       </button>
                     </div>
-                  </div>
-                ))}
+              </div>
+            ))}
                 {tabs.length < 3 && (
                   <button
                     onClick={addNewTab}
@@ -1145,24 +1145,24 @@ const OrderOffline = () => {
                     <span className="hidden sm:inline text-xs">Thêm</span>
                   </button>
                 )}
-              </div>
-            </div>
+          </div>
+        </div>
 
             <div className="flex items-center">
               {/* Nút reload */}
-              <button
-                onClick={handleReload}
+          <button
+            onClick={handleReload}
                 className="text-gray-600 hover:text-[#2e7d32] transition-colors duration-200"
-                title="Load lại trang"
-              >
+            title="Load lại trang"
+          >
                 <IoRefresh size={16} />
-              </button>
+          </button>
             </div>
-          </div>
-        </header>
+        </div>
+      </header>
 
         {/* Main content area with tight spacing */}
-        {currentTab && (
+      {currentTab && (
           <div className="flex overflow-hidden">
             {/* Product list area - 2/3 width */}
             <div className="w-2/3 p-1 border-r overflow-hidden flex flex-col">
@@ -1174,26 +1174,26 @@ const OrderOffline = () => {
                     </svg>
                     Giỏ hàng
                   </h3>
-                  <button
+                <button
                     className="bg-[#2e7d32] text-white px-2 py-0.5 rounded-full text-xs font-medium hover:bg-[#4caf50] transition-all duration-200 shadow-sm flex items-center"
-                    onClick={() => setIsDrawerOpen(true)}
-                  >
+                  onClick={() => setIsDrawerOpen(true)}
+                >
                     <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                     </svg>
-                    Thêm sản phẩm
-                  </button>
-                </div>
+                  Thêm sản phẩm
+                </button>
+              </div>
 
-                {currentTab.products.length === 0 ? (
+              {currentTab.products.length === 0 ? (
                   <div className="flex-1 flex flex-col items-center justify-center bg-[#e8f5e9] rounded-lg p-4 border border-[#2e7d32]/30">
 
-                  </div>
-                ) : (
+                </div>
+              ) : (
                   <div className="bg-white rounded-lg border border-[#2e7d32]/20 overflow-hidden flex flex-col flex-1">
-                    <table className="w-full">
+                  <table className="w-full">
                       <thead className="bg-[#2e7d32] text-white sticky top-0 z-10">
-                        <tr>
+                      <tr>
                           <th className="p-1 text-left text-[10px] font-medium">STT</th>
                           <th className="p-1 text-left text-[10px] font-medium">Ảnh</th>
                           <th className="p-1 text-left text-[10px] font-medium">Tên sản phẩm</th>
@@ -1202,133 +1202,135 @@ const OrderOffline = () => {
                           <th className="p-1 text-right text-[10px] font-medium">Giá</th>
                           <th className="p-1 text-right text-[10px] font-medium">T.Tiền</th>
                           <th className="p-1"></th>
-                        </tr>
-                      </thead>
+                      </tr>
+                    </thead>
                     </table>
                     <div className="overflow-y-auto flex-1">
                       <table className="w-full">
-                        <tbody>
-                          {currentTab.products.map((product, index) => (
+                    <tbody>
+                      {currentTab.products.map((product, index) => (
                             // Product rows
                             <tr key={product.id} className="border-b hover:bg-[#e8f5e9] transition-colors duration-100">
                               <td className="p-1 text-[10px] text-gray-700 w-6">{index + 1}</td>
                               <td className="p-1 w-8">
-                                <img
-                                  src={product.image || '/images/default-image.jpg'}
-                                  alt={product.name || 'Sản phẩm'}
+                            <img
+                              src={product.image || '/images/default-image.jpg'}
+                              alt={product.name || 'Sản phẩm'}
                                   className="w-6 h-6 object-cover rounded border border-gray-200"
-                                />
-                              </td>
+                            />
+                          </td>
                               <td className="p-1 text-[10px] font-medium text-gray-800">{product.name}</td>
                               <td className="p-1 text-[10px] text-gray-600">
                                 {product.variant.replace(/\|/g, ' • ').replace(/N\/A/g, '').trim()}
                               </td>
                               <td className="p-1 text-center w-10">
                                 <div className="flex items-center justify-center gap-1">
-                                  <button
-                                    onClick={() => handleDecrement(product.id)}
+                              <button
+                                onClick={() => handleDecrement(product.id)}
                                     className="w-4 h-4 flex items-center justify-center text-gray-600 hover:bg-[#2e7d32]/20 rounded-full transition-colors duration-200 disabled:opacity-50"
-                                    disabled={product.quantity <= 1}
-                                  >
-                                    -
-                                  </button>
+                                disabled={product.quantity <= 1}
+                              >
+                                -
+                              </button>
                                   <span className="w-4 text-center text-[10px] font-medium text-gray-800">{product.quantity}</span>
-                                  <button
-                                    onClick={() => handleIncrement(product.id)}
+                              <button
+                                onClick={() => handleIncrement(product.id)}
                                     className="w-4 h-4 flex items-center justify-center text-gray-600 hover:bg-[#2e7d32]/20 rounded-full transition-colors duration-200"
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              </td>
+                              >
+                                +
+                              </button>
+                            </div>
+                          </td>
                               <td className="p-1 text-right text-[10px] text-gray-800 w-14">{product.price.toLocaleString()}đ</td>
                               <td className="p-1 text-right text-[10px] text-gray-800 font-medium w-16">{product.total.toLocaleString()}đ</td>
                               <td className="p-1 text-center w-6">
-                                <button
-                                  onClick={() => handleDelete(product.id)}
+                            <button
+                              onClick={() => handleDelete(product.id)}
                                   className="text-gray-400 hover:text-[#2e7d32] hover:bg-[#2e7d32]/10 rounded-full w-4 h-4 flex items-center justify-center"
-                                >
+                            >
                                   <IoClose size={12} />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
                     <div className="bg-[#e8f5e9] p-1 text-[10px] text-gray-700 border-t flex justify-between items-center">
                       <span>Tổng: <span className="font-medium text-[#2e7d32]">{currentTab.products.length}</span> sản phẩm</span>
                       <span>Tổng tiền: <span className="font-medium text-[#2e7d32]">{currentTab.products.reduce((sum, p) => sum + p.total, 0).toLocaleString()}đ</span></span>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
+                </div>
+                )}
+            </div>
+          </div>
 
             {/* Payment sidebar - 1/3 width */}
             <div className="w-1/3 p-1 bg-[#f5f5f5] flex flex-col h-full">
               <div className="flex flex-col space-y-1">
                 {/* Customer info section */}
-
                 <div className="bg-white rounded-lg shadow-sm p-2 flex flex-col">
-                  <div className="flex justify-between items-center mb-1">
+              <div className="flex justify-between items-center mb-1">
                     <span className="font-medium text-[15px] text-gray-800">Thông tin khách hàng</span>
                     <span className="text-[12px] text-gray-500">{new Date().toLocaleString('vi-VN')}</span>
-                  </div>
+              </div>
                   <div className="space-y-1 flex-1">
                     <div className="relative">
-                      <input
-                        type="tel"
-                        inputMode="numeric"
-                        value={currentTab.customerPhone}
-                        onChange={handlePhoneChange}
-                        placeholder="Số ĐT khách hàng"
-                        className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-[#2e7d32] text-xs"
-                        maxLength="10"
-                      />
-                      {currentTab.customerPhone && (
-                        <button
-                          onClick={() =>
-                            setTabs(
-                              tabs.map(tab =>
-                                tab.id === activeTab
-                                  ? { ...tab, customerPhone: '', totalPoints: 0, pointsToUse: 0 }
-                                  : tab
-                              )
-                            )
-                          }
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  value={currentTab.customerPhone}
+                  onChange={handlePhoneChange}
+                  placeholder="Số ĐT khách hàng"
+                        className="w-full px-2 py-1 border  rounded focus:outline-none focus:ring-1 focus:ring-[#2e7d32] text-xs"
+                  maxLength="10"
+                />
+                {currentTab.customerPhone && (
+                  <button
+                    onClick={() => setTabs(tabs.map(tab => tab.id === activeTab ? { ...tab, customerPhone: '', totalPoints: 0, pointsToUse: 0 } : tab))}
                           className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#2e7d32]"
-                        >
-                          <IoClose size={14} />
-                        </button>
+                  >
+                    <IoClose size={14} />
+                  </button>
+                )}
+              </div>
+                    <div className="text-gray-700 min-h-[16px]">
+                      {currentTab.customerPhone.length === 10 && currentTab.customerName !== 'Khách lẻ' ? (
+                        <>Tên: <span className="font-medium">{currentTab.customerName}</span></>
+                      ) : (
+                        currentTab.customerPhone ? (
+                          <span className="text-gray-500 italic text-[10px]">Nhập đủ 10 số để tìm thông tin khách hàng</span>
+                        ) : (
+                          <span className="text-gray-500 italic text-[10px]">Nhập số điện thoại để tìm khách hàng</span>
+                        )
                       )}
-                    </div>
+                </div>
                     <div className="relative">
-                      <input
-                        type="text"
-                        value={currentTab.customerName}
-                        onChange={handleNameChange}
+                <input
+                  type="text"
+                  value={currentTab.customerName}
+                  onChange={handleNameChange}
                         placeholder={currentTab.customerPhone ? "Tên khách hàng" : "Khách lẻ (không cần nhập số ĐT)"}
                         className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-[#2e7d32] text-xs"
-                      />
-                    </div>
+                />
+              </div>
                     <div className="flex flex-wrap items-center gap-1">
-                      {currentTab.customerPhone && currentTab.totalPoints >= 100 && (
+              {currentTab.customerPhone && currentTab.totalPoints >= 100 && (
                         <div className="flex-1 min-w-[180px]">
-                          <select
-                            value={currentTab.pointsToUse}
-                            onChange={(e) => handlePointsToUseChange(e.target.value)}
+                  <select
+                    value={currentTab.pointsToUse}
+                    onChange={(e) => handlePointsToUseChange(e.target.value)}
                             className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-[#2e7d32] text-xs"
-                          >
+                  >
                             <option value={0}>Không dùng điểm</option>
-                            {Array.from({ length: Math.floor(currentTab.totalPoints / 100) }, (_, i) => (i + 1) * 100).map(points => (
-                              <option key={points} value={points}>
-                                {points} điểm (-{(points / 100 * 30000).toLocaleString()}đ)
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
+                    {Array.from({ length: Math.floor(currentTab.totalPoints / 100) }, (_, i) => (i + 1) * 100).map(points => (
+                      <option key={points} value={points}>
+                        {points} điểm (-{(points / 100 * 30000).toLocaleString()}đ)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
                       {currentTab.customerPhone && currentTab.totalPoints > 0 ? (
                         <div className="text-xs text-[#2e7d32] font-medium whitespace-nowrap">
                           Điểm tích lũy: {currentTab.totalPoints}
@@ -1346,104 +1348,89 @@ const OrderOffline = () => {
                       )}
                     </div>
                   </div>
-                </div>
+            </div>
 
-                {/* Tóm tắt đơn hàng */}
+            {/* Tóm tắt đơn hàng */}
                 <div className="bg-white rounded-lg shadow-sm p-2 flex flex-col">
                   <h3 className="text-xs font-medium mb-1 text-gray-800">Tóm tắt đơn hàng</h3>
                   <div className="space-y-1 flex-1 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Tổng tiền hàng</span>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Tổng tiền hàng</span>
                       <span className="font-medium">{currentTab.products.reduce((sum, p) => sum + p.total, 0).toLocaleString()}đ</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Giảm giá</span>
-                      <span className="font-medium">{(currentTab.pointsToUse / 100 * 30000).toLocaleString()}đ</span>
-                    </div>
-                    <div className="flex justify-between font-semibold text-[#2e7d32] border-t pt-1">
-                      <span>Khách cần trả</span>
-                      <span>{Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 100 * 30000)).toLocaleString()}đ</span>
-                    </div>
-                  </div>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Giảm giá</span>
+                      <span className="font-medium">{(currentTab.pointsToUse / 100 * 30000).toLocaleString()}đ</span>
+                </div>
+                    <div className="flex justify-between font-semibold text-[#2e7d32] border-t pt-1">
+                  <span>Khách cần trả</span>
+                  <span>{Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 100 * 30000)).toLocaleString()}đ</span>
+                </div>
+              </div>
+            </div>
 
-                {/* Thanh toán */}
+            {/* Thanh toán */}
                 <div className="bg-white rounded-lg shadow-sm p-2 flex-1 flex flex-col">
                   <h3 className="text-xs font-medium mb-1 text-gray-800">Thanh toán</h3>
                   <div className="mb-1">
-                    <div className="flex gap-1">
-                      {[
-                        { value: "CASH", label: "Tiền mặt" },
+                <div className="flex gap-1">
+                  {[
+                    { value: "CASH", label: "Tiền mặt" },
                         { value: "MOMO", label: "MoMo" },
-                      ].map(method => (
+                  ].map(method => (
+                    <button
+                      key={method.value}
+                          className={`px-2 py-1 rounded text-xs font-medium flex-1 ${currentTab.paymentMethod === method.value ? 'bg-[#2e7d32] text-white' : 'bg-gray-100 text-gray-700 hover:bg-[#2e7d32]/20'}`}
+                      onClick={() => handlePaymentMethodChange(method.value)}
+                    >
+                      {method.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+                  <div className="flex-1 overflow-hidden mb-1 h-52"> {/* Fixed height for payment sections */}
+              {currentTab.paymentMethod === 'CASH' && (
+                      <div className="h-full p-2 border rounded bg-gray-50 flex flex-col">
+                        <div className="h-10">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-gray-700">Tổng cần trả:</span>
+                            <span className="text-xs font-bold text-[#2e7d32]">
+                        {Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 100 * 30000)).toLocaleString()}đ
+                      </span>
+                    </div>
+                        </div>
+                        <div className="mb-2 h-10">
+                          <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={currentTab.inputPayment}
+                      onChange={handleInputChange}
+                              placeholder="Số tiền khách đưa"
+                              className={`flex-1 px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-[#2e7d32] text-xs ${currentTab.error ? 'border-red-500' : ''}`}
+                    />
+                  </div>
+                          {currentTab.error && <p className="text-red-500 text-[10px]">{currentTab.error}</p>}
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Chọn nhanh</label>
+                          <div className="grid grid-cols-3 gap-1">
+                      {[50000, 100000, 200000, 500000, 1000000].map(amount => (
                         <button
-                          key={method.value}
-                          className={`px-2 py-1 rounded text-xs font-medium flex-1 ${currentTab.paymentMethod === method.value
-                            ? 'bg-[#2e7d32] text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-[#2e7d32]/20'
-                            }`}
-                          onClick={() => handlePaymentMethodChange(method.value)}
+                          key={amount}
+                                className={`py-1 border rounded text-[10px] transition-colors ${currentTab.customerPayment === amount ? 'bg-[#2e7d32] text-white' : 'bg-gray-100 hover:bg-[#2e7d32]/20'}`}
+                          onClick={() => handleQuickAmount(amount)}
                         >
-                          {method.label}
+                          {amount.toLocaleString()}
                         </button>
                       ))}
                     </div>
                   </div>
-                  <div className="flex-1 overflow-hidden mb-1 h-52">
-                    {currentTab.paymentMethod === 'CASH' && (
-                      <div className="h-full p-2 border rounded bg-gray-50 flex flex-col justify-between">
-                        <div>
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-xs text-gray-700">Tổng cần trả:</span>
-                            <span className="text-xs font-bold text-[#2e7d32]">
-                              {Math.max(
-                                0,
-                                currentTab.products.reduce((sum, p) => sum + p.total, 0) -
-                                (currentTab.pointsToUse / 100 * 30000)
-                              ).toLocaleString()}đ
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-1 mb-2">
-                            <input
-                              type="text"
-                              value={currentTab.inputPayment}
-                              onChange={handleInputChange}
-                              placeholder="Số tiền khách đưa"
-                              className={`flex-1 px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-[#2e7d32] text-xs ${currentTab.error ? 'border-red-500' : ''
-                                }`}
-                            />
-                          </div>
-                          {currentTab.error && (
-                            <p className="text-red-500 text-[10px] mb-2">{currentTab.error}</p>
-                          )}
-                        </div>
-                        <div className="flex-1 mb-2">
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Chọn nhanh
-                          </label>
-                          <div className="grid grid-cols-3 gap-1">
-                            {[50000, 100000, 200000, 500000, 1000000].map(amount => (
-                              <button
-                                key={amount}
-                                className={`py-1 border rounded text-[10px] transition-colors ${currentTab.customerPayment === amount
-                                  ? 'bg-[#2e7d32] text-white'
-                                  : 'bg-gray-100 hover:bg-[#2e7d32]/20'
-                                  }`}
-                                onClick={() => handleQuickAmount(amount)}
-                              >
-                                {amount.toLocaleString()}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="h-8">
+                        <div className="h-10 pt-2">
                           {currentTab.change > 0 && (
                             <div className="bg-[#2e7d32]/10 p-1 rounded">
                               <div className="flex justify-between text-xs">
                                 <span className="text-[#2e7d32] font-medium">Tiền thối</span>
-                                <span className="text-[#2e7d32] font-bold">
-                                  {currentTab.change.toLocaleString()}đ
-                                </span>
+                                <span className="text-[#2e7d32] font-bold">{currentTab.change.toLocaleString()}đ</span>
                               </div>
                             </div>
                           )}
@@ -1451,24 +1438,22 @@ const OrderOffline = () => {
                       </div>
                     )}
                     {currentTab.paymentMethod === 'MOMO' && (
-                      <div className="h-full p-2 border rounded bg-gray-50 flex flex-col justify-between items-center">
-                        <div className="text-xs text-center mb-2">
-                          <p className="font-medium">
-                            Số tiền:{' '}
-                            <span className="text-[#b0006d] font-bold">
-                              {Math.max(
-                                0,
-                                currentTab.products.reduce((sum, p) => sum + p.total, 0) -
-                                (currentTab.pointsToUse / 100 * 30000)
-                              ).toLocaleString()}đ
+                      <div className="h-full p-2 border rounded bg-gray-50 flex flex-col">
+                        <div className="h-10">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center">
+                              <span className="text-xs text-gray-700 mr-1">Thanh toán:</span>
+                              <div className="w-3 h-3 rounded-full bg-[#b0006d] flex items-center justify-center">
+                                <span className="text-white text-[8px] font-bold">M</span>
+                              </div>
+                            </div>
+                            <span className="text-xs font-bold text-[#b0006d]">
+                              {Math.max(0, currentTab.products.reduce((sum, p) => sum + p.total, 0) - (currentTab.pointsToUse / 100 * 30000)).toLocaleString()}đ
                             </span>
-                          </p>
+                          </div>
                         </div>
-                        <div className="flex justify-center flex-1 items-center">
-                          <div
-                            className="p-1 border-2 border-[#b0006d] rounded-lg bg-white flex items-center justify-center"
-                            style={{ width: '120px', height: '120px' }}
-                          >
+                        <div className="flex-1 flex items-center justify-center">
+                          <div className="p-1 border-2 border-[#b0006d] rounded-lg bg-white flex items-center justify-center" style={{ width: '120px', height: '120px' }}>
                             {momoQrString ? (
                               <img
                                 src={momoQrString}
@@ -1476,8 +1461,7 @@ const OrderOffline = () => {
                                 className="w-full h-full object-contain"
                                 onError={(e) => {
                                   console.error("QR Code image failed to load");
-                                  e.target.src =
-                                    'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMWYxIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGFsaWdnbWVudC1iYXNlbGluZT0ibWlkZGxlIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLCBzYW5zLXNlcmlmIiBmaWxsPSIjYjAwMDZkIj5UcmFuZyB0aOG6uyBNb01vPC90ZXh0Pjwvc3ZnPg==';
+                                  e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjFmMWYxIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGFsaWdubWVudC1iYXNlbGluZT0ibWlkZGxlIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLCBzYW5zLXNlcmlmIiBmaWxsPSIjYjAwMDZkIj5UcmFuZyB0aOG6uyBNb01vPC90ZXh0Pjwvc3ZnPg==';
                                   e.target.onerror = null;
                                 }}
                               />
@@ -1491,22 +1475,16 @@ const OrderOffline = () => {
                             )}
                           </div>
                         </div>
-                        <div className="h-8 text-[10px] text-center text-gray-600 w-full">
-                          <p>
-                            Nội dung: PETCARE-{currentTab.id}-{new Date()
-                              .getTime()
-                              .toString()
-                              .slice(-6)}
-                          </p>
+                        <div className="h-10 pt-2">
+                          <div className="text-[10px] text-center text-gray-600 w-full">
+                            <p>Mã đơn: PETCARE-{currentTab.id}-{new Date().getTime().toString().slice(-6)}</p>
+                          </div>
                         </div>
                       </div>
                     )}
                   </div>
                   <button
-                    className={`w-full py-2 rounded text-xs font-semibold text-white ${isPaymentDisabled(currentTab)
-                      ? 'bg-gray-400 cursor-not-allowed'
-                      : 'bg-[#2e7d32] hover:bg-[#4caf50]'
-                      }`}
+                    className={`w-full py-2 rounded text-xs font-semibold text-white ${isPaymentDisabled(currentTab) ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#2e7d32] hover:bg-[#4caf50]'}`}
                     disabled={isPaymentDisabled(currentTab)}
                     onClick={handlePayment}
                   >
@@ -1573,7 +1551,7 @@ const OrderOffline = () => {
               <p className="text-sm font-medium mb-1">Số tiền thanh toán:</p>
               <p className="text-lg font-bold text-[#b0006d]">{totalAmount.toLocaleString()}đ</p>
             </div>
-            <div className="flex justify-center mb-3">
+                    <div className="flex justify-center mb-3">
               <div className="p-2 border-2 border-[#b0006d] rounded-lg bg-white flex items-center justify-center" style={{ width: '200px', height: '200px' }}>
                 {momoQrString ? (
                   <img
@@ -1641,9 +1619,9 @@ const OrderOffline = () => {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+                    </div>
+                  </div>
+                )}
 
       {/* Invoice modal */}
       {showInvoiceModal && (
@@ -1651,13 +1629,13 @@ const OrderOffline = () => {
           <div className="bg-white rounded-lg p-4 max-w-sm animate-fadeIn">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-800">Hóa đơn đã được tạo</h3>
-              <button
+                <button
                 onClick={() => setShowInvoiceModal(false)}
                 className="text-gray-500 hover:text-[#2e7d32]"
-              >
+                >
                 <IoClose size={20} />
-              </button>
-            </div>
+                </button>
+              </div>
             <div className="mb-4">
               <div className="flex justify-center mb-3">
                 <div className="w-16 h-16 rounded-full bg-[#e8f5e9] flex items-center justify-center">
@@ -1703,7 +1681,7 @@ const OrderOffline = () => {
         </button>
       )}
 
-      <style jsx>{`
+<style jsx>{`
   .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;

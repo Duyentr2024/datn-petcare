@@ -35,7 +35,8 @@ function Admin() {
         <main className="flex-1  bg-gray-50 overflow-auto">
           <HeaderAdmin />
           <Routes>
-            <Route path="/" element={<ManageStatistics/>} />
+            
+            <Route path="/sales-statistics" element={<ManageStatistics/>} />
             <Route path="/warehouse" element={<StockPage />} />
             <Route path="/invoice-management" element={<Invoice />} />
             <Route path="/invoice-online" element={<ManageOnline />} />

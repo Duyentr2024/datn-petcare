@@ -10,6 +10,7 @@ import {
   FiArchive,
   FiFileText,
   FiEdit,
+  FiBarChart2, // Thêm biểu tượng cho Thống kê
 } from "react-icons/fi";
 import { FaGift } from "react-icons/fa";
 import logo from "../../assets/images/banner1.png";
@@ -17,7 +18,8 @@ import logo from "../../assets/images/banner1.png";
 const SidebarMenu = () => {
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isProductDropdownOpen, setIsProductDropdownOpen] = useState(false);
-  const [isInvoiceDropdownOpen, setIsInvoiceDropdownOpen] = useState(false); // New state for invoice dropdown
+  const [isInvoiceDropdownOpen, setIsInvoiceDropdownOpen] = useState(false);
+  const [isStatisticsDropdownOpen, setIsStatisticsDropdownOpen] = useState(false); // Thêm state cho dropdown Thống kê
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
 
@@ -41,7 +43,11 @@ const SidebarMenu = () => {
   };
 
   const toggleInvoiceDropdown = () => {
-    setIsInvoiceDropdownOpen(!isInvoiceDropdownOpen); // New toggle function
+    setIsInvoiceDropdownOpen(!isInvoiceDropdownOpen);
+  };
+
+  const toggleStatisticsDropdown = () => {
+    setIsStatisticsDropdownOpen(!isStatisticsDropdownOpen); // Thêm toggle function cho Thống kê
   };
 
   return (
@@ -79,6 +85,52 @@ const SidebarMenu = () => {
                 <FiHome className="w-5 h-5 flex-shrink-0" />
                 <span className="ml-3">Trang tổng quan</span>
               </Link>
+            </li>
+
+            {/* Statistics Dropdown */}
+            <li>
+              <div
+                className="flex items-center justify-between p-3 bg-[#E0F7FA] text-[#4B5563] rounded-lg hover:bg-[#80DEEA] cursor-pointer transition duration-300"
+                onClick={toggleStatisticsDropdown}
+              >
+                <div className="flex items-center">
+                  <FiBarChart2 className="w-5 h-5 flex-shrink-0" />
+                  <span className="ml-3">Thống kê</span>
+                </div>
+                {isStatisticsDropdownOpen ? (
+                  <FiChevronUp className="w-4 h-4 flex-shrink-0" />
+                ) : (
+                  <FiChevronDown className="w-4 h-4 flex-shrink-0" />
+                )}
+              </div>
+              {isStatisticsDropdownOpen && (
+                <ul className="mt-2 ml-6 space-y-2">
+                  <li>
+                    <Link
+                      to="/admin/sales-statistics"
+                      className="block p-2 rounded-lg hover:bg-[#80DEEA] transition duration-300"
+                    >
+                      Thống kê bán hàng
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin/spa-statistics"
+                      className="block p-2 rounded-lg hover:bg-[#80DEEA] transition duration-300"
+                    >
+                      Thống kê Spa
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin/hospital-statistics"
+                      className="block p-2 rounded-lg hover:bg-[#80DEEA] transition duration-300"
+                    >
+                      Thống kê Hospital
+                    </Link>
+                  </li>
+                </ul>
+              )}
             </li>
 
             {/* Invoice Management Dropdown */}

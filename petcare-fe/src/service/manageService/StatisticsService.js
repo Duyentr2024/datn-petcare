@@ -7,7 +7,7 @@ const StatisticsService = {
   getBestSellingProducts: () => {
     return axios.get(`${API_BASE_URL}/best-selling-products`);
   },
-  
+
   // Lấy danh sách top 5 sản phẩm được yêu thích nhất
   getTopFavoriteProducts: () => {
     return axios.get(`${API_BASE_URL}/top-favorite-products`);
@@ -199,6 +199,70 @@ const StatisticsService = {
     });
   },
 
+  // Các hàm mới liên quan đến doanh thu và số lượng đơn hàng OFFLINE theo phương thức thanh toán CASH và MOMO
+
+  // Lấy tổng doanh thu OFFLINE hôm nay theo phương thức thanh toán CASH và MOMO
+  getOfflineRevenueTodayByPaymentMethod: () => {
+    return axios.get(`${API_BASE_URL}/revenue/offline/today/by-payment-method`);
+  },
+
+  // Lấy tổng doanh thu OFFLINE tháng hiện tại theo phương thức thanh toán CASH và MOMO
+  getOfflineRevenueThisMonthByPaymentMethod: () => {
+    return axios.get(`${API_BASE_URL}/revenue/offline/this-month/by-payment-method`);
+  },
+
+  // Lấy tổng doanh thu OFFLINE trong khoảng thời gian theo phương thức thanh toán CASH và MOMO
+  getOfflineRevenueByDateRangeAndPaymentMethod: (startDate, endDate) => {
+    return axios.get(`${API_BASE_URL}/revenue/offline/range/by-payment-method`, {
+      params: { startDate, endDate },
+    });
+  },
+
+  // Lấy doanh thu hàng ngày của đơn hàng OFFLINE theo phương thức thanh toán CASH và MOMO
+  getDailyOfflineRevenueByPaymentMethod: (startDate, endDate) => {
+    return axios.get(`${API_BASE_URL}/revenue/offline/daily/by-payment-method`, {
+      params: { startDate, endDate },
+    });
+  },
+
+  // Lấy doanh thu hàng tuần của đơn hàng OFFLINE theo phương thức thanh toán CASH và MOMO
+  // Returns data in format:
+  // - week: String format "YYYYWW" where week starts on Monday (00:00) and ends on Sunday (23:59)
+  // - cashRevenue: revenue for CASH payments
+  // - momoRevenue: revenue for MOMO payments
+  getWeeklyOfflineRevenueByPaymentMethod: (startDate, endDate) => {
+    return axios.get(`${API_BASE_URL}/revenue/offline/weekly/by-payment-method`, {
+      params: { startDate, endDate },
+    });
+  },
+
+  // Lấy doanh thu hàng tháng của đơn hàng OFFLINE theo phương thức thanh toán CASH và MOMO
+  // Returns data in format:
+  // - month: String format "YYYY-MM"
+  // - cashRevenue: revenue for CASH payments
+  // - momoRevenue: revenue for MOMO payments
+  getMonthlyOfflineRevenueByPaymentMethod: (startDate, endDate) => {
+    return axios.get(`${API_BASE_URL}/revenue/offline/monthly/by-payment-method`, {
+      params: { startDate, endDate },
+    });
+  },
+
+  // Lấy số lượng đơn hàng OFFLINE hôm nay theo phương thức thanh toán CASH và MOMO
+  getOfflineOrderCountTodayByPaymentMethod: () => {
+    return axios.get(`${API_BASE_URL}/orders/offline/today/by-payment-method`);
+  },
+
+  // Lấy số lượng đơn hàng OFFLINE tháng hiện tại theo phương thức thanh toán CASH và MOMO
+  getOfflineOrderCountThisMonthByPaymentMethod: () => {
+    return axios.get(`${API_BASE_URL}/orders/offline/this-month/by-payment-method`);
+  },
+
+  // Lấy số lượng đơn hàng OFFLINE trong khoảng thời gian theo phương thức thanh toán CASH và MOMO
+  getOfflineOrderCountByDateRangeAndPaymentMethod: (startDate, endDate) => {
+    return axios.get(`${API_BASE_URL}/orders/offline/range/by-payment-method`, {
+      params: { startDate, endDate },
+    });
+  },
 };
 
 export default StatisticsService;
