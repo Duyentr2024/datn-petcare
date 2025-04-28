@@ -47,44 +47,65 @@ const CheckoutPayment = () => {
 
     const handlePayment = async () => {
         try {
-            setLoading(true);
-    
-            const totalAmount = bookingData.totalAmount || 0;
-            const depositAmount = bookingData.depositAmount || 0;
-            const paidAmount = bookingData.paymentType === 'full' ? totalAmount : depositAmount;
-    
-            const payload = {
-                date: bookingData.date,
-                time: bookingData.time,
-                customerName: bookingData.customerName,
-                phone: bookingData.phone,
-                paymentType: bookingData.paymentType,
-                depositAmount: depositAmount,
-                totalAmount: totalAmount,
-                paidAmount: paidAmount, // Thêm paidAmount vào payload
-                pets: bookingData.pets,
-                appointmentSlots: bookingData.appointmentSlots,
-                paymentStatus: 'PENDING',
-                paymentMethod: 'ONLINE',
-                paymentChannel: selectedPayment.toUpperCase(),
-            };
-    
-            const savedAppointment = await BookingService.bookAppointment(payload);
-    
-            if (savedAppointment.success) {
-                setSuccessMessage("Thanh toán thành công! Lịch hẹn đã được xác nhận.");
-                setAppointmentDetails(payload);
-                setShowSuccessModal(true);
-            } else {
-                throw new Error(savedAppointment.message || "Không thể đặt lịch.");
+          setLoading(true);
+      
+          const totalAmount = bookingData.totalAmount || 0;
+          const depositAmount = bookingData.depositAmount || 0;
+          const paidAmount = bookingData.paymentType === 'full' ? totalAmount : depositAmount;
+      
+          // Đảm bảo dữ liệu pets được định dạng đúng cho backend
+          const formattedPets = bookingData.pets.map(pet => {
+            const petServiceId = parseInt(pet.petService?.id || pet.petServiceId || pet.service, 10);
+            const petWeightId = parseInt(pet.petWeight?.petWeightId || pet.petWeightId || pet.weight, 10);
+      
+            if (!petServiceId || !petWeightId) {
+              throw new Error("Dữ liệu dịch vụ hoặc cân nặng không hợp lệ");
             }
+      
+            return {
+              name: pet.name || `Thú cưng ${bookingData.pets.indexOf(pet) + 1}`,
+              petType: pet.petType.toUpperCase(),
+              petServiceId: petServiceId, // Sử dụng petServiceId thay vì petService
+              petWeightId: petWeightId,   // Sử dụng petWeightId thay vì petWeight
+              note: pet.note || "",
+              price: pet.price || 0
+            };
+          });
+      
+          const payload = {
+            date: bookingData.date,
+            time: bookingData.time,
+            customerName: bookingData.customerName,
+            phone: bookingData.phone,
+            paymentType: bookingData.paymentType,
+            depositAmount: depositAmount,
+            totalAmount: totalAmount,
+            paidAmount: paidAmount,
+            pets: formattedPets,
+            appointmentSlots: bookingData.appointmentSlots,
+            paymentStatus: 'PENDING',
+            paymentMethod: 'ONLINE',
+            paymentChannel: selectedPayment.toUpperCase(),
+          };
+      
+          console.log("Sending booking payload:", payload);
+          const savedAppointment = await BookingService.bookAppointment(payload);
+      
+          if (savedAppointment.success) {
+            setSuccessMessage("Thanh toán thành công! Lịch hẹn đã được xác nhận.");
+            setAppointmentDetails(payload);
+            setShowSuccessModal(true);
+          } else {
+            throw new Error(savedAppointment.message || "Không thể đặt lịch.");
+          }
         } catch (error) {
-            console.error("Payment error:", error);
-            alert(`Lỗi thanh toán: ${error.message || "Đã xảy ra lỗi"}`);
+          console.error("Payment error:", error);
+          alert(`Lỗi thanh toán: ${error.message || "Đã xảy ra lỗi"}`);
         } finally {
-            setLoading(false);
+          setLoading(false);
         }
-    };
+      };
+
     const handleConfirm = () => {
         setShowSuccessModal(false);
         // Chuyển hướng về /appointment mà không có query parameters, truyền ngày qua state

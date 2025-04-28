@@ -234,84 +234,89 @@ const BookingService = {
 
     bookAppointment: async (payload) => {
         try {
-            console.log('Booking appointment with payload:', payload);
-            
-            // Ensure time is in HH:mm format
-            let formattedTime = payload.time;
-            if (formattedTime && !formattedTime.includes(':')) {
-                formattedTime = `${formattedTime}:00`;
-            }
-            
-            const formattedPayload = {
-                date: payload.date,
-                time: formattedTime, // Use the properly formatted time
-                customerName: payload.customerName,
-                phone: payload.phone,
-                paymentType: payload.paymentType,
-                depositAmount: payload.depositAmount,
-                totalAmount: payload.totalAmount,
-                paidAmount: payload.paidAmount,
-                // Remove appointmentSlots array as it's causing issues
-                // Let the backend handle slot allocation based on date, time and pets
-                pets: payload.pets.map(pet => ({
-                    name: pet.name,
-                    petType: pet.petType,
-                    petService: { id: parseInt(pet.petService.id) },
-                    petWeight: { petWeightId: parseInt(pet.petWeight.petWeightId) },
-                    note: pet.note,
-                    price: pet.price
-                }))
-            };
-            console.log('Formatted payload being sent to backend:', formattedPayload);
-            const response = await axios.post(`${API_BASE_URL}/appointments`, formattedPayload);
-            console.log('Book appointment response:', response.data);
-            return { success: true, data: response.data };
+          console.log('Booking appointment with payload:', payload);
+      
+          let formattedTime = payload.time;
+          if (formattedTime && !formattedTime.includes(':')) {
+            formattedTime = `${formattedTime}:00`;
+          }
+      
+          const formattedPayload = {
+            date: payload.date,
+            time: formattedTime,
+            customerName: payload.customerName,
+            phone: payload.phone,
+            paymentType: payload.paymentType,
+            depositAmount: payload.depositAmount,
+            totalAmount: payload.totalAmount,
+            paidAmount: payload.paidAmount,
+            pets: payload.pets.map(pet => {
+              const petServiceId = parseInt(pet.petService?.id || pet.petServiceId, 10);
+              const petWeightId = parseInt(pet.petWeight?.petWeightId || pet.petWeightId, 10);
+      
+              if (!petServiceId || !petWeightId) {
+                throw new Error("Dữ liệu dịch vụ hoặc cân nặng không hợp lệ");
+              }
+      
+              return {
+                name: pet.name,
+                petType: pet.petType,
+                petServiceId: petServiceId, // Sử dụng petServiceId thay vì petService
+                petWeightId: petWeightId,   // Sử dụng petWeightId thay vì petWeight
+                note: pet.note,
+                price: pet.price
+              };
+            }),
+            paymentStatus: payload.paymentStatus,
+            paymentMethod: payload.paymentMethod,
+            paymentChannel: payload.paymentChannel,
+          };
+      
+          console.log('Formatted payload being sent to backend:', formattedPayload);
+          const response = await axios.post(`${API_BASE_URL}/appointments`, formattedPayload);
+          console.log('Book appointment response:', response.data);
+          return { success: true, data: response.data };
         } catch (error) {
-            console.error('Error booking appointment:', error);
-            let errorMessage = 'Không thể đặt lịch hẹn';
-            if (error.response && error.response.data) {
-                errorMessage = error.response.data.message || error.response.data || errorMessage;
-            } else if (error.message) {
-                errorMessage = error.message;
-            }
-            return { success: false, message: errorMessage };
+          console.error('Error booking appointment:', error);
+          let errorMessage = 'Không thể đặt lịch hẹn';
+          if (error.response && error.response.data) {
+            errorMessage = error.response.data.message || error.response.data || errorMessage;
+          } else if (error.message) {
+            errorMessage = error.message;
+          }
+          return { success: false, message: errorMessage };
         }
-    },
+      },
 
     checkSlotAvailability: async (date, time, requiredSlots) => {
         try {
-            // Normalize time format for consistent comparison
-            const normalizeTime = (timeStr) => {
-                if (!timeStr) return '';
-                // Convert to HH:mm format
-                const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
-                // Ensure leading zeros for single-digit hours
-                if (formattedTime.length === 4) { // If format is like "8:00"
-                    return `0${formattedTime}`;
-                }
-                return formattedTime;
-            };
-
-            // Get the normalized time string for comparison
-            const normalizedTime = normalizeTime(time);
-            console.log(`Checking availability for normalized time: ${normalizedTime}`);
-            
-            const slots = await BookingService.getAvailableSlots(date);
-            const allSlots = [...(slots.morning || []), ...(slots.afternoon || [])];
-            
-            // Find matching slot using normalized time comparisons
-            const slot = allSlots.find(s => {
-                const slotTime = normalizeTime(s.time || s.hour);
-                return slotTime === normalizedTime;
-            });
-            
-            console.log(`Slot found for ${normalizedTime}:`, slot);
-            return slot && slot.availableSlots >= requiredSlots;
+          const normalizeTime = (timeStr) => {
+            if (!timeStr) return '';
+            const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
+            if (formattedTime.length === 4) {
+              return `0${formattedTime}`;
+            }
+            return formattedTime.split(':').slice(0, 2).join(':'); // Chỉ lấy HH:mm
+          };
+      
+          const normalizedTime = normalizeTime(time);
+          console.log(`Checking availability for normalized time: ${normalizedTime}`);
+      
+          const slots = await BookingService.getAvailableSlots(date);
+          const allSlots = [...(slots.morning || []), ...(slots.afternoon || [])];
+      
+          const slot = allSlots.find(s => {
+            const slotTime = normalizeTime(s.time || s.hour);
+            return slotTime === normalizedTime;
+          });
+      
+          console.log(`Slot found for ${normalizedTime}:`, slot);
+          return slot && slot.availableSlots >= requiredSlots;
         } catch (error) {
-            console.error('Error checking slot availability:', error);
-            return false;
+          console.error('Error checking slot availability:', error);
+          return false;
         }
-    },
+      },
 
     checkSlotAvailabilityFromState: async (date, time, requiredSlots, timeSlotsState, selectedSession) => {
         try {

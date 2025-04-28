@@ -476,84 +476,90 @@ const Appointment = () => {
 
     const handleApiBooking = async () => {
         if (!selectedTime || !customerInfo.fullName || !customerInfo.phone || !customerInfo.paymentType) {
-            showToast("Vui lòng điền đầy đủ thông tin!", "warning");
-            return;
+          showToast("Vui lòng điền đầy đủ thông tin!", "warning");
+          return;
         }
-    
+      
         if (!selectedDate || !selectedTime || !pets || pets.length === 0 || !selectedSlots || selectedSlots.length === 0) {
-            showToast("Vui lòng chọn ngày, thời gian và thông tin thú cưng!", "warning");
-            return;
+          showToast("Vui lòng chọn ngày, thời gian và thông tin thú cưng!", "warning");
+          return;
         }
-    
+      
         const isPetInfoValid = pets.every((pet) => pet.petType && pet.service && pet.weight && pet.price);
         if (!isPetInfoValid) {
-            showToast("Vui lòng nhập đầy đủ thông tin cho tất cả thú cưng!", "warning");
-            return;
+          showToast("Vui lòng nhập đầy đủ thông tin cho tất cả thú cưng!", "warning");
+          return;
         }
-    
+      
         try {
-            setIsLoading(true);
-    
-            const formatTime = (timeStr) => {
-                const [hours, minutes] = timeStr.split(':').map(Number);
-                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
-            };
-    
-            const totalAmount = pets.reduce((sum, pet) => sum + (pet.price || 0), 0);
-            const depositAmount = calculateDeposit(); // Luôn là 50k/slot, bất kể paymentType
-            const paidAmount = customerInfo.paymentType === 'full' ? totalAmount : depositAmount;
-    
-            const payload = {
-                date: selectedDate.toISOString().split("T")[0],
-                time: formatTime(selectedTime),
-                customerName: customerInfo.fullName,
-                phone: customerInfo.phone,
-                paymentType: customerInfo.paymentType,
-                depositAmount: depositAmount,
-                totalAmount: totalAmount,
-                paidAmount: paidAmount,
-                appointmentSlots: selectedSlots,
-                pets: pets.map((pet) => ({
-                    name: pet.name || `Thú cưng ${pets.indexOf(pet) + 1}`,
-                    petType: pet.petType.toUpperCase(),
-                    petService: { id: parseInt(pet.service, 10) },
-                    petWeight: { petWeightId: parseInt(pet.weight, 10) },
-                    note: pet.note || "",
-                    price: pet.price || 0,
-                }))
-            };
-    
-            console.log("Sending payload to checkout:", payload);
-    
-            // Sử dụng timeSlotsState để kiểm tra slot trống thay vì gọi lại API
-            const isAvailable = await BookingService.checkSlotAvailabilityFromState(
-                payload.date,
-                payload.time,
-                payload.pets.length,
-                timeSlotsState,
-                selectedSession
-            );
-    
-            if (!isAvailable) {
-                showToast("Khung giờ này đã hết slot trống. Vui lòng chọn khung giờ khác.", "error");
-                await fetchBookingStatusAndSlots();
-                setIsLoading(false);
-                return;
-            }
-    
+          setIsLoading(true);
+      
+          const formatTime = (timeStr) => {
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
+          };
+      
+          const totalAmount = pets.reduce((sum, pet) => sum + (pet.price || 0), 0);
+          const depositAmount = calculateDeposit();
+          const paidAmount = customerInfo.paymentType === 'full' ? totalAmount : depositAmount;
+      
+          const payload = {
+            date: selectedDate.toISOString().split("T")[0],
+            time: formatTime(selectedTime),
+            customerName: customerInfo.fullName,
+            phone: customerInfo.phone,
+            paymentType: customerInfo.paymentType,
+            depositAmount: depositAmount,
+            totalAmount: totalAmount,
+            paidAmount: paidAmount,
+            appointmentSlots: selectedSlots,
+            pets: pets.map((pet) => {
+              const petServiceId = parseInt(pet.service, 10);
+              const petWeightId = parseInt(pet.weight, 10);
+              
+              if (!petServiceId || !petWeightId) {
+                throw new Error("Dữ liệu dịch vụ hoặc cân nặng không hợp lệ");
+              }
+      
+              return {
+                name: pet.name || `Thú cưng ${pets.indexOf(pet) + 1}`,
+                petType: pet.petType.toUpperCase(),
+                petServiceId: petServiceId, // Sử dụng petServiceId thay vì petService
+                petWeightId: petWeightId,   // Sử dụng petWeightId thay vì petWeight
+                note: pet.note || "",
+                price: pet.price || 0,
+              };
+            })
+          };
+      
+          console.log("Sending payload to checkout:", payload);
+      
+          const isAvailable = await BookingService.checkSlotAvailability(
+            payload.date,
+            selectedTime,
+            payload.pets.length
+          );
+      
+          if (!isAvailable) {
+            showToast("Khung giờ này đã hết slot trống. Vui lòng chọn khung giờ khác.", "error");
+            await fetchBookingStatusAndSlots();
             setIsLoading(false);
-            navigate(`/checkout-payment?date=${payload.date}&source=booking`, {
-                state: {
-                    bookingData: payload,
-                },
-            });
+            return;
+          }
+      
+          setIsLoading(false);
+          navigate(`/checkout-payment?date=${payload.date}&source=booking`, {
+            state: {
+              bookingData: payload,
+            },
+          });
         } catch (error) {
-            console.error("Error processing booking:", error);
-            showToast(`Đặt lịch thất bại: ${error.message || "Lỗi hệ thống"}`, "error");
-            fetchBookingStatusAndSlots();
-            setIsLoading(false);
+          console.error("Error processing booking:", error);
+          showToast(`Đặt lịch thất bại: ${error.message || "Lỗi hệ thống"}`, "error");
+          fetchBookingStatusAndSlots();
+          setIsLoading(false);
         }
-    };
+      };
 
     const handleServiceConfirm = () => {
         const isPetCountValid = pets.length === selectedSlots.length;
