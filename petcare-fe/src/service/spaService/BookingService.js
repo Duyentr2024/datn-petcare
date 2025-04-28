@@ -59,6 +59,19 @@ const BookingService = {
     getAvailableSlots: async (date) => {
         try {
             console.log('Fetching available slots for date:', date);
+            
+            // Helper function to normalize time format
+            const normalizeTime = (timeStr) => {
+                if (!timeStr) return '';
+                // Convert to HH:mm format
+                const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
+                // Ensure leading zeros for single-digit hours
+                if (formattedTime.length === 4) { // If format is like "8:00"
+                    return `0${formattedTime}`;
+                }
+                return formattedTime;
+            };
+            
             const response = await axios.get(`${API_BASE_URL}/time-slots`, {
                 params: { date },
                 timeout: 10000,
@@ -73,27 +86,36 @@ const BookingService = {
                 console.warn('Response afternoon slots is not an array, using empty array instead');
                 result.afternoon = [];
             }
+            
+            // Process morning slots
             result.morning = result.morning.map(slot => {
-                if (slot.time && !slot.hour) {
-                    if (typeof slot.time === 'object' && slot.time.toString) {
-                        slot.hour = slot.time.toString();
-                    } else if (typeof slot.time === 'string') {
-                        slot.hour = slot.time;
-                    }
-                }
-                return slot;
+                const normalizedTime = normalizeTime(slot.time || slot.hour || '');
+                return {
+                    hour: normalizedTime,
+                    time: normalizedTime,
+                    totalSlots: slot.totalSlots !== undefined ? slot.totalSlots : 4,
+                    bookedSlots: slot.bookedSlots !== undefined ? slot.bookedSlots : 0,
+                    availableSlots: slot.availableSlots !== undefined ? slot.availableSlots : (slot.totalSlots || 4) - (slot.bookedSlots || 0),
+                    active: slot.active !== undefined ? slot.active : true,
+                    isMorning: slot.isMorning !== undefined ? slot.isMorning : true
+                };
             });
+            
+            // Process afternoon slots
             result.afternoon = result.afternoon.map(slot => {
-                if (slot.time && !slot.hour) {
-                    if (typeof slot.time === 'object' && slot.time.toString) {
-                        slot.hour = slot.time.toString();
-                    } else if (typeof slot.time === 'string') {
-                        slot.hour = slot.time;
-                    }
-                }
-                return slot;
+                const normalizedTime = normalizeTime(slot.time || slot.hour || '');
+                return {
+                    hour: normalizedTime,
+                    time: normalizedTime,
+                    totalSlots: slot.totalSlots !== undefined ? slot.totalSlots : 4,
+                    bookedSlots: slot.bookedSlots !== undefined ? slot.bookedSlots : 0,
+                    availableSlots: slot.availableSlots !== undefined ? slot.availableSlots : (slot.totalSlots || 4) - (slot.bookedSlots || 0),
+                    active: slot.active !== undefined ? slot.active : true,
+                    isMorning: slot.isMorning !== undefined ? slot.isMorning : false
+                };
             });
-            console.log('Processed available slots result:', result);
+            
+            console.log('Processed available slots result with normalized times:', result);
             return result;
         } catch (error) {
             console.error('Error fetching available slots:', error);
@@ -104,6 +126,19 @@ const BookingService = {
     getConfirmedSlots: async (date) => {
         try {
             console.log('Fetching confirmed slots for date:', date);
+            
+            // Helper function to normalize time format
+            const normalizeTime = (timeStr) => {
+                if (!timeStr) return '';
+                // Convert to HH:mm format
+                const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
+                // Ensure leading zeros for single-digit hours
+                if (formattedTime.length === 4) { // If format is like "8:00"
+                    return `0${formattedTime}`;
+                }
+                return formattedTime;
+            };
+            
             const response = await axios.get(`${API_BASE_URL}/time-slots/confirmed`, {
                 params: { date },
                 timeout: 10000,
@@ -118,27 +153,30 @@ const BookingService = {
                 console.warn('Response afternoon slots is not an array, using empty array instead');
                 result.afternoon = [];
             }
+            
+            // Process and normalize morning slots
             result.morning = result.morning.map(slot => {
-                if (slot.time && !slot.hour) {
-                    if (typeof slot.time === 'object' && slot.time.toString) {
-                        slot.hour = slot.time.toString();
-                    } else if (typeof slot.time === 'string') {
-                        slot.hour = slot.time;
-                    }
+                // Normalize time format
+                if (slot.time || slot.hour) {
+                    const normalizedTime = normalizeTime(slot.time || slot.hour);
+                    slot.hour = normalizedTime;
+                    slot.time = normalizedTime;
                 }
                 return slot;
             });
+            
+            // Process and normalize afternoon slots
             result.afternoon = result.afternoon.map(slot => {
-                if (slot.time && !slot.hour) {
-                    if (typeof slot.time === 'object' && slot.time.toString) {
-                        slot.hour = slot.time.toString();
-                    } else if (typeof slot.time === 'string') {
-                        slot.hour = slot.time;
-                    }
+                // Normalize time format
+                if (slot.time || slot.hour) {
+                    const normalizedTime = normalizeTime(slot.time || slot.hour);
+                    slot.hour = normalizedTime;
+                    slot.time = normalizedTime;
                 }
                 return slot;
             });
-            console.log('Processed confirmed slots result:', result);
+            
+            console.log('Processed confirmed slots result with normalized times:', result);
             return result;
         } catch (error) {
             console.error('Error fetching confirmed slots:', error);
@@ -197,39 +235,117 @@ const BookingService = {
     bookAppointment: async (payload) => {
         try {
             console.log('Booking appointment with payload:', payload);
+            
+            // Ensure time is in HH:mm format
+            let formattedTime = payload.time;
+            if (formattedTime && !formattedTime.includes(':')) {
+                formattedTime = `${formattedTime}:00`;
+            }
+            
             const formattedPayload = {
                 date: payload.date,
-                time: payload.time,
+                time: formattedTime, // Use the properly formatted time
                 customerName: payload.customerName,
                 phone: payload.phone,
+                paymentType: payload.paymentType,
                 depositAmount: payload.depositAmount,
                 totalAmount: payload.totalAmount,
+                paidAmount: payload.paidAmount,
+                // Remove appointmentSlots array as it's causing issues
+                // Let the backend handle slot allocation based on date, time and pets
                 pets: payload.pets.map(pet => ({
                     name: pet.name,
                     petType: pet.petType,
-                    petServiceId: parseInt(pet.petService.id),
-                    petWeightId: parseInt(pet.petWeight.petWeightId),
+                    petService: { id: parseInt(pet.petService.id) },
+                    petWeight: { petWeightId: parseInt(pet.petWeight.petWeightId) },
                     note: pet.note,
                     price: pet.price
                 }))
             };
+            console.log('Formatted payload being sent to backend:', formattedPayload);
             const response = await axios.post(`${API_BASE_URL}/appointments`, formattedPayload);
             console.log('Book appointment response:', response.data);
             return { success: true, data: response.data };
         } catch (error) {
             console.error('Error booking appointment:', error);
-            return { success: false, message: error.response?.data || error.message };
+            let errorMessage = 'Không thể đặt lịch hẹn';
+            if (error.response && error.response.data) {
+                errorMessage = error.response.data.message || error.response.data || errorMessage;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            return { success: false, message: errorMessage };
         }
     },
 
     checkSlotAvailability: async (date, time, requiredSlots) => {
         try {
+            // Normalize time format for consistent comparison
+            const normalizeTime = (timeStr) => {
+                if (!timeStr) return '';
+                // Convert to HH:mm format
+                const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
+                // Ensure leading zeros for single-digit hours
+                if (formattedTime.length === 4) { // If format is like "8:00"
+                    return `0${formattedTime}`;
+                }
+                return formattedTime;
+            };
+
+            // Get the normalized time string for comparison
+            const normalizedTime = normalizeTime(time);
+            console.log(`Checking availability for normalized time: ${normalizedTime}`);
+            
             const slots = await BookingService.getAvailableSlots(date);
             const allSlots = [...(slots.morning || []), ...(slots.afternoon || [])];
-            const slot = allSlots.find(s => s.time === time);
+            
+            // Find matching slot using normalized time comparisons
+            const slot = allSlots.find(s => {
+                const slotTime = normalizeTime(s.time || s.hour);
+                return slotTime === normalizedTime;
+            });
+            
+            console.log(`Slot found for ${normalizedTime}:`, slot);
             return slot && slot.availableSlots >= requiredSlots;
         } catch (error) {
             console.error('Error checking slot availability:', error);
+            return false;
+        }
+    },
+
+    checkSlotAvailabilityFromState: async (date, time, requiredSlots, timeSlotsState, selectedSession) => {
+        try {
+            // Normalize time format for consistent comparison
+            const normalizeTime = (timeStr) => {
+                if (!timeStr) return '';
+                // Convert to HH:mm format
+                const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
+                // Ensure leading zeros for single-digit hours
+                if (formattedTime.length === 4) { // If format is like "8:00"
+                    return `0${formattedTime}`;
+                }
+                return formattedTime;
+            };
+
+            // Get the normalized time string for comparison
+            const normalizedTime = normalizeTime(time);
+            console.log(`Checking availability from state for normalized time: ${normalizedTime}`);
+            
+            const allSlots = [
+                ...(timeSlotsState.morning || []),
+                ...(timeSlotsState.afternoon || [])
+            ];
+            
+            // Find matching slot using normalized time comparisons
+            const slot = allSlots.find(s => {
+                const slotTime = normalizeTime(s.time || s.hour);
+                return slotTime === normalizedTime;
+            });
+            
+            console.log(`Slot found from state for ${normalizedTime}:`, slot);
+            return slot && slot.availableSlots >= requiredSlots;
+        } catch (error) {
+            console.error('Error checking slot availability from state:', error);
             return false;
         }
     },
@@ -249,8 +365,15 @@ const BookingService = {
 
     getConfirmedAppointmentsByDateAndTime: async (date, time) => {
         try {
+            // Normalize time format
+            const normalizedTime = time.includes(':') ? time : `${time}:00`;
+            // Add leading zero if needed
+            const formattedTime = normalizedTime.length === 4 ? `0${normalizedTime}` : normalizedTime;
+            
+            console.log(`Fetching confirmed appointments for date: ${date}, time: ${formattedTime}`);
+            
             const response = await axios.get(`${API_BASE_URL}/appointments/confirmed-by-date-and-time`, {
-                params: { date, time },
+                params: { date, time: formattedTime },
                 timeout: 10000,
             });
             return response.data;
@@ -321,6 +444,100 @@ const BookingService = {
         } catch (error) {
             console.error('Error confirming appointments:', error);
             throw new Error(error.message || 'Không thể xác nhận lịch hẹn');
+        }
+    },
+
+    updateAppointment: async (payload) => {
+        try {
+            console.log('Updating appointment with payload:', payload);
+            let attempts = 0;
+            const maxAttempts = 3;
+            
+            // Ensure time format is HH:mm
+            const formatTimeString = (timeStr) => {
+                if (!timeStr) return timeStr;
+                return timeStr.includes(':') ? timeStr : `${timeStr}:00`;
+            };
+            
+            while (attempts < maxAttempts) {
+                try {
+                    const requestPayload = {
+                        date: payload.date,
+                        time: formatTimeString(payload.time),
+                        currentDate: payload.currentDate,
+                        currentTime: formatTimeString(payload.currentTime),
+                        note: payload.note,
+                        _requestId: payload._requestId || Math.random().toString(36).substring(2, 15) + Date.now()
+                    };
+                    
+                    console.log('Formatted update payload:', requestPayload);
+                    const response = await axios.put(`${API_BASE_URL}/appointments/${payload.appointmentId}`, requestPayload);
+                    console.log('Update appointment response:', response.data);
+                    return response.data;
+                } catch (error) {
+                    attempts++;
+                    console.error(`Error updating appointment (attempt ${attempts}/${maxAttempts}):`, error);
+                    
+                    if (!error.response?.data?.message?.includes('Duplicate entry') || attempts >= maxAttempts) {
+                        throw error;
+                    }
+                    
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }
+        } catch (error) {
+            console.error('Error updating appointment after all retries:', error);
+            if (error.response && error.response.data) {
+                console.error('Server response:', error.response.data);
+                throw new Error(error.response.data.message || 'Không thể cập nhật lịch hẹn');
+            }
+            throw new Error(error.message || 'Không thể cập nhật lịch hẹn');
+        }
+    },
+
+    // Add a new debug function that can be used to check if there's any issue with the server-side availability
+    debugCheckSlotAvailability: async (date, time, numPets = 1) => {
+        try {
+            // Normalize time format
+            const normalizeTime = (timeStr) => {
+                if (!timeStr) return '';
+                // Convert to HH:mm format
+                const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
+                // Ensure leading zeros for single-digit hours
+                if (formattedTime.length === 4) { // If format is like "8:00"
+                    return `0${formattedTime}`;
+                }
+                return formattedTime;
+            };
+            
+            const normalizedTime = normalizeTime(time);
+            console.log(`Debug checking slot availability for date: ${date}, time: ${normalizedTime}, pets: ${numPets}`);
+            
+            // First check if we can get the slot by querying the debug endpoint
+            try {
+                const infoResponse = await axios.get(`${API_BASE_URL}/debug/slot-info`, {
+                    params: { date, time: normalizedTime },
+                    timeout: 10000,
+                });
+                console.log('Slot info response:', infoResponse.data);
+                
+                // Now try resetting the slot to ensure it's up to date
+                const resetResponse = await axios.post(`${API_BASE_URL}/debug/reset-slot`, null, {
+                    params: { date, time: normalizedTime },
+                    timeout: 10000,
+                });
+                console.log('Slot reset response:', resetResponse.data);
+                
+                // Now check if the reset slot has enough availability
+                return resetResponse.data.availableSlots >= numPets;
+            } catch (error) {
+                console.error('Error with debug endpoint, falling back to regular check:', error);
+                // Fall back to regular availability check
+                return BookingService.checkSlotAvailability(date, normalizedTime, numPets);
+            }
+        } catch (error) {
+            console.error('Error in debug check slot availability:', error);
+            return false;
         }
     },
 };

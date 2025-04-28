@@ -78,7 +78,7 @@ class WebSocketService {
     if (this.connected) {
       this.stompClient.subscribe('/topic/new-appointment', this.handleAppointmentMessage.bind(this));
       this.stompClient.subscribe('/topic/slots', this.handleSlotsMessage.bind(this));
-      this.stompClient.subscribe('/topic/appointments', this.handleAppointmentCancelledMessage.bind(this));
+      this.stompClient.subscribe('/topic/appointments', this.handleAppointmentMessage.bind(this));
     }
     
     this.callbacks.onConnect.forEach(callback => callback());
@@ -87,12 +87,17 @@ class WebSocketService {
   handleAppointmentMessage(message) {
     try {
       const data = JSON.parse(message.body);
-      console.log('WebSocket message received on /topic/new-appointment:', data);
+      console.log('WebSocket message received on /topic/appointments:', data);
       
-      // Gửi thông báo với type NEW_APPOINTMENT để khớp với callbacks
-      this.callbacks.onNewAppointment.forEach(callback => callback(data));
+      if (data.type === 'APPOINTMENT_UPDATED') {
+        this.callbacks.onAppointmentUpdated.forEach(callback => callback(data));
+      } else if (data.type === 'NEW_APPOINTMENT') {
+        this.callbacks.onNewAppointment.forEach(callback => callback(data));
+      } else if (data.type === 'APPOINTMENT_CANCELLED') {
+        this.callbacks.onAppointmentCancelled.forEach(callback => callback(data));
+      }
     } catch (error) {
-      console.error('Error processing WebSocket message:', error);
+      console.error('Error processing WebSocket appointment message:', error);
     }
   }
   
@@ -103,18 +108,6 @@ class WebSocketService {
       this.callbacks.onSlotsUpdated.forEach(callback => callback(data));
     } catch (error) {
       console.error('Error processing WebSocket slots message:', error);
-    }
-  }
-  
-  handleAppointmentCancelledMessage(message) {
-    try {
-      const data = JSON.parse(message.body);
-      console.log('WebSocket message received on /topic/appointments:', data);
-      if (data.type === 'APPOINTMENT_CANCELLED') {
-        this.callbacks.onAppointmentCancelled.forEach(callback => callback(data));
-      }
-    } catch (error) {
-      console.error('Error processing WebSocket appointment message:', error);
     }
   }
   
