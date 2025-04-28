@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
 import {
     Search,
-    Trash2,
     ChevronLeft,
     ChevronRight,
     CheckCircle,
     XCircle,
     Eye,
-    Printer,
+    ChevronDown,
+    ChevronUp,
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { motion, AnimatePresence } from 'framer-motion'; // Import framer-motion
+import { motion, AnimatePresence } from 'framer-motion';
+import VetOrderService from '../../service/hospitalService/VetOrderService';
+import { getVaccineById } from '../../service/hospitalService/vaccineService';
+import { getVetServiceById } from '../../service/hospitalService/VetServiceService';
 
 // Hàm định dạng tiền tệ
 const formatPrice = (price) => {
@@ -23,87 +26,45 @@ const formatDate = (date) => {
     return date ? new Date(date).toLocaleDateString('vi-VN') : 'N/A';
 };
 
-// Dữ liệu mẫu cho hóa đơn
-const sampleInvoices = [
-    {
-        id: 1,
-        customerName: 'Nguyễn Văn A',
-        date: '2025-04-01',
-        totalAmount: 1500000,
-        status: true,
-        note: 'Hóa đơn vaccine cúm',
-    },
-    {
-        id: 2,
-        customerName: 'Trần Thị B',
-        date: '2025-04-02',
-        totalAmount: 2000000,
-        status: true,
-        note: 'Hóa đơn vaccine viêm gan',
-    },
-    {
-        id: 3,
-        customerName: 'Lê Văn C',
-        date: '2025-04-03',
-        totalAmount: 1000000,
-        status: false,
-        note: 'Hóa đơn đã hủy',
-    },
-    {
-        id: 4,
-        customerName: 'Phạm Thị D',
-        date: '2025-04-04',
-        totalAmount: 3000000,
-        status: true,
-        note: '',
-    },
-    {
-        id: 5,
-        customerName: 'Hoàng Văn E',
-        date: '2025-04-05',
-        totalAmount: 2500000,
-        status: true,
-        note: 'Hóa đơn vaccine sởi',
-    },
-    {
-        id: 6,
-        customerName: 'Đỗ Thị F',
-        date: '2025-04-06',
-        totalAmount: 1800000,
-        status: false,
-        note: 'Chưa thanh toán',
-    },
-    {
-        id: 7,
-        customerName: 'Bùi Văn G',
-        date: '2025-04-07',
-        totalAmount: 2200000,
-        status: true,
-        note: '',
-    },
-];
-
-const InvoiceManagement = () => {
-    const [invoices, setInvoices] = useState(sampleInvoices);
+const InvoiceManagement = ({ userId = 4 }) => {
+    const [invoices, setInvoices] = useState([]);
     const [formData, setFormData] = useState(null);
-    const [showForm, setShowForm] = useState(false);
+    const [showModal, setShowModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [sortBy, setSortBy] = useState('date');
+    const [sortBy, setSortBy] = useState('orderDate');
     const [sortOrder, setSortOrder] = useState('desc');
     const [currentPage, setCurrentPage] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
+    const [expandedDetails, setExpandedDetails] = useState({});
+    const [activeTab, setActiveTab] = useState('invoiceInfo');
     const invoicesPerPage = 6;
 
-    // Hàm lấy danh sách hóa đơn (giả lập API)
+    // Hàm lấy danh sách hóa đơn từ API
     const fetchInvoices = async () => {
         setIsLoading(true);
         try {
-            setInvoices(sampleInvoices);
+            const orders = await VetOrderService.getOrdersByUserId(userId);
+            const mappedInvoices = orders.map((order) => ({
+                id: order.id,
+                customerName: order.orderVetDetails[0]?.medicalRecord?.vetPetDTO?.nameBoss || 'N/A',
+                phoneBoss: order.orderVetDetails[0]?.medicalRecord?.vetPetDTO?.phoneBoss || 'N/A',
+                orderDate: order.orderDate,
+                totalAmount: order.totalAmount,
+                paymentStatus: order.paymentStatus === 'Đã thanh toán',
+                paymentMethod: order.paymentMethod,
+                note: order.orderVetDetails[0]?.medicalRecord?.note || '',
+                orderVetDetails: order.orderVetDetails,
+            }));
+            setInvoices(mappedInvoices);
         } catch (error) {
-            toast.error('Lỗi khi tải danh sách hóa đơn', {
+            const errorMessage = error.response?.data === 'Không tìm thấy hóa đơn'
+                ? 'Không tìm thấy hóa đơn'
+                : `Lỗi khi tải danh sách hóa đơn: ${error.response?.data || error.message}`;
+            toast.error(errorMessage, {
                 position: 'top-right',
                 autoClose: 5000,
             });
+            setInvoices([]);
         } finally {
             setIsLoading(false);
         }
@@ -111,73 +72,64 @@ const InvoiceManagement = () => {
 
     useEffect(() => {
         fetchInvoices();
-    }, []);
+    }, [userId]);
 
-    // Xử lý xóa hóa đơn
-    const handleDeleteInvoice = (id) => {
-        toast.info(
-            <div>
-                <p>Bạn có chắc chắn muốn xóa hóa đơn này?</p>
-                <div className="flex space-x-2 mt-2">
-                    <button
-                        onClick={() => {
-                            setInvoices(invoices.filter((invoice) => invoice.id !== id));
-                            toast.dismiss();
-                            toast.success('Xóa hóa đơn thành công!', {
+    // Xử lý xem chi tiết hóa đơn và lấy tên vaccine/dịch vụ
+    const handleViewInvoice = async (invoice) => {
+        setIsLoading(true);
+        try {
+            const updatedDetails = await Promise.all(
+                invoice.orderVetDetails.map(async (detail) => {
+                    let vaccineName = 'Không sử dụng';
+                    let vetServiceName = 'Không sử dụng';
+
+                    if (detail.medicalRecord.vaccineId) {
+                        try {
+                            const vaccine = await getVaccineById(detail.medicalRecord.vaccineId);
+                            vaccineName = vaccine?.name || 'N/A';
+                        } catch (error) {
+                            console.error(`Error fetching vaccine ${detail.medicalRecord.vaccineId}:`, error);
+                            vaccineName = 'N/A';
+                            toast.error(`Lỗi khi tải thông tin vaccine ID ${detail.medicalRecord.vaccineId}`, {
                                 position: 'top-right',
                                 autoClose: 3000,
                             });
-                        }}
-                        className="px-3 py-1 bg-[#7b4d2b] text-white rounded hover:bg-[#6a3f1e]"
-                        disabled={isLoading}
-                    >
-                        Xác nhận
-                    </button>
-                    <button
-                        onClick={() => toast.dismiss()}
-                        className="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600"
-                        disabled={isLoading}
-                    >
-                        Hủy
-                    </button>
-                </div>
-            </div>,
-            {
-                position: 'top-center',
-                autoClose: false,
-                closeOnClick: false,
-                draggable: false,
-            }
-        );
-    };
+                        }
+                    }
 
-    // Xử lý xem chi tiết hóa đơn
-    const handleViewInvoice = (invoice) => {
-        setFormData({
-            ...invoice,
-            date: invoice.date ? new Date(invoice.date).toISOString().split('T')[0] : '',
-            totalAmount: invoice.totalAmount || '',
-        });
-        setShowForm(true);
-    };
+                    if (detail.medicalRecord.vetServiceId) {
+                        try {
+                            const vetService = await getVetServiceById(detail.medicalRecord.vetServiceId);
+                            vetServiceName = vetService?.name || 'N/A';
+                        } catch (error) {
+                            console.error(`Error fetching vet service ${detail.medicalRecord.vetServiceId}:`, error);
+                            vetServiceName = 'N/A';
+                            toast.error(`Lỗi khi tải thông tin dịch vụ ID ${detail.medicalRecord.vetServiceId}`, {
+                                position: 'top-right',
+                                autoClose: 3000,
+                            });
+                        }
+                    }
 
-    // Xử lý thanh toán
-    const handlePayment = (method) => {
-        setIsLoading(true);
-        try {
-            setInvoices(
-                invoices.map((invoice) =>
-                    invoice.id === formData.id ? { ...invoice, status: true } : invoice
-                )
+                    return {
+                        ...detail,
+                        vaccineName,
+                        vetServiceName,
+                    };
+                })
             );
-            toast.success(`Thanh toán bằng ${method} thành công!`, {
-                position: 'top-right',
-                autoClose: 3000,
+
+            setFormData({
+                ...invoice,
+                orderDate: invoice.orderDate ? new Date(invoice.orderDate).toISOString().split('T')[0] : '',
+                totalAmount: invoice.totalAmount || '',
+                phoneBoss: invoice.phoneBoss || 'N/A',
+                orderVetDetails: updatedDetails,
             });
-            setShowForm(false);
-            setFormData(null);
+            setShowModal(true);
+            setActiveTab('invoiceInfo');
         } catch (error) {
-            toast.error(`Lỗi khi thanh toán bằng ${method}`, {
+            toast.error('Lỗi khi tải chi tiết hóa đơn', {
                 position: 'top-right',
                 autoClose: 5000,
             });
@@ -186,21 +138,69 @@ const InvoiceManagement = () => {
         }
     };
 
-    // Xử lý in hóa đơn
-    const handlePrintInvoice = () => {
-        window.print();
+    // Toggle hiển thị chi tiết orderVetDetails
+    const toggleDetail = (detailId) => {
+        setExpandedDetails((prev) => ({
+            ...prev,
+            [detailId]: !prev[detailId],
+        }));
+    };
+
+    // Xử lý click vào header để sắp xếp
+    const handleSort = (column) => {
+        if (sortBy === column) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(column);
+            setSortOrder('asc');
+        }
     };
 
     // Lọc và sắp xếp hóa đơn
     const filteredInvoices = invoices
-        .filter((invoice) => invoice.customerName.toLowerCase().includes(searchTerm.toLowerCase()))
+        .filter((invoice) =>
+            invoice.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            invoice.phoneBoss.toLowerCase().includes(searchTerm.toLowerCase())
+        )
         .sort((a, b) => {
-            const aValue = sortBy === 'date' ? new Date(a.date) : a.totalAmount;
-            const bValue = sortBy === 'date' ? new Date(b.date) : b.totalAmount;
-            if (sortOrder === 'asc') {
-                return aValue > bValue ? 1 : -1;
+            let aValue, bValue;
+            switch (sortBy) {
+                case 'id':
+                    aValue = a.id;
+                    bValue = b.id;
+                    break;
+                case 'customerName':
+                    aValue = a.customerName.toLowerCase();
+                    bValue = b.customerName.toLowerCase();
+                    break;
+                case 'phoneBoss':
+                    aValue = a.phoneBoss.toLowerCase();
+                    bValue = b.phoneBoss.toLowerCase();
+                    break;
+                case 'orderDate':
+                    aValue = new Date(a.orderDate);
+                    bValue = new Date(b.orderDate);
+                    break;
+                case 'totalAmount':
+                    aValue = a.totalAmount;
+                    bValue = b.totalAmount;
+                    break;
+                case 'paymentStatus':
+                    aValue = a.paymentStatus;
+                    bValue = b.paymentStatus;
+                    break;
+                case 'note':
+                    aValue = a.note.toLowerCase();
+                    bValue = b.note.toLowerCase();
+                    break;
+                default:
+                    aValue = a.orderDate;
+                    bValue = b.orderDate;
             }
-            return aValue < bValue ? 1 : -1;
+            if (sortOrder === 'asc') {
+                return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+            }
+            return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
         });
 
     // Phân trang
@@ -220,6 +220,18 @@ const InvoiceManagement = () => {
         exit: { opacity: 0, y: -20 },
     };
 
+    const modalVariants = {
+        initial: { opacity: 0, scale: 0.95 },
+        animate: { opacity: 1, scale: 1 },
+        exit: { opacity: 0, scale: 0.95 },
+    };
+
+    const tabVariants = {
+        initial: { opacity: 0, y: 10 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, y: -10 },
+    };
+
     return (
         <motion.div
             initial="initial"
@@ -235,195 +247,244 @@ const InvoiceManagement = () => {
                     <div className="w-16 h-16 border-4 border-t-[#7b4d2b] border-gray-200 rounded-full animate-spin"></div>
                 </div>
             )}
-            <div className="flex justify-between items-center mb-6 no-print">
+            <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-[#7b4d2b]">Danh Sách Hóa Đơn</h2>
-                <div className="flex space-x-4 items-center">
-                    <div className="relative">
-                        <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-64 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#7b4d2b] pl-10 disabled:bg-gray-100"
-                            placeholder="Tìm kiếm khách hàng..."
-                            disabled={isLoading}
-                        />
-                        <Search className="w-5 h-5 text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                    </div>
-                    <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        className="px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#7b4d2b]"
+                <div className="relative">
+                    <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-64 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#7b4d2b] pl-10 disabled:bg-gray-100"
+                        placeholder="Tìm kiếm khách hàng hoặc số điện thoại..."
                         disabled={isLoading}
-                    >
-                        <option value="date">Sắp xếp theo ngày</option>
-                        <option value="totalAmount">Sắp xếp theo tổng tiền</option>
-                    </select>
-                    <select
-                        value={sortOrder}
-                        onChange={(e) => setSortOrder(e.target.value)}
-                        className="px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#7b4d2b]"
-                        disabled={isLoading}
-                    >
-                        <option value="desc">Giảm dần</option>
-                        <option value="asc">Tăng dần</option>
-                    </select>
+                    />
+                    <Search className="w-5 h-5 text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2" />
                 </div>
             </div>
 
-            <AnimatePresence mode="wait">
-                {showForm && formData && (
+            <AnimatePresence>
+                {showModal && formData && (
                     <motion.div
-                        key="form"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="bg-[#e8dfd7] p-6 rounded-xl shadow-md mb-8 animate-fade-in no-print"
+                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
                     >
-                        <h2 className="text-2xl font-bold text-[#7b4d2b] mb-6">Chi Tiết Hóa Đơn</h2>
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Tên Khách Hàng
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formData.customerName}
-                                        className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-100"
-                                        disabled
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Ngày Hóa Đơn
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={formData.date}
-                                        className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-100"
-                                        disabled
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Tổng Tiền (VNĐ)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={formData.totalAmount}
-                                        className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-100"
-                                        disabled
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Trạng Thái</label>
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.status}
-                                        className="h-4 w-4 text-[#7b4d2b] border-gray-300 rounded disabled:opacity-50"
-                                        disabled
-                                    />
-                                    <span className="ml-2 text-sm text-gray-700">
-                                        {formData.status ? 'Đã thanh toán' : 'Chưa thanh toán'}
-                                    </span>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Ghi Chú</label>
-                                <textarea
-                                    value={formData.note}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-gray-100"
-                                    rows="3"
-                                    disabled
-                                />
-                            </div>
-                            <div className="flex space-x-4">
-                                {!formData.status && (
-                                    <>
-                                        <button
-                                            type="button"
-                                            onClick={() => handlePayment('Tiền mặt')}
-                                            className="px-6 py-2 bg-green-600 text-white rounded-full shadow-md hover:bg-green-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50"
-                                            disabled={isLoading}
-                                        >
-                                            Thanh toán tiền mặt
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => handlePayment('MoMo')}
-                                            className="px-6 py-2 bg-pink-600 text-white rounded-full shadow-md hover:bg-pink-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50"
-                                            disabled={isLoading}
-                                        >
-                                            Thanh toán MoMo
-                                        </button>
-                                    </>
-                                )}
+                        <motion.div
+                            variants={modalVariants}
+                            initial="initial"
+                            animate="animate"
+                            exit="exit"
+                            transition={{ duration: 0.2 }}
+                            className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+                        >
+                            <h2 className="text-3xl font-bold text-[#7b4d2b] mb-6">Chi Tiết Hóa Đơn #{formData.id}</h2>
+                            {/* Tab Navigation */}
+                            <div className="flex border-b border-gray-200 mb-6">
                                 <button
-                                    type="button"
-                                    onClick={handlePrintInvoice}
-                                    className="px-6 py-2 bg-blue-600 text-white rounded-full shadow-md hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 disabled:opacity-50"
-                                    disabled={isLoading}
+                                    className={`px-4 py-2 font-semibold text-lg ${
+                                        activeTab === 'invoiceInfo'
+                                            ? 'border-b-2 border-[#7b4d2b] text-[#7b4d2b]'
+                                            : 'text-gray-500 hover:text-[#7b4d2b]'
+                                    }`}
+                                    onClick={() => setActiveTab('invoiceInfo')}
                                 >
-                                    <Printer className="w-5 h-5 mr-2 inline" />
-                                    In Hóa Đơn
+                                    Thông Tin Hóa Đơn
                                 </button>
+                                <button
+                                    className={`px-4 py-2 font-semibold text-lg ${
+                                        activeTab === 'serviceDetails'
+                                            ? 'border-b-2 border-[#7b4d2b] text-[#7b4d2b]'
+                                            : 'text-gray-500 hover:text-[#7b4d2b]'
+                                    }`}
+                                    onClick={() => setActiveTab('serviceDetails')}
+                                >
+                                    Chi Tiết Dịch Vụ
+                                </button>
+                            </div>
+
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={activeTab}
+                                    variants={tabVariants}
+                                    initial="initial"
+                                    animate="animate"
+                                    exit="exit"
+                                    transition={{ duration: 0.2 }}
+                                    className="space-y-6"
+                                >
+                                    {activeTab === 'invoiceInfo' && (
+                                        <div className="bg-[#f8f1eb] p-6 rounded-lg shadow-sm">
+                                            <h3 className="text-xl font-semibold text-[#7b4d2b] mb-4">Thông Tin Hóa Đơn</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-gray-600 mb-2">
+                                                        Tên Khách Hàng
+                                                    </label>
+                                                    <div className="w-full px-4 py-3 rounded-lg bg-gray-100 text-gray-800">
+                                                        {formData.customerName}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-gray-600 mb-2">
+                                                        Số Điện Thoại
+                                                    </label>
+                                                    <div className="w-full px-4 py-3 rounded-lg bg-gray-100 text-gray-800">
+                                                        {formData.phoneBoss}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-gray-600 mb-2">
+                                                        Ngày Hóa Đơn
+                                                    </label>
+                                                    <div className="w-full px-4 py-3 rounded-lg bg-gray-100 text-gray-800">
+                                                        {formatDate(formData.orderDate)}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-gray-600 mb-2">
+                                                        Tổng Tiền
+                                                    </label>
+                                                    <div className="w-full px-4 py-3 rounded-lg bg-gray-100 text-gray-800">
+                                                        {formatPrice(formData.totalAmount)}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-gray-600 mb-2">
+                                                        Trạng Thái
+                                                    </label>
+                                                    <div className="w-full px-4 py-3 rounded-lg bg-gray-100 text-gray-800 flex items-center">
+                                                        {formData.paymentStatus ? (
+                                                            <span className="flex items-center text-green-600">
+                                                                <CheckCircle className="w-4 h-4 mr-1" /> Đã thanh toán
+                                                            </span>
+                                                        ) : (
+                                                            <span className="flex items-center text-red-600">
+                                                                <XCircle className="w-4 h-4 mr-1" /> Chưa thanh toán
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-semibold text-gray-600 mb-2">
+                                                        Phương Thức Thanh Toán
+                                                    </label>
+                                                    <div className="w-full px-4 py-3 rounded-lg bg-gray-100 text-gray-800">
+                                                        {formData.paymentMethod || 'N/A'}
+                                                    </div>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="block text-sm font-semibold text-gray-600 mb-2">
+                                                        Ghi Chú
+                                                    </label>
+                                                    <div className="w-full px-4 py-3 rounded-lg bg-gray-100 text-gray-800 min-h-[100px]">
+                                                        {formData.note || 'N/A'}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'serviceDetails' && (
+                                        <div>
+                                            <h3 className="text-xl font-semibold text-[#7b4d2b] mb-4">Chi Tiết Dịch Vụ</h3>
+                                            {formData.orderVetDetails.map((detail) => (
+                                                <div
+                                                    key={detail.id}
+                                                    className="mb-4 bg-[#f8f1eb] p-6 rounded-lg shadow-sm"
+                                                >
+                                                    <button
+                                                        onClick={() => toggleDetail(detail.id)}
+                                                        className="flex items-center w-full text-left text-[#7b4d2b] hover:text-[#6a3f1e] font-semibold text-lg"
+                                                    >
+                                                        <span>Dịch vụ #{detail.id} - {detail.medicalRecord.vetPetDTO.namePet}</span>
+                                                        {expandedDetails[detail.id] ? (
+                                                            <ChevronUp className="w-5 h-5 ml-2" />
+                                                        ) : (
+                                                            <ChevronDown className="w-5 h-5 ml-2" />
+                                                        )}
+                                                    </button>
+                                                    {expandedDetails[detail.id] && (
+                                                        <motion.div
+                                                            initial={{ height: 0, opacity: 0 }}
+                                                            animate={{ height: 'auto', opacity: 1 }}
+                                                            exit={{ height: 0, opacity: 0 }}
+                                                            transition={{ duration: 0.2 }}
+                                                            className="mt-4"
+                                                        >
+                                                            <table className="w-full text-sm text-gray-700">
+                                                                <tbody>
+                                                                <tr className="border-b border-gray-200">
+                                                                    <td className="py-2 font-semibold text-gray-600">Tên Thú Cưng</td>
+                                                                    <td className="py-2">{detail.medicalRecord.vetPetDTO.namePet}</td>
+                                                                </tr>
+                                                                <tr className="border-b border-gray-200">
+                                                                    <td className="py-2 font-semibold text-gray-600">Loại Thú Cưng</td>
+                                                                    <td className="py-2">{detail.medicalRecord.vetPetDTO.petType}</td>
+                                                                </tr>
+                                                                <tr className="border-b border-gray-200">
+                                                                    <td className="py-2 font-semibold text-gray-600">Triệu Chứng</td>
+                                                                    <td className="py-2">{detail.medicalRecord.symptoms || 'N/A'}</td>
+                                                                </tr>
+                                                                <tr className="border-b border-gray-200">
+                                                                    <td className="py-2 font-semibold text-gray-600">Chẩn Đoán</td>
+                                                                    <td className="py-2">{detail.medicalRecord.diagnosis || 'N/A'}</td>
+                                                                </tr>
+                                                                <tr className="border-b border-gray-200">
+                                                                    <td className="py-2 font-semibold text-gray-600">Điều Trị</td>
+                                                                    <td className="py-2">{detail.medicalRecord.treatment || 'N/A'}</td>
+                                                                </tr>
+                                                                <tr className="border-b border-gray-200">
+                                                                    <td className="py-2 font-semibold text-gray-600">Vaccine Đã Sử Dụng</td>
+                                                                    <td className="py-2">{detail.vaccineName}</td>
+                                                                </tr>
+                                                                <tr className="border-b border-gray-200">
+                                                                    <td className="py-2 font-semibold text-gray-600">Dịch Vụ Đã Sử Dụng</td>
+                                                                    <td className="py-2">{detail.vetServiceName}</td>
+                                                                </tr>
+                                                                <tr>
+                                                                    <td className="py-2 font-semibold text-gray-600">Giá Dịch Vụ</td>
+                                                                    <td className="py-2">{formatPrice(detail.price)}</td>
+                                                                </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </motion.div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </motion.div>
+                            </AnimatePresence>
+
+                            <div className="flex justify-end mt-6">
                                 <button
                                     type="button"
                                     onClick={() => {
-                                        setShowForm(false);
+                                        setShowModal(false);
                                         setFormData(null);
+                                        setExpandedDetails({});
+                                        setActiveTab('invoiceInfo');
                                     }}
-                                    className="px-6 py-2 bg-gray-500 text-white rounded-full shadow-md hover:bg-gray-600 transition-all duration-300 transform hover:scale-105 disabled:opacity-50"
+                                    className="px-6 py-2 bg-[#7b4d2b] text-white rounded-full shadow-md hover:bg-[#6a3f1e] transition-all duration-300 transform hover:scale-105 disabled:opacity-50"
                                     disabled={isLoading}
                                 >
                                     Đóng
                                 </button>
                             </div>
-                        </div>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
 
-            {/* Template in hóa đơn */}
-            {formData && (
-                <div className="print-only hidden">
-                    <div className="p-4 max-w-sm mx-auto">
-                        <div className="text-center mb-2">
-                            <h1 className="text-xl font-bold">HÓA ĐƠN BỆNH VIỆN</h1>
-                            <p className="text-sm">Bệnh viện XYZ - 123 Đường ABC, TP.HCM</p>
-                            <p className="text-sm">Hotline: 0123 456 789</p>
-                        </div>
-                        <hr className="border-t border-dashed border-gray-400 mb-2" />
-                        <div className="mb-2">
-                            <h2 className="text-base font-semibold mb-1">Chi Tiết Hóa Đơn</h2>
-                            <div className="space-y-1 text-sm">
-                                <p>Mã Hóa Đơn: {formData.id}</p>
-                                <p>Tên Khách Hàng: {formData.customerName}</p>
-                                <p>Ngày Hóa Đơn: {formatDate(formData.date)}</p>
-                                <p>Ngày In: 12/04/2025</p>
-                                <p>Tổng Tiền: {new Intl.NumberFormat('vi-VN').format(formData.totalAmount)} đ</p>
-                                <p>Trạng Thái: {formData.status ? 'Đã thanh toán' : 'Chưa thanh toán'}</p>
-                                <p>Ghi Chú: {formData.note || 'N/A'}</p>
-                            </div>
-                        </div>
-                        <hr className="border-t border-dashed border-gray-400 mb-2" />
-                        <div className="text-center">
-                            <p className="text-sm">Cảm ơn quý khách đã sử dụng dịch vụ!</p>
-                            <p className="text-sm">Chúc quý khách sức khỏe dồi dào!</p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             <AnimatePresence mode="wait">
                 <motion.div
-                    key={currentPage} // Key thay đổi khi chuyển trang phân trang
+                    key={currentPage}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.3 }}
-                    className="no-print"
                 >
                     <h2 className="text-2xl font-bold text-[#7b4d2b] mb-6">Danh Sách Hóa Đơn</h2>
                     {isLoading ? (
@@ -436,13 +497,86 @@ const InvoiceManagement = () => {
                                 <table className="min-w-full bg-white rounded-xl shadow-md">
                                     <thead>
                                     <tr className="bg-[#7b4d2b] text-white">
-                                        <th className="py-3 px-4 text-left text-sm font-semibold">ID</th>
-                                        <th className="py-3 px-4 text-left text-sm font-semibold">Tên Khách Hàng</th>
-                                        <th className="py-3 px-4 text-left text-sm font-semibold">Ngày</th>
-                                        <th className="py-3 px-4 text-left text-sm font-semibold">Tổng Tiền</th>
-                                        <th className="py-3 px-4 text-left text-sm font-semibold">Trạng Thái</th>
-                                        <th className="py-3 px-4 text-left text-sm font-semibold">Ghi Chú</th>
-                                        <th className="py-3 px-4 text-left text-sm font-semibold">Hành Động</th>
+                                        <th
+                                            className="py-3 px-4 text-left text-sm font-semibold cursor-pointer hover:bg-[#6a3f1e] transition-all duration-200"
+                                            onClick={() => handleSort('id')}
+                                        >
+                                            <div className="flex items-center">
+                                                ID
+                                                {sortBy === 'id' && (
+                                                    sortOrder === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th
+                                            className="py-3 px-4 text-left text-sm font-semibold cursor-pointer hover:bg-[#6a3f1e] transition-all duration-200"
+                                            onClick={() => handleSort('customerName')}
+                                        >
+                                            <div className="flex items-center">
+                                                Tên Khách Hàng
+                                                {sortBy === 'customerName' && (
+                                                    sortOrder === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th
+                                            className="py-3 px-4 text-left text-sm font-semibold cursor-pointer hover:bg-[#6a3f1e] transition-all duration-200"
+                                            onClick={() => handleSort('phoneBoss')}
+                                        >
+                                            <div className="flex items-center">
+                                                Số Điện Thoại
+                                                {sortBy === 'phoneBoss' && (
+                                                    sortOrder === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th
+                                            className="py-3 px-4 text-left text-sm font-semibold cursor-pointer hover:bg-[#6a3f1e] transition-all duration-200"
+                                            onClick={() => handleSort('orderDate')}
+                                        >
+                                            <div className="flex items-center">
+                                                Ngày
+                                                {sortBy === 'orderDate' && (
+                                                    sortOrder === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th
+                                            className="py-3 px-4 text-left text-sm font-semibold cursor-pointer hover:bg-[#6a3f1e] transition-all duration-200"
+                                            onClick={() => handleSort('totalAmount')}
+                                        >
+                                            <div className="flex items-center">
+                                                Tổng Tiền
+                                                {sortBy === 'totalAmount' && (
+                                                    sortOrder === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th
+                                            className="py-3 px-4 text-left text-sm font-semibold cursor-pointer hover:bg-[#6a3f1e] transition-all duration-200"
+                                            onClick={() => handleSort('paymentStatus')}
+                                        >
+                                            <div className="flex items-center">
+                                                Trạng Thái
+                                                {sortBy === 'paymentStatus' && (
+                                                    sortOrder === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th
+                                            className="py-3 px-4 text-left text-sm font-semibold cursor-pointer hover:bg-[#6a3f1e] transition-all duration-200"
+                                            onClick={() => handleSort('note')}
+                                        >
+                                            <div className="flex items-center">
+                                                Ghi Chú
+                                                {sortBy === 'note' && (
+                                                    sortOrder === 'asc' ? <ChevronUp className="w-4 h-4 ml-1" /> : <ChevronDown className="w-4 h-4 ml-1" />
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th className="py-3 px-4 text-left text-sm font-semibold">
+                                            Hành Động
+                                        </th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -456,41 +590,33 @@ const InvoiceManagement = () => {
                                         >
                                             <td className="py-3 px-4 text-sm text-gray-700">{invoice.id}</td>
                                             <td className="py-3 px-4 text-sm text-gray-700">{invoice.customerName}</td>
-                                            <td className="py-3 px-4 text-sm text-gray-700">{formatDate(invoice.date)}</td>
+                                            <td className="py-3 px-4 text-sm text-gray-700">{invoice.phoneBoss}</td>
+                                            <td className="py-3 px-4 text-sm text-gray-700">{formatDate(invoice.orderDate)}</td>
                                             <td className="py-3 px-4 text-sm text-gray-700">
                                                 {formatPrice(invoice.totalAmount)}
                                             </td>
                                             <td className="py-3 px-4 text-sm">
-                                                {invoice.status ? (
+                                                {invoice.paymentStatus ? (
                                                     <span className="flex items-center text-green-600">
-                                                            <CheckCircle className="w-4 h-4 mr-1" /> Đã thanh toán
-                                                        </span>
+                                                        <CheckCircle className="w-4 h-4 mr-1" /> Đã thanh toán
+                                                    </span>
                                                 ) : (
                                                     <span className="flex items-center text-red-600">
-                                                            <XCircle className="w-4 h-4 mr-1" /> Chưa thanh toán
-                                                        </span>
+                                                        <XCircle className="w-4 h-4 mr-1" /> Chưa thanh toán
+                                                    </span>
                                                 )}
                                             </td>
                                             <td className="py-3 px-4 text-sm text-gray-700">
                                                 {invoice.note || 'N/A'}
                                             </td>
                                             <td className="py-3 px-4 text-sm">
-                                                <div className="flex space-x-2">
-                                                    <button
-                                                        onClick={() => handleViewInvoice(invoice)}
-                                                        className="text-[#7b4d2b] hover:text-[#6a3f1e] disabled:opacity-50"
-                                                        disabled={isLoading}
-                                                    >
-                                                        <Eye className="w-5 h-5" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteInvoice(invoice.id)}
-                                                        className="text-red-500 hover:text-red-600 disabled:opacity-50"
-                                                        disabled={isLoading}
-                                                    >
-                                                        <Trash2 className="w-5 h-5" />
-                                                    </button>
-                                                </div>
+                                                <button
+                                                    onClick={() => handleViewInvoice(invoice)}
+                                                    className="text-[#7b4d2b] hover:text-[#6a3f1e] disabled:opacity-50"
+                                                    disabled={isLoading}
+                                                >
+                                                    <Eye className="w-5 h-5" />
+                                                </button>
                                             </td>
                                         </motion.tr>
                                     ))}
@@ -506,7 +632,7 @@ const InvoiceManagement = () => {
                                             currentPage === 1 || isLoading
                                                 ? 'bg-gray-300 cursor-not-allowed'
                                                 : 'bg-[#7b4d2b] text-white hover:bg-[#6a3f1e]'
-                                        } transition-all duration-300`}
+                                        } transition-all duration-200`}
                                     >
                                         <ChevronLeft className="w-5 h-5" />
                                     </button>
@@ -518,7 +644,7 @@ const InvoiceManagement = () => {
                                                 currentPage === index + 1
                                                     ? 'bg-[#7b4d2b] text-white'
                                                     : 'bg-gray-200 text-gray-700 hover:bg-[#e8dfd7]'
-                                            } transition-all duration-300 ${
+                                            } transition-all duration-200 ${
                                                 isLoading ? 'cursor-not-allowed opacity-50' : ''
                                             }`}
                                             disabled={isLoading}
@@ -533,7 +659,7 @@ const InvoiceManagement = () => {
                                             currentPage === totalPages || isLoading
                                                 ? 'bg-gray-300 cursor-not-allowed'
                                                 : 'bg-[#7b4d2b] text-white hover:bg-[#6a3f1e]'
-                                        } transition-all duration-300`}
+                                        } transition-all duration-200`}
                                     >
                                         <ChevronRight className="w-5 h-5" />
                                     </button>
@@ -543,32 +669,6 @@ const InvoiceManagement = () => {
                     )}
                 </motion.div>
             </AnimatePresence>
-
-            {/* CSS cho in */}
-            {/* eslint-disable-next-line react/no-unknown-property */}
-            <style jsx global>{`
-                @media print {
-                    .no-print {
-                        display: none !important;
-                    }
-                    .print-only {
-                        display: block !important;
-                    }
-                    body {
-                        margin: 0;
-                        padding: 0;
-                        font-family: Arial, sans-serif;
-                    }
-                    .invoice {
-                        width: 100%;
-                        padding: 20px;
-                        box-sizing: border-box;
-                    }
-                    h1 { font-size: 18px; }
-                    h2 { font-size: 14px; }
-                    p  { font-size: 12px; }
-                }
-            `}</style>
         </motion.div>
     );
 };

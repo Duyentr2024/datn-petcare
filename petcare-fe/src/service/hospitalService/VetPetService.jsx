@@ -1,6 +1,6 @@
 // VetPetService.js
 import API_BASE_URL from '../../config';
-const BASE_URL = `${API_BASE_URL}/api/pets`; // Sử dụng biến từ config
+const BASE_URL = `${API_BASE_URL}/api/vet/pets`; // Sử dụng biến từ config
 
 
 /**

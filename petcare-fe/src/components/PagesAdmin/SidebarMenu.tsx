@@ -167,6 +167,14 @@ const SidebarMenu = () => {
                       Hóa đơn online
                     </Link>
                   </li>
+                  <li>
+                    <Link
+                        to="/admin/invoice-hospital"
+                        className="block p-2 rounded-lg hover:bg-[#80DEEA] transition duration-300"
+                    >
+                      Hóa đơn hospital
+                    </Link>
+                  </li>
                 </ul>
               )}
             </li>
