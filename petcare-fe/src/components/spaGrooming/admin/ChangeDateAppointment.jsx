@@ -41,10 +41,17 @@ const ChangeDateAppointment = ({ isVisible, onCancel, bookingData, onSuccess }) 
     const isAvailable = slotData && slotData.availableSlots > 0;
     const remainingSlots = slotData ? slotData.availableSlots : 0;
     
+    // Kiểm tra xem khung giờ có phải là trong quá khứ so với thời gian hiện tại không
+    const now = dayjs();
+    const currentDate = dayjs().format('YYYY-MM-DD');
+    const selectedDate = appointmentDate ? appointmentDate.format('YYYY-MM-DD') : '';
+    const isToday = currentDate === selectedDate;
+    const isPastTime = isToday && hour < now.hour();
+    
     return {
       value: time,
       label: `${time} ${isAvailable ? `(còn ${remainingSlots} slot)` : '(hết chỗ)'}`,
-      disabled: !isAvailable && appointmentTime !== time
+      disabled: (!isAvailable && appointmentTime !== time) || isPastTime
     };
   });
 
@@ -132,6 +139,14 @@ const ChangeDateAppointment = ({ isVisible, onCancel, bookingData, onSuccess }) 
       message.error('Khung giờ này không có đủ slot trống');
       return;
     }
+    
+    // Kiểm tra lịch không nằm trong quá khứ
+    const now = dayjs();
+    const selectedDateTime = appointmentDate.clone().hour(parseInt(appointmentTime.split(':')[0]));
+    if (selectedDateTime.isBefore(now)) {
+      message.error('Không thể đặt lịch trong quá khứ');
+      return;
+    }
 
     // Kiểm tra nếu giống thời gian hiện tại
     const newDateStr = appointmentDate.format('YYYY-MM-DD');
@@ -206,6 +221,7 @@ const ChangeDateAppointment = ({ isVisible, onCancel, bookingData, onSuccess }) 
             value={appointmentDate}
             onChange={handleDateChange}
             suffixIcon={<CalendarOutlined />}
+            disabledDate={(current) => current && current < dayjs().startOf('day')}
           />
         </div>
 

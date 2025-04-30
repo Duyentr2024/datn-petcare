@@ -9,6 +9,21 @@ import dayjs from 'dayjs';
 const formatDate = (dateString) => (dateString ? dayjs(dateString).format('DD/MM/YYYY') : '-');
 const formatTime = (timeString) => (timeString || '-');
 
+// Hàm chuẩn hóa tên thú cưng
+const getPetName = (pet) => {
+  return pet.name || pet['name-pet'] || pet.namePet || pet.pet_name || 'Không có tên';
+};
+
+// Hàm chuẩn hóa loại thú cưng
+const formatPetType = (type) => {
+  if (!type) return 'Không xác định';
+  
+  const typeLower = type.toLowerCase();
+  if (typeLower === 'dog') return 'Chó';
+  if (typeLower === 'cat') return 'Mèo';
+  return type;
+};
+
 const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookings, setRefreshSlotDate }) => {
   const [isUpdateModalVisible, setIsUpdateModalVisible] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -482,21 +497,21 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center">
                   <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3 text-blue-600 font-medium">
-                    {(pet.name || pet['name-pet'] || pet.namePet || pet.pet_name) ? (pet.name || pet['name-pet'] || pet.namePet || pet.pet_name).charAt(0).toUpperCase() : 'P'}
+                    {getPetName(pet).charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <div className="font-medium text-base mb-1">
-                        {pet.name || pet['name-pet'] || pet.namePet || pet.pet_name || 'Không có tên'}
+                        {getPetName(pet)}
                       </div>
                     </div>
-                    <p className="text-gray-500 text-sm">{pet.petType || pet.type || ''}</p>
+                    <p className="text-gray-500 text-sm">{formatPetType(pet.petType || pet.type)}</p>
                   </div>
                 </div>
                 {selectedAppointmentPets.length > 1 && (
                   <Popconfirm
                     title="Xóa thú cưng khỏi lịch hẹn"
-                    description={`Bạn có chắc chắn muốn xóa ${pet.name || pet['name-pet'] || pet.namePet || pet.pet_name || 'thú cưng này'} khỏi lịch hẹn?`}
+                    description={`Bạn có chắc chắn muốn xóa ${getPetName(pet)} khỏi lịch hẹn?`}
                     onConfirm={() => handleDeletePet(selectedAppointmentId, pet.id)}
                     okText="Xóa"
                     cancelText="Hủy"

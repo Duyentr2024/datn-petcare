@@ -25,7 +25,7 @@ const ServiceModal = memo(
           // Thêm pet forms nếu thiếu
           const newPets = [...pets];
           for (let i = currentPetCount; i < desiredPetCount; i++) {
-            newPets.push({ id: i + 1, petType: "", service: "", weight: "", note: "", price: 0 });
+            newPets.push({ id: i + 1, petType: "", service: "", weight: "", note: "", price: 0, name: "" });
           }
           setPets(newPets);
         } else if (currentPetCount > desiredPetCount) {
@@ -39,6 +39,8 @@ const ServiceModal = memo(
 
     // Hàm xử lý thay đổi giá trị của thú cưng và cập nhật tên lên DB nếu thú cưng đã có ID trong DB
     const handlePetChangeWithPersist = (index, field, value) => {
+      console.log(`Changing pet[${index}].${field} to:`, value);
+      
       setPets((prevPets) => {
         const newPets = [...prevPets];
         const updatedPet = { ...newPets[index], [field]: value };
@@ -61,8 +63,13 @@ const ServiceModal = memo(
 
           if (selectedService && selectedWeight) {
             updatedPet.price = selectedService.price * selectedWeight.priceMultiplier;
+            console.log(`Calculated price for pet ${index + 1}:`, updatedPet.price);
           } else {
             updatedPet.price = 0;
+            console.log(`Could not calculate price for pet ${index + 1} due to missing info:`, {
+              service: selectedService,
+              weight: selectedWeight
+            });
           }
         } else {
           updatedPet.price = 0;
@@ -137,12 +144,7 @@ const ServiceModal = memo(
                     type="text"
                     value={pet.name || ''}
                     onChange={(e) => handlePetChangeWithPersist(index, 'name', e.target.value)}
-                    onBlur={(e) => {
-                      if (!e.target.value.trim()) {
-                        handlePetChangeWithPersist(index, 'name', `Thú cưng ${index + 1}`);
-                      }
-                    }}
-                    placeholder="Nhập tên thú cưng"
+                    placeholder={`Nhập tên thú cưng ${index + 1}`}
                     className={`px-2 py-1 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#026AC7] ${
                       !pet.name && serviceErrors.petInfo ? 'border-red-500' : 'border-gray-300'
                     }`}

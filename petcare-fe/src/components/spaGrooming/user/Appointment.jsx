@@ -475,17 +475,49 @@ const Appointment = () => {
     };
 
     const handleApiBooking = async () => {
-        if (!selectedTime || !customerInfo.fullName || !customerInfo.phone || !customerInfo.paymentType) {
-          showToast("Vui lòng điền đầy đủ thông tin!", "warning");
+        // Debug logs to see what values we have
+        console.log("Booking data check:", {
+          selectedDate,
+          selectedTime,
+          selectedTimeBlock,
+          customerInfo,
+          pets,
+          selectedSlots
+        });
+        
+        // Check for customer info
+        if (!customerInfo.fullName || !customerInfo.phone || !customerInfo.paymentType) {
+          console.log("Missing customer info:", customerInfo);
+          showToast("Vui lòng điền đầy đủ thông tin khách hàng!", "warning");
           return;
         }
       
-        if (!selectedDate || !selectedTime || !pets || pets.length === 0 || !selectedSlots || selectedSlots.length === 0) {
-          showToast("Vui lòng chọn ngày, thời gian và thông tin thú cưng!", "warning");
+        // Check for time selection
+        if (!selectedDate || !selectedTimeBlock) {
+          console.log("Missing date/time selection");
+          showToast("Vui lòng chọn ngày và khung giờ!", "warning");
+          return;
+        }
+        
+        // Ensure we have the correct time format
+        const selectedTimeValue = selectedTimeBlock;
+        
+        // Check for pet selection
+        if (!pets || pets.length === 0 || !selectedSlots || selectedSlots.length === 0) {
+          console.log("Missing pet info or slots");
+          showToast("Vui lòng chọn thông tin thú cưng và slot!", "warning");
           return;
         }
       
-        const isPetInfoValid = pets.every((pet) => pet.petType && pet.service && pet.weight && pet.price);
+        // Validate each pet's info
+        const isPetInfoValid = pets.every((pet) => {
+          const isValid = pet.petType && pet.service && pet.weight && pet.price > 0;
+          if (!isValid) {
+            console.log("Invalid pet data:", pet);
+          }
+          return isValid;
+        });
+        
         if (!isPetInfoValid) {
           showToast("Vui lòng nhập đầy đủ thông tin cho tất cả thú cưng!", "warning");
           return;
@@ -495,6 +527,7 @@ const Appointment = () => {
           setIsLoading(true);
       
           const formatTime = (timeStr) => {
+            if (!timeStr) return "00:00:00";
             const [hours, minutes] = timeStr.split(':').map(Number);
             return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`;
           };
@@ -505,7 +538,7 @@ const Appointment = () => {
       
           const payload = {
             date: selectedDate.toISOString().split("T")[0],
-            time: formatTime(selectedTime),
+            time: formatTime(selectedTimeValue),
             customerName: customerInfo.fullName,
             phone: customerInfo.phone,
             paymentType: customerInfo.paymentType,
@@ -514,18 +547,33 @@ const Appointment = () => {
             paidAmount: paidAmount,
             appointmentSlots: selectedSlots,
             pets: pets.map((pet) => {
+              // Make sure we get numeric values for IDs
               const petServiceId = parseInt(pet.service, 10);
               const petWeightId = parseInt(pet.weight, 10);
               
-              if (!petServiceId || !petWeightId) {
+              // Debug log for pet data conversion
+              console.log("Processing pet data:", {
+                original: pet,
+                converted: {
+                  name: pet.name || `Thú cưng ${pets.indexOf(pet) + 1}`,
+                  petType: pet.petType.toUpperCase(),
+                  petServiceId,
+                  petWeightId,
+                  note: pet.note || "",
+                  price: pet.price || 0,
+                }
+              });
+              
+              if (isNaN(petServiceId) || isNaN(petWeightId)) {
+                console.error("Invalid pet service or weight ID:", { service: pet.service, weight: pet.weight });
                 throw new Error("Dữ liệu dịch vụ hoặc cân nặng không hợp lệ");
               }
       
               return {
                 name: pet.name || `Thú cưng ${pets.indexOf(pet) + 1}`,
                 petType: pet.petType.toUpperCase(),
-                petServiceId: petServiceId, // Sử dụng petServiceId thay vì petService
-                petWeightId: petWeightId,   // Sử dụng petWeightId thay vì petWeight
+                petServiceId: petServiceId,
+                petWeightId: petWeightId,
                 note: pet.note || "",
                 price: pet.price || 0,
               };
@@ -536,7 +584,7 @@ const Appointment = () => {
       
           const isAvailable = await BookingService.checkSlotAvailability(
             payload.date,
-            selectedTime,
+            selectedTimeValue,
             payload.pets.length
           );
       
@@ -562,16 +610,53 @@ const Appointment = () => {
       };
 
     const handleServiceConfirm = () => {
+        // Debug logging to see what data we have
+        console.log("Service confirmation check:", {
+            pets,
+            selectedSlots
+        });
+        
+        // Check if pet count matches slot count
         const isPetCountValid = pets.length === selectedSlots.length;
-        const isPetInfoValid = pets.every((pet) => pet.petType && pet.service && pet.weight && pet.price);
+        if (!isPetCountValid) {
+            console.log("Pet count doesn't match slot count", {
+                petCount: pets.length, 
+                slotCount: selectedSlots.length
+            });
+        }
+        
+        // Check if every pet has all required info
+        const isPetInfoValid = pets.every((pet, index) => {
+            const isValid = 
+                pet.name && // Check name
+                pet.petType && // Check pet type
+                pet.service && // Check service
+                pet.weight && // Check weight
+                pet.price > 0; // Check price
+                
+            if (!isValid) {
+                console.log(`Pet ${index + 1} has invalid data:`, pet);
+            }
+            
+            return isValid;
+        });
 
-        setServiceErrors({ petCount: !isPetCountValid, petInfo: !isPetInfoValid });
+        setServiceErrors({ 
+            petCount: !isPetCountValid, 
+            petInfo: !isPetInfoValid 
+        });
 
         if (isPetCountValid && isPetInfoValid) {
+            console.log("All pet information is valid, proceeding to customer info");
             setIsServiceModalOpen(false);
             setIsCustomerModalOpen(true);
         } else {
-            showToast("Vui lòng nhập đầy đủ thông tin cho tất cả thú cưng!", "warning");
+            // Show specific error message based on what's missing
+            if (!isPetCountValid) {
+                showToast("Số lượng thú cưng phải khớp với số lượng slot đã chọn!", "warning");
+            } else if (!isPetInfoValid) {
+                showToast("Vui lòng nhập đầy đủ thông tin cho tất cả thú cưng!", "warning");
+            }
         }
     };
 

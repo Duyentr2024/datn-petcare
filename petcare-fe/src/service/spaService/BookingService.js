@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// Function to validate URL
 const isValidUrl = (string) => {
     try {
         new URL(string);
@@ -10,10 +9,27 @@ const isValidUrl = (string) => {
     }
 };
 
-// Get environment variable
+const retryRequest = async (requestFn, maxRetries = 2, retryDelay = 1000) => {
+    let lastError;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            return await requestFn();
+        } catch (error) {
+            console.warn(`Request failed (attempt ${attempt + 1}/${maxRetries + 1}):`, error.message);
+            lastError = error;
+            if (error.response && error.response.status >= 400 && error.response.status < 500) {
+                throw error;
+            }
+            if (attempt < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+            }
+        }
+    }
+    throw lastError;
+};
+
 const envApiUrl = import.meta.env.VITE_API_BASE_URL;
 
-// Determine the API base URL with fallbacks and validation
 let API_BASE_URL;
 if (envApiUrl && isValidUrl(envApiUrl)) {
     API_BASE_URL = `${envApiUrl}/api`;
@@ -59,19 +75,14 @@ const BookingService = {
     getAvailableSlots: async (date) => {
         try {
             console.log('Fetching available slots for date:', date);
-            
-            // Helper function to normalize time format
             const normalizeTime = (timeStr) => {
                 if (!timeStr) return '';
-                // Convert to HH:mm format
                 const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
-                // Ensure leading zeros for single-digit hours
-                if (formattedTime.length === 4) { // If format is like "8:00"
+                if (formattedTime.length === 4) {
                     return `0${formattedTime}`;
                 }
                 return formattedTime;
             };
-            
             const response = await axios.get(`${API_BASE_URL}/time-slots`, {
                 params: { date },
                 timeout: 10000,
@@ -86,8 +97,6 @@ const BookingService = {
                 console.warn('Response afternoon slots is not an array, using empty array instead');
                 result.afternoon = [];
             }
-            
-            // Process morning slots
             result.morning = result.morning.map(slot => {
                 const normalizedTime = normalizeTime(slot.time || slot.hour || '');
                 return {
@@ -100,8 +109,6 @@ const BookingService = {
                     isMorning: slot.isMorning !== undefined ? slot.isMorning : true
                 };
             });
-            
-            // Process afternoon slots
             result.afternoon = result.afternoon.map(slot => {
                 const normalizedTime = normalizeTime(slot.time || slot.hour || '');
                 return {
@@ -114,7 +121,6 @@ const BookingService = {
                     isMorning: slot.isMorning !== undefined ? slot.isMorning : false
                 };
             });
-            
             console.log('Processed available slots result with normalized times:', result);
             return result;
         } catch (error) {
@@ -126,23 +132,20 @@ const BookingService = {
     getConfirmedSlots: async (date) => {
         try {
             console.log('Fetching confirmed slots for date:', date);
-            
-            // Helper function to normalize time format
             const normalizeTime = (timeStr) => {
                 if (!timeStr) return '';
-                // Convert to HH:mm format
                 const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
-                // Ensure leading zeros for single-digit hours
-                if (formattedTime.length === 4) { // If format is like "8:00"
+                if (formattedTime.length === 4) {
                     return `0${formattedTime}`;
                 }
                 return formattedTime;
             };
-            
-            const response = await axios.get(`${API_BASE_URL}/time-slots/confirmed`, {
-                params: { date },
-                timeout: 10000,
-            });
+            const response = await retryRequest(() => 
+                axios.get(`${API_BASE_URL}/time-slots/confirmed`, {
+                    params: { date },
+                    timeout: 10000,
+                })
+            );
             console.log('Confirmed slots response:', response.data);
             const result = response.data || { morning: [], afternoon: [] };
             if (!Array.isArray(result.morning)) {
@@ -153,10 +156,7 @@ const BookingService = {
                 console.warn('Response afternoon slots is not an array, using empty array instead');
                 result.afternoon = [];
             }
-            
-            // Process and normalize morning slots
             result.morning = result.morning.map(slot => {
-                // Normalize time format
                 if (slot.time || slot.hour) {
                     const normalizedTime = normalizeTime(slot.time || slot.hour);
                     slot.hour = normalizedTime;
@@ -164,10 +164,7 @@ const BookingService = {
                 }
                 return slot;
             });
-            
-            // Process and normalize afternoon slots
             result.afternoon = result.afternoon.map(slot => {
-                // Normalize time format
                 if (slot.time || slot.hour) {
                     const normalizedTime = normalizeTime(slot.time || slot.hour);
                     slot.hour = normalizedTime;
@@ -175,7 +172,6 @@ const BookingService = {
                 }
                 return slot;
             });
-            
             console.log('Processed confirmed slots result with normalized times:', result);
             return result;
         } catch (error) {
@@ -198,11 +194,27 @@ const BookingService = {
 
     getPetsByAppointmentId: async (appointmentId) => {
         try {
+            console.log(`Fetching pets for appointment ID ${appointmentId}`);
             const response = await axios.get(`${API_BASE_URL}/appointments/${appointmentId}/pets`, {
                 timeout: 10000,
             });
-            console.log('Pets fetched for appointment ID', appointmentId, ':', response.data);
-            return response.data;
+            if (!response.data || !Array.isArray(response.data)) {
+                console.error('Invalid response format for pets:', response.data);
+                return [];
+            }
+            const enhancedData = response.data.map(pet => {
+                const petWeightId = pet.petWeightId || pet.weightId || pet.weight_id;
+                const weightRange = pet.weightRange || pet.weight_range || "Chưa xác định";
+                return {
+                    ...pet,
+                    petWeightId: petWeightId,
+                    weightRange: weightRange,
+                    name: pet.name || pet.petName || pet.pet_name || `Thú cưng ${pet.id}`,
+                    petType: pet.petType || pet.type || "DOG",
+                };
+            });
+            console.log('Enhanced pet data:', enhancedData);
+            return enhancedData;
         } catch (error) {
             console.error('Error fetching pets by appointment ID:', error);
             throw new Error(error.message || 'Không thể tải thông tin thú cưng');
@@ -234,119 +246,101 @@ const BookingService = {
 
     bookAppointment: async (payload) => {
         try {
-          console.log('Booking appointment with payload:', payload);
-      
-          let formattedTime = payload.time;
-          if (formattedTime && !formattedTime.includes(':')) {
-            formattedTime = `${formattedTime}:00`;
-          }
-      
-          const formattedPayload = {
-            date: payload.date,
-            time: formattedTime,
-            customerName: payload.customerName,
-            phone: payload.phone,
-            paymentType: payload.paymentType,
-            depositAmount: payload.depositAmount,
-            totalAmount: payload.totalAmount,
-            paidAmount: payload.paidAmount,
-            pets: payload.pets.map(pet => {
-              const petServiceId = parseInt(pet.petService?.id || pet.petServiceId, 10);
-              const petWeightId = parseInt(pet.petWeight?.petWeightId || pet.petWeightId, 10);
-      
-              if (!petServiceId || !petWeightId) {
-                throw new Error("Dữ liệu dịch vụ hoặc cân nặng không hợp lệ");
-              }
-      
-              return {
-                name: pet.name,
-                petType: pet.petType,
-                petServiceId: petServiceId, // Sử dụng petServiceId thay vì petService
-                petWeightId: petWeightId,   // Sử dụng petWeightId thay vì petWeight
-                note: pet.note,
-                price: pet.price
-              };
-            }),
-            paymentStatus: payload.paymentStatus,
-            paymentMethod: payload.paymentMethod,
-            paymentChannel: payload.paymentChannel,
-          };
-      
-          console.log('Formatted payload being sent to backend:', formattedPayload);
-          const response = await axios.post(`${API_BASE_URL}/appointments`, formattedPayload);
-          console.log('Book appointment response:', response.data);
-          return { success: true, data: response.data };
+            console.log('Booking appointment with payload:', payload);
+            let formattedTime = payload.time;
+            if (formattedTime && !formattedTime.includes(':')) {
+                formattedTime = `${formattedTime}:00`;
+            }
+            const formattedPayload = {
+                date: payload.date,
+                time: formattedTime,
+                customerName: payload.customerName,
+                phone: payload.phone,
+                paymentType: payload.paymentType,
+                depositAmount: payload.depositAmount,
+                totalAmount: payload.totalAmount,
+                paidAmount: payload.paidAmount,
+                pets: payload.pets.map(pet => {
+                    const petServiceId = parseInt(pet.petService?.id || pet.petServiceId, 10);
+                    const petWeightId = parseInt(pet.petWeight?.petWeightId || pet.petWeightId, 10);
+                    if (!petServiceId || !petWeightId) {
+                        throw new Error("Dữ liệu dịch vụ hoặc cân nặng không hợp lệ");
+                    }
+                    return {
+                        name: pet.name,
+                        petType: pet.petType,
+                        petServiceId: petServiceId,
+                        petWeightId: petWeightId,
+                        note: pet.note,
+                        price: pet.price
+                    };
+                }),
+                paymentStatus: payload.paymentStatus,
+                paymentMethod: payload.paymentMethod,
+                paymentChannel: payload.paymentChannel,
+            };
+            console.log('Formatted payload being sent to backend:', formattedPayload);
+            const response = await axios.post(`${API_BASE_URL}/appointments`, formattedPayload);
+            console.log('Book appointment response:', response.data);
+            return { success: true, data: response.data };
         } catch (error) {
-          console.error('Error booking appointment:', error);
-          let errorMessage = 'Không thể đặt lịch hẹn';
-          if (error.response && error.response.data) {
-            errorMessage = error.response.data.message || error.response.data || errorMessage;
-          } else if (error.message) {
-            errorMessage = error.message;
-          }
-          return { success: false, message: errorMessage };
+            console.error('Error booking appointment:', error);
+            let errorMessage = 'Không thể đặt lịch hẹn';
+            if (error.response && error.response.data) {
+                errorMessage = error.response.data.message || error.response.data || errorMessage;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            return { success: false, message: errorMessage };
         }
-      },
+    },
 
     checkSlotAvailability: async (date, time, requiredSlots) => {
         try {
-          const normalizeTime = (timeStr) => {
-            if (!timeStr) return '';
-            const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
-            if (formattedTime.length === 4) {
-              return `0${formattedTime}`;
-            }
-            return formattedTime.split(':').slice(0, 2).join(':'); // Chỉ lấy HH:mm
-          };
-      
-          const normalizedTime = normalizeTime(time);
-          console.log(`Checking availability for normalized time: ${normalizedTime}`);
-      
-          const slots = await BookingService.getAvailableSlots(date);
-          const allSlots = [...(slots.morning || []), ...(slots.afternoon || [])];
-      
-          const slot = allSlots.find(s => {
-            const slotTime = normalizeTime(s.time || s.hour);
-            return slotTime === normalizedTime;
-          });
-      
-          console.log(`Slot found for ${normalizedTime}:`, slot);
-          return slot && slot.availableSlots >= requiredSlots;
-        } catch (error) {
-          console.error('Error checking slot availability:', error);
-          return false;
-        }
-      },
-
-    checkSlotAvailabilityFromState: async (date, time, requiredSlots, timeSlotsState, selectedSession) => {
-        try {
-            // Normalize time format for consistent comparison
             const normalizeTime = (timeStr) => {
                 if (!timeStr) return '';
-                // Convert to HH:mm format
                 const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
-                // Ensure leading zeros for single-digit hours
-                if (formattedTime.length === 4) { // If format is like "8:00"
+                if (formattedTime.length === 4) {
                     return `0${formattedTime}`;
                 }
-                return formattedTime;
+                return formattedTime.split(':').slice(0, 2).join(':');
             };
-
-            // Get the normalized time string for comparison
             const normalizedTime = normalizeTime(time);
-            console.log(`Checking availability from state for normalized time: ${normalizedTime}`);
-            
-            const allSlots = [
-                ...(timeSlotsState.morning || []),
-                ...(timeSlotsState.afternoon || [])
-            ];
-            
-            // Find matching slot using normalized time comparisons
+            console.log(`Checking availability for normalized time: ${normalizedTime}`);
+            const slots = await BookingService.getAvailableSlots(date);
+            const allSlots = [...(slots.morning || []), ...(slots.afternoon || [])];
             const slot = allSlots.find(s => {
                 const slotTime = normalizeTime(s.time || s.hour);
                 return slotTime === normalizedTime;
             });
-            
+            console.log(`Slot found for ${normalizedTime}:`, slot);
+            return slot && slot.availableSlots >= requiredSlots;
+        } catch (error) {
+            console.error('Error checking slot availability:', error);
+            return false;
+        }
+    },
+
+    checkSlotAvailabilityFromState: async (date, time, requiredSlots, timeSlotsState, selectedSession) => {
+        try {
+            const normalizeTime = (timeStr) => {
+                if (!timeStr) return '';
+                const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
+                if (formattedTime.length === 4) {
+                    return `0${formattedTime}`;
+                }
+                return formattedTime;
+            };
+            const normalizedTime = normalizeTime(time);
+            console.log(`Checking availability from state for normalized time: ${normalizedTime}`);
+            const allSlots = [
+                ...(timeSlotsState.morning || []),
+                ...(timeSlotsState.afternoon || [])
+            ];
+            const slot = allSlots.find(s => {
+                const slotTime = normalizeTime(s.time || s.hour);
+                return slotTime === normalizedTime;
+            });
             console.log(`Slot found from state for ${normalizedTime}:`, slot);
             return slot && slot.availableSlots >= requiredSlots;
         } catch (error) {
@@ -357,10 +351,12 @@ const BookingService = {
 
     getConfirmedAppointmentsByDate: async (date) => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/appointments/confirmed`, {
-                params: { date },
-                timeout: 10000,
-            });
+            const response = await retryRequest(() => 
+                axios.get(`${API_BASE_URL}/appointments/confirmed`, {
+                    params: { date },
+                    timeout: 10000,
+                })
+            );
             return response.data;
         } catch (error) {
             console.error('Error fetching confirmed appointments:', error);
@@ -370,17 +366,15 @@ const BookingService = {
 
     getConfirmedAppointmentsByDateAndTime: async (date, time) => {
         try {
-            // Normalize time format
             const normalizedTime = time.includes(':') ? time : `${time}:00`;
-            // Add leading zero if needed
             const formattedTime = normalizedTime.length === 4 ? `0${normalizedTime}` : normalizedTime;
-            
             console.log(`Fetching confirmed appointments for date: ${date}, time: ${formattedTime}`);
-            
-            const response = await axios.get(`${API_BASE_URL}/appointments/confirmed-by-date-and-time`, {
-                params: { date, time: formattedTime },
-                timeout: 10000,
-            });
+            const response = await retryRequest(() => 
+                axios.get(`${API_BASE_URL}/appointments/confirmed-by-date-and-time`, {
+                    params: { date, time: formattedTime },
+                    timeout: 10000,
+                })
+            );
             return response.data;
         } catch (error) {
             console.error('Error fetching confirmed appointments by date and time:', error);
@@ -457,13 +451,10 @@ const BookingService = {
             console.log('Updating appointment with payload:', payload);
             let attempts = 0;
             const maxAttempts = 3;
-            
-            // Ensure time format is HH:mm
             const formatTimeString = (timeStr) => {
                 if (!timeStr) return timeStr;
                 return timeStr.includes(':') ? timeStr : `${timeStr}:00`;
             };
-            
             while (attempts < maxAttempts) {
                 try {
                     const requestPayload = {
@@ -474,7 +465,6 @@ const BookingService = {
                         note: payload.note,
                         _requestId: payload._requestId || Math.random().toString(36).substring(2, 15) + Date.now()
                     };
-                    
                     console.log('Formatted update payload:', requestPayload);
                     const response = await axios.put(`${API_BASE_URL}/appointments/${payload.appointmentId}`, requestPayload);
                     console.log('Update appointment response:', response.data);
@@ -482,11 +472,9 @@ const BookingService = {
                 } catch (error) {
                     attempts++;
                     console.error(`Error updating appointment (attempt ${attempts}/${maxAttempts}):`, error);
-                    
                     if (!error.response?.data?.message?.includes('Duplicate entry') || attempts >= maxAttempts) {
                         throw error;
                     }
-                    
                     await new Promise(resolve => setTimeout(resolve, 500));
                 }
             }
@@ -500,49 +488,192 @@ const BookingService = {
         }
     },
 
-    // Add a new debug function that can be used to check if there's any issue with the server-side availability
     debugCheckSlotAvailability: async (date, time, numPets = 1) => {
         try {
-            // Normalize time format
             const normalizeTime = (timeStr) => {
                 if (!timeStr) return '';
-                // Convert to HH:mm format
                 const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
-                // Ensure leading zeros for single-digit hours
-                if (formattedTime.length === 4) { // If format is like "8:00"
+                if (formattedTime.length === 4) {
                     return `0${formattedTime}`;
                 }
                 return formattedTime;
             };
-            
             const normalizedTime = normalizeTime(time);
             console.log(`Debug checking slot availability for date: ${date}, time: ${normalizedTime}, pets: ${numPets}`);
-            
-            // First check if we can get the slot by querying the debug endpoint
             try {
                 const infoResponse = await axios.get(`${API_BASE_URL}/debug/slot-info`, {
                     params: { date, time: normalizedTime },
                     timeout: 10000,
                 });
                 console.log('Slot info response:', infoResponse.data);
-                
-                // Now try resetting the slot to ensure it's up to date
                 const resetResponse = await axios.post(`${API_BASE_URL}/debug/reset-slot`, null, {
                     params: { date, time: normalizedTime },
                     timeout: 10000,
                 });
                 console.log('Slot reset response:', resetResponse.data);
-                
-                // Now check if the reset slot has enough availability
                 return resetResponse.data.availableSlots >= numPets;
             } catch (error) {
                 console.error('Error with debug endpoint, falling back to regular check:', error);
-                // Fall back to regular availability check
                 return BookingService.checkSlotAvailability(date, normalizedTime, numPets);
             }
         } catch (error) {
             console.error('Error in debug check slot availability:', error);
             return false;
+        }
+    },
+
+    getPetWeights: async () => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/pet-weights`, {
+                timeout: 10000,
+            });
+            console.log('Pet weights fetched:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching pet weights:', error);
+            throw new Error('Không thể tải danh sách cân nặng');
+        }
+    },
+
+    getPetWeightsByType: async (petType) => {
+        try {
+            console.log(`Fetching weights for pet type: ${petType}`);
+            const response = await retryRequest(() => 
+                axios.get(`${API_BASE_URL}/pet-weights/by-type/${petType}`, {
+                    timeout: 10000,
+                })
+            );
+            console.log(`Pet weights for ${petType} fetched:`, response.data);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching pet weights for ${petType}:`, error);
+            try {
+                console.log(`Falling back to fetching all weights and filtering by type: ${petType}`);
+                const allWeightsResponse = await retryRequest(() => 
+                    axios.get(`${API_BASE_URL}/pet-weights`, {
+                        timeout: 10000,
+                    })
+                );
+                const filteredWeights = allWeightsResponse.data.filter(weight => 
+                    weight.petType === petType || 
+                    (petType === 'DOG' && weight.petType === 'dog') || 
+                    (petType === 'CAT' && weight.petType === 'cat')
+                );
+                console.log(`Filtered weights for ${petType}:`, filteredWeights);
+                return filteredWeights;
+            } catch (fallbackError) {
+                console.error('Error with fallback method:', fallbackError);
+                console.log(`Returning fallback data for ${petType}`);
+                if (petType === 'DOG' || petType === 'dog') {
+                    return [
+                        { id: 1, weightRange: '< 2kg', petType: 'DOG', active: true, priceMultiplier: 0.8 },
+                        { id: 2, weightRange: '2-5kg', petType: 'DOG', active: true, priceMultiplier: 1.0 },
+                        { id: 3, weightRange: '5-10kg', petType: 'DOG', active: true, priceMultiplier: 1.2 },
+                        { id: 4, weightRange: '10-20kg', petType: 'DOG', active: true, priceMultiplier: 1.5 },
+                        { id: 5, weightRange: '> 20kg', petType: 'DOG', active: true, priceMultiplier: 1.8 }
+                    ];
+                } else if (petType === 'CAT' || petType === 'cat') {
+                    return [
+                        { id: 6, weightRange: '< 2kg', petType: 'CAT', active: true, priceMultiplier: 0.8 },
+                        { id: 7, weightRange: '2-4kg', petType: 'CAT', active: true, priceMultiplier: 1.0 },
+                        { id: 8, weightRange: '4-6kg', petType: 'CAT', active: true, priceMultiplier: 1.2 },
+                        { id: 9, weightRange: '> 6kg', petType: 'CAT', active: true, priceMultiplier: 1.5 }
+                    ];
+                }
+                return [
+                    { id: 99, weightRange: 'Mặc định', petType: petType, active: true, priceMultiplier: 1.0 }
+                ];
+            }
+        }
+    },
+
+    getServicePrice: async (serviceId, weightId) => {
+        try {
+            console.log(`Fetching price for service ID: ${serviceId}, weight ID: ${weightId}`);
+            const response = await retryRequest(() => 
+                axios.get(`${API_BASE_URL}/pet-services/${serviceId}/prices`, {
+                    params: { weightId },
+                    timeout: 10000,
+                })
+            );
+            console.log('Service price fetched:', response.data);
+            return {
+                price: response.data.price || 0,
+                serviceId,
+                weightId,
+            };
+        } catch (error) {
+            console.error('Error fetching service price:', error);
+            try {
+                console.log('Trying fallback price lookup method');
+                const serviceResponse = await retryRequest(() => 
+                    axios.get(`${API_BASE_URL}/pet-services/${serviceId}`, {
+                        timeout: 10000,
+                    })
+                );
+                const weightResponse = await retryRequest(() => 
+                    axios.get(`${API_BASE_URL}/pet-weights/${weightId}`, {
+                        timeout: 10000,
+                    })
+                );
+                if (serviceResponse.data && weightResponse.data) {
+                    const basePrice = serviceResponse.data.basePrice || 0;
+                    const multiplier = weightResponse.data.priceMultiplier || 1;
+                    const calculatedPrice = basePrice * multiplier;
+                    console.log(`Calculated price: ${basePrice} * ${multiplier} = ${calculatedPrice}`);
+                    return {
+                        price: calculatedPrice,
+                        serviceId,
+                        weightId,
+                    };
+                }
+                console.log('Using default price due to missing data');
+                return {
+                    price: 150000,
+                    serviceId,
+                    weightId,
+                };
+            } catch (fallbackError) {
+                console.error('Error with fallback price calculation:', fallbackError);
+                return {
+                    price: 150000,
+                    serviceId,
+                    weightId,
+                    isDefault: true
+                };
+            }
+        }
+    },
+
+    updatePetWeight: async (petId, data) => {
+        try {
+            console.log(`Updating weight for pet ID: ${petId}`, data);
+            const response = await retryRequest(() => 
+                axios.put(`${API_BASE_URL}/pets/${petId}/weight`, data, {
+                    timeout: 10000,
+                })
+            );
+            console.log('Pet weight updated:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Error updating pet weight:', error);
+            throw new Error('Không thể cập nhật cân nặng cho thú cưng');
+        }
+    },
+
+    createAdditionalFee: async (data) => {
+        try {
+            console.log('Creating additional fee:', data);
+            const response = await retryRequest(() => 
+                axios.post(`${API_BASE_URL}/appointments/${data.appointmentId}/fees`, data, {
+                    timeout: 10000,
+                })
+            );
+            console.log('Additional fee created:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Error creating additional fee:', error);
+            throw new Error('Không thể tạo phí bổ sung');
         }
     },
 };
