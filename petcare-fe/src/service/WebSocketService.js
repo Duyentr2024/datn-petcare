@@ -13,14 +13,15 @@ class WebSocketService {
       onSlotsUpdated: [],
       onConnect: [],
       onDisconnect: [],
-      onAppointmentCancelled: []
+      onAppointmentCancelled: [],
+      onRefundStatusUpdated: [],
+      onPetRemoved: [] // Thêm callback mới
     };
     
-    // Reconnection settings
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
+    this.maxReconnectAttempts = 10;
     this.reconnectTimeout = null;
-    this.reconnectDelay = 2000; // Start with 2 seconds
+    this.reconnectDelay = 3000;
   }
 
   connect() {
@@ -29,12 +30,11 @@ class WebSocketService {
     }
     
     try {
-      // Extract the host from API URL
       const apiUrl = new URL(API_BASE_URL);
       const baseUrl = `${apiUrl.protocol}//${apiUrl.host}`;
       const wsUrl = `${baseUrl}/ws`;
       
-      console.log(`Connecting to WebSocket at ${wsUrl}`);
+      console.log(`Attempting to connect to WebSocket at ${wsUrl}`);
       
       this.stompClient = new Client({
         webSocketFactory: () => new SockJS(wsUrl),
@@ -48,6 +48,12 @@ class WebSocketService {
       
       this.stompClient.onConnect = this.handleConnect.bind(this);
       this.stompClient.onStompError = this.handleError.bind(this);
+      this.stompClient.onWebSocketError = (error) => {
+        console.error('WebSocket error:', error);
+      };
+      this.stompClient.onWebSocketClose = (event) => {
+        console.log('WebSocket closed:', event);
+      };
       
       this.stompClient.activate();
     } catch (error) {
@@ -70,15 +76,15 @@ class WebSocketService {
   }
   
   handleConnect(frame) {
-    console.log('WebSocket connection established');
+    console.log('WebSocket connection established:', frame);
     this.connected = true;
     this.reconnectAttempts = 0;
     
-    // Subscribe to topic channels only if connected
     if (this.connected) {
       this.stompClient.subscribe('/topic/new-appointment', this.handleAppointmentMessage.bind(this));
       this.stompClient.subscribe('/topic/slots', this.handleSlotsMessage.bind(this));
       this.stompClient.subscribe('/topic/appointments', this.handleAppointmentMessage.bind(this));
+      console.log('Subscribed to WebSocket topics');
     }
     
     this.callbacks.onConnect.forEach(callback => callback());
@@ -95,6 +101,12 @@ class WebSocketService {
         this.callbacks.onNewAppointment.forEach(callback => callback(data));
       } else if (data.type === 'APPOINTMENT_CANCELLED') {
         this.callbacks.onAppointmentCancelled.forEach(callback => callback(data));
+      } else if (data.type === 'APPOINTMENT_CONFIRMED') {
+        this.callbacks.onAppointmentConfirmed.forEach(callback => callback(data));
+      } else if (data.type === 'REFUND_STATUS_UPDATED') {
+        this.callbacks.onRefundStatusUpdated.forEach(callback => callback(data));
+      } else if (data.type === 'PET_REMOVED') {
+        this.callbacks.onPetRemoved.forEach(callback => callback(data));
       }
     } catch (error) {
       console.error('Error processing WebSocket appointment message:', error);
@@ -149,6 +161,17 @@ class WebSocketService {
     }
   }
 
+  notifyRefundStatusUpdated(appointmentId) {
+    if (this.stompClient && this.connected) {
+      this.stompClient.publish({
+        destination: '/topic/appointments',
+        body: JSON.stringify({ type: 'REFUND_STATUS_UPDATED', appointmentId })
+      });
+    } else {
+      console.error('Cannot notify refund status update: WebSocket is not connected');
+    }
+  }
+
   onNewAppointment(callback) {
     this.callbacks.onNewAppointment.push(callback);
     return () => {
@@ -195,6 +218,20 @@ class WebSocketService {
     this.callbacks.onAppointmentCancelled.push(callback);
     return () => {
       this.callbacks.onAppointmentCancelled = this.callbacks.onAppointmentCancelled.filter(cb => cb !== callback);
+    };
+  }
+
+  onRefundStatusUpdated(callback) {
+    this.callbacks.onRefundStatusUpdated.push(callback);
+    return () => {
+      this.callbacks.onRefundStatusUpdated = this.callbacks.onRefundStatusUpdated.filter(cb => cb !== callback);
+    };
+  }
+
+  onPetRemoved(callback) {
+    this.callbacks.onPetRemoved.push(callback);
+    return () => {
+      this.callbacks.onPetRemoved = this.callbacks.onPetRemoved.filter(cb => cb !== callback);
     };
   }
 }
