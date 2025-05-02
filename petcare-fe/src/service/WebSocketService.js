@@ -15,7 +15,8 @@ class WebSocketService {
       onDisconnect: [],
       onAppointmentCancelled: [],
       onRefundStatusUpdated: [],
-      onPetRemoved: [] // Thêm callback mới
+      onPetRemoved: [],
+      onBookingStatusUpdated: [], // Added callback for booking status
     };
     
     this.reconnectAttempts = 0;
@@ -84,6 +85,7 @@ class WebSocketService {
       this.stompClient.subscribe('/topic/new-appointment', this.handleAppointmentMessage.bind(this));
       this.stompClient.subscribe('/topic/slots', this.handleSlotsMessage.bind(this));
       this.stompClient.subscribe('/topic/appointments', this.handleAppointmentMessage.bind(this));
+      this.stompClient.subscribe('/topic/booking-status', this.handleBookingStatusMessage.bind(this)); // Added subscription
       console.log('Subscribed to WebSocket topics');
     }
     
@@ -120,6 +122,16 @@ class WebSocketService {
       this.callbacks.onSlotsUpdated.forEach(callback => callback(data));
     } catch (error) {
       console.error('Error processing WebSocket slots message:', error);
+    }
+  }
+  
+  handleBookingStatusMessage(message) {
+    try {
+      const data = JSON.parse(message.body);
+      console.log('WebSocket message received on /topic/booking-status:', data);
+      this.callbacks.onBookingStatusUpdated.forEach(callback => callback(data));
+    } catch (error) {
+      console.error('Error processing WebSocket booking status message:', error);
     }
   }
   
@@ -169,6 +181,17 @@ class WebSocketService {
       });
     } else {
       console.error('Cannot notify refund status update: WebSocket is not connected');
+    }
+  }
+
+  notifyBookingStatusUpdated(status) {
+    if (this.stompClient && this.connected) {
+      this.stompClient.publish({
+        destination: '/topic/booking-status',
+        body: JSON.stringify({ type: 'BOOKING_STATUS_UPDATED', status })
+      });
+    } else {
+      console.error('Cannot notify booking status update: WebSocket is not connected');
     }
   }
 
@@ -232,6 +255,13 @@ class WebSocketService {
     this.callbacks.onPetRemoved.push(callback);
     return () => {
       this.callbacks.onPetRemoved = this.callbacks.onPetRemoved.filter(cb => cb !== callback);
+    };
+  }
+
+  onBookingStatusUpdated(callback) {
+    this.callbacks.onBookingStatusUpdated.push(callback);
+    return () => {
+      this.callbacks.onBookingStatusUpdated = this.callbacks.onBookingStatusUpdated.filter(cb => cb !== callback);
     };
   }
 }

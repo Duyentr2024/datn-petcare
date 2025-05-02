@@ -52,8 +52,13 @@ const AppointmentHistory = () => {
   const currentFetchPromise = useRef(null);
   const debounceTimer = useRef(null);
   
+  // Hàm kiểm tra xem searchText có phải số điện thoại không
+  const isPhoneNumber = (text) => {
+    return /^\d{9,11}$/.test(text.replace(/\D/g, '')); // 9-11 chữ số
+  };
+
   // Chuyển đổi fetchHistoryData thành useCallback để tối ưu performance
-  const fetchHistoryData = useCallback(async (showLoading = true, forceFull = false) => {
+  const fetchHistoryData = useCallback(async (showLoading = true, forceFull = false, phone = null) => {
     // Tránh các lần gọi liên tiếp trong thời gian ngắn (throttle)
     const now = Date.now();
     if (!forceFull && now - lastFetchTime.current < 2000) {
@@ -74,9 +79,17 @@ const AppointmentHistory = () => {
       if (showLoading) setLoading(true);
       
       // Tạo và lưu promise của fetch hiện tại
-      const fetchPromise = axios.get('http://localhost:8080/api/appointments/history', {
-        timeout: 10000,
-      });
+      let fetchPromise;
+      if (phone) {
+        fetchPromise = axios.get('http://localhost:8080/api/appointments/history/search', {
+          params: { phone },
+          timeout: 10000,
+        });
+      } else {
+        fetchPromise = axios.get('http://localhost:8080/api/appointments/history', {
+          timeout: 10000,
+        });
+      }
       currentFetchPromise.current = fetchPromise;
       lastFetchTime.current = now;
       
@@ -164,7 +177,7 @@ const AppointmentHistory = () => {
     const unsubscribeSlotsUpdated = webSocketService.onSlotsUpdated(handleAppointmentEvent);
     const unsubscribePetRemoved = webSocketService.onPetRemoved(handleAppointmentEvent);
     
-    // Connect to WebSocket if not already connected
+    // Connect to WebSocket nếu không đã kết nối
     if (!webSocketService.connected) {
       webSocketService.connect();
     }
@@ -220,7 +233,7 @@ const AppointmentHistory = () => {
         <div>
           <p>Có {newRecords.length} bản ghi mới</p>
           <p>Thao tác mới nhất: <Tag color="blue">{getActionLabel(latestRecord.action)}</Tag></p>
-          <p>Lịch hẹn: #{latestRecord.appointment_id}</p>
+          <p>Số điện thoại: {latestRecord.phone}</p>
         </div>
       ),
       duration: 4,
@@ -235,6 +248,11 @@ const AppointmentHistory = () => {
 
   const handleSearch = (value) => {
     setSearchText(value);
+    if (isPhoneNumber(value)) {
+      fetchHistoryData(true, true, value); // Gọi API tìm kiếm theo số điện thoại
+    } else {
+      fetchHistoryData(true, true); // Làm mới dữ liệu nếu không phải số điện thoại
+    }
   };
 
   const handleDateRangeChange = (dates) => {
@@ -243,21 +261,6 @@ const AppointmentHistory = () => {
 
   const handleActionFilterChange = (value) => {
     setActionFilter(value);
-  };
-
-  const getStatusColor = (status) => {
-    const statusColors = {
-      'PENDING': 'orange',
-      'PAID': 'cyan',
-      'CONFIRMED': 'blue',
-      'CANCELLED': 'red',
-      'COMPLETED': 'green',
-      'IN_PROGRESS': 'purple',
-      'WAITING': 'cyan',
-      'NOT_ARRIVED': 'gold'
-    };
-    
-    return statusColors[status] || 'default';
   };
 
   const getActionLabel = (action) => {
@@ -295,7 +298,6 @@ const AppointmentHistory = () => {
           </div>
         </div>
       ),
-      sorter: (a, b) => new Date(a.timestamp) - new Date(b.timestamp),
     },
     {
       title: 'Người thực hiện',
@@ -354,43 +356,35 @@ const AppointmentHistory = () => {
       onFilter: (value, record) => record.action === value,
     },
     {
-      title: 'Trạng thái',
-      key: 'status',
-      width: 300,
-      render: (_, record) => (
-        <div className="flex items-center space-x-2">
-          {record.old_status && (
-            <>
-              <Tag color={getStatusColor(record.old_status)} className="status-tag">
-                {record.old_status}
-              </Tag>
-              <SwapOutlined className="text-gray-400" />
-            </>
-          )}
-          <Tag color={getStatusColor(record.new_status)} className="status-tag">
-            {record.new_status}
-          </Tag>
-        </div>
+      title: 'Ngày lịch hẹn',
+      dataIndex: 'date',
+      key: 'date',
+      width: 150,
+      render: (date, record) => (
+        <Tooltip title={`${record.customerName} - ${record.petName} (${record.service})`}>
+          <span>{date}</span>
+        </Tooltip>
       ),
-      filters: [
-        { text: 'Chờ thanh toán', value: 'PENDING' },
-        { text: 'Đã thanh toán', value: 'PAID' },
-        { text: 'Đã xác nhận', value: 'CONFIRMED' },
-        { text: 'Đã hủy', value: 'CANCELLED' },
-        { text: 'Hoàn thành', value: 'COMPLETED' },
-      ],
-      onFilter: (value, record) => record.new_status === value || record.old_status === value,
     },
     {
-      title: 'Lịch hẹn',
-      dataIndex: 'appointment_id',
-      key: 'appointment_id',
+      title: 'Thời gian lịch hẹn',
+      dataIndex: 'time',
+      key: 'time',
       width: 150,
-      render: (appointment_id, record) => (
+      render: (time, record) => (
         <Tooltip title={`${record.customerName} - ${record.petName} (${record.service})`}>
-          <Button type="link" className="text-[#fbb321] hover:text-[#e59e14]">
-            #{appointment_id}
-          </Button>
+          <span>{time}</span>
+        </Tooltip>
+      ),
+    },
+    {
+      title: 'Số điện thoại',
+      dataIndex: 'phone',
+      key: 'phone',
+      width: 150,
+      render: (phone, record) => (
+        <Tooltip title={`${record.customerName} - ${record.petName} (${record.service})`}>
+          <span>{phone}</span>
         </Tooltip>
       ),
     },
@@ -408,10 +402,9 @@ const AppointmentHistory = () => {
   ];
 
   const filteredData = historyData.filter(item => {
-    const matchSearch = searchText ? 
+    const matchSearch = searchText && !isPhoneNumber(searchText) ? 
       (item.userName?.toLowerCase().includes(searchText.toLowerCase()) || 
-      item.reason?.toLowerCase().includes(searchText.toLowerCase()) ||
-      `#${item.appointment_id}`.includes(searchText)) : true;
+      item.reason?.toLowerCase().includes(searchText.toLowerCase())) : true;
     
     const matchDate = dateRange && dateRange[0] && dateRange[1] ? 
       (dayjs(item.timestamp).isAfter(dateRange[0]) && 
@@ -433,7 +426,7 @@ const AppointmentHistory = () => {
       <div className="flex justify-between mb-6">
         <div className="flex items-center space-x-4">
           <Input
-            placeholder="Tìm kiếm theo người dùng, lịch hẹn..."
+            placeholder="Nhập số điện thoại để tìm kiếm"
             prefix={<SearchOutlined />}
             style={{ width: 300 }}
             value={searchText}
@@ -491,7 +484,7 @@ const AppointmentHistory = () => {
               showSizeChanger: true,
               showTotal: (total) => `Tổng cộng ${total} bản ghi`
             }}
-            scroll={{ x: 1200 }}
+            scroll={{ x: 1200 }} // Tăng scroll vì thêm cột mới
             rowClassName={(record, index) => {
               // Highlight new records
               const isNew = historyDataRef.current.indexOf(record) < newRecordsCount;
@@ -548,13 +541,6 @@ const AppointmentHistory = () => {
           align-items: center;
           justify-content: center;
           font-weight: bold;
-        }
-        
-        .status-tag {
-          min-width: 90px;
-          text-align: center;
-          padding: 0 8px;
-          font-weight: 500;
         }
         
         .ant-tooltip-inner {

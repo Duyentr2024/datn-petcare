@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Select, Input, DatePicker, Button, Radio, Badge, message, notification, Tabs } from 'antd';
-import { PlusOutlined, SearchOutlined, LeftOutlined, RightOutlined, BellOutlined, HistoryOutlined, CalendarOutlined } from '@ant-design/icons';
+import { PlusOutlined, SearchOutlined, LeftOutlined, RightOutlined, BellOutlined, HistoryOutlined, CalendarOutlined, WalletOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import './AdminAppointment.css';
@@ -9,6 +9,7 @@ import AddAppointmentModal from './AddAppointmentModal';
 import OnlineBookingModal from './OnlineBookingModal';
 import Calendar from './Calendar';
 import AppointmentHistory from './AppointmentHistory';
+import RefundedAppointments from './RefundedAppointments';
 import webSocketService from "../../../service/WebSocketService";
 
 const { TabPane } = Tabs;
@@ -63,7 +64,6 @@ const AdminAppointment = () => {
   useEffect(() => {
     fetchOnlineBookings();
 
-    // Polling ngắn hạn (3 giây) làm fallback nếu WebSocket không hoạt động
     const intervalId = setInterval(fetchOnlineBookings, 3000);
 
     return () => {
@@ -71,30 +71,25 @@ const AdminAppointment = () => {
     };
   }, []);
 
-  // Tích hợp WebSocketService để lắng nghe lịch hẹn mới
   useEffect(() => {
-    // Kết nối WebSocket
     if (!webSocketService.connected) {
       webSocketService.connect();
     }
 
-    // Lắng nghe kết nối WebSocket
     const unsubscribeConnect = webSocketService.onConnect(() => {
       console.log('WebSocket connected via WebSocketService');
       setIsWebSocketConnected(true);
     });
 
-    // Lắng nghe ngắt kết nối WebSocket
     const unsubscribeDisconnect = webSocketService.onDisconnect(() => {
       console.log('WebSocket disconnected via WebSocketService');
       setIsWebSocketConnected(false);
       message.warning('WebSocket đã ngắt kết nối, chuyển sang chế độ polling mỗi 3 giây.');
     });
 
-    // Lắng nghe thông báo lịch hẹn mới
     const unsubscribeNew = webSocketService.onNewAppointment((data) => {
       console.log('New appointment received via WebSocketService:', data);
-      const appointment = data.appointment; // Truy cập đúng vào appointment trong payload
+      const appointment = data.appointment;
       notification.info({
         message: 'Lịch hẹn mới cần xác nhận',
         description: (
@@ -111,10 +106,9 @@ const AdminAppointment = () => {
         onClick: () => setIsOnlineBookingModalVisible(true),
       });
       setNotificationCount(prev => prev + 1);
-      fetchOnlineBookings(); // Cập nhật danh sách lịch hẹn ngay lập tức
+      fetchOnlineBookings();
     });
 
-    // Lắng nghe thông báo hủy lịch hẹn
     const unsubscribeCancel = webSocketService.onAppointmentCancelled((data) => {
       console.log('Appointment cancelled via WebSocket:', data);
       notification.info({
@@ -318,6 +312,19 @@ const AdminAppointment = () => {
         >
           <div className="tab-content-container">
             <AppointmentHistory />
+          </div>
+        </TabPane>
+        <TabPane 
+          tab={
+            <span className="tab-label flex items-center">
+              <WalletOutlined className="mr-2" />
+              <span>Quản lý hoàn tiền</span>
+            </span>
+          } 
+          key="3"
+        >
+          <div className="tab-content-container">
+            <RefundedAppointments />
           </div>
         </TabPane>
       </Tabs>

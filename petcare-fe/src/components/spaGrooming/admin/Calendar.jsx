@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { PawPrint, X, Edit } from "lucide-react";
 import {
   DatePicker,
@@ -19,24 +19,8 @@ import locale from "antd/locale/vi_VN";
 import BookingService from "../../../service/spaService/BookingService";
 import UpdateWeight from "./UpdateWeight";
 import "./Calendar.css";
-import WebSocketService from "../../../service/WebSocketService";
 
 dayjs.locale("vi");
-
-// Hàm tiện ích để cập nhật dữ liệu cục bộ
-const updateLocalData = (dataArray, updatedItem, idField, action) => {
-  if (action === 'REMOVE') {
-    return dataArray.filter(item => item[idField] !== updatedItem[idField]);
-  } else if (action === 'UPDATE') {
-    return dataArray.map(item => 
-      item[idField] === updatedItem[idField] ? { ...item, ...updatedItem } : item
-    );
-  } else if (action === 'ADD') {
-    const exists = dataArray.some(item => item[idField] === updatedItem[idField]);
-    return exists ? dataArray : [...dataArray, updatedItem];
-  }
-  return dataArray;
-};
 
 const Calendar = ({ refreshSlotDate }) => {
   const [selectedDate, setSelectedDate] = useState(dayjs());
@@ -52,10 +36,6 @@ const Calendar = ({ refreshSlotDate }) => {
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
-  const [localSlotStatus, setLocalSlotStatus] = useState({});
-  const [localBookedSlots, setLocalBookedSlots] = useState([]);
-  const lastFetchRef = useRef({ date: null, time: null });
-  const [reason, setReason] = useState(''); // Thêm state để lưu lý do hủy
 
   useEffect(() => {
     const fetchStaffAndWeights = async () => {
@@ -94,216 +74,77 @@ const Calendar = ({ refreshSlotDate }) => {
     }
   };
 
-  const fetchSlotStatus = useCallback(async (date) => {
+  const fetchSlotStatus = async (date) => {
     try {
-      setLoading(true);
-      
-      lastFetchRef.current.date = date;
-      
-      const morningData = await BookingService.getAvailableSlots(date);
-      const confirmedData = await BookingService.getConfirmedSlots(date);
-      
-      if (lastFetchRef.current.date !== date) {
-        return;
-      }
-      
-      const result = {
-        morning: morningData.morning || [],
-        afternoon: morningData.afternoon || [],
-        morningConfirmed: confirmedData.morning || [],
-        afternoonConfirmed: confirmedData.afternoon || []
-      };
-      
-      setLocalSlotStatus(result);
-      setTimeSlots(result);
+      const response = await BookingService.getConfirmedSlots(
+        date.format("YYYY-MM-DD")
+      );
+      const allSlots = [
+        ...(response.morning || []),
+        ...(response.afternoon || []),
+      ];
+      const slotMap = Object.fromEntries(
+        allSlots.map((slot) => [
+          slot.hour,
+          { total: slot.totalSlots, booked: slot.bookedSlots },
+        ])
+      );
+      setTimeSlots(slotMap);
     } catch (error) {
-      console.error("Error fetching time slots: ", error);
-      message.error("Không thể tải thông tin khung giờ");
-      setLocalSlotStatus({});
+      console.error("Error fetching confirmed slot status:", error);
       setTimeSlots({});
-    } finally {
-      setLoading(false);
+      message.error("Không thể tải trạng thái slot: " + (error.message || "Lỗi không xác định"));
     }
-  }, []);
+  };
 
-  const fetchBookedSlots = useCallback(async (date, time) => {
+  const fetchBookedSlots = async (date, time) => {
     try {
       setLoading(true);
-      
-      lastFetchRef.current.time = { date, time };
-      
-      const response = await BookingService.getConfirmedAppointmentsByDateAndTime(date, time);
-      
-      if (lastFetchRef.current.time.date !== date || lastFetchRef.current.time.time !== time) {
-        return;
+      let appointments = [];
+      if (time) {
+        const response = await BookingService.getConfirmedAppointmentsByDateAndTime(
+          date.format("YYYY-MM-DD"),
+          time
+        );
+        appointments = response;
+      } else {
+        const response = await BookingService.getConfirmedAppointmentsByDate(
+          date.format("YYYY-MM-DD")
+        );
+        appointments = response;
       }
-      
-      setLocalBookedSlots(response || []);
-      setBookedSlots(response || []);
+      setBookedSlots(
+        appointments.map((appointment) => ({
+          key: appointment.appointmentId,
+          customerName: appointment.customerName,
+          phone: appointment.phone,
+          quantity: appointment.petCount,
+          status: "confirmed",
+        }))
+      );
     } catch (error) {
-      console.error("Error fetching booked slots: ", error);
-      message.error("Không thể tải danh sách lịch hẹn đã đặt");
-      setLocalBookedSlots([]);
+      console.error("Error fetching booked slots:", error);
       setBookedSlots([]);
+      message.error("Không thể tải danh sách lịch hẹn: " + (error.message || "Lỗi không xác định"));
     } finally {
       setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (refreshSlotDate) {
-      const currentDate = selectedDate.format('YYYY-MM-DD');
-      if (refreshSlotDate === currentDate) {
-        fetchSlotStatus(currentDate);
-        if (selectedTime) {
-          fetchBookedSlots(currentDate, selectedTime);
-        }
-      }
-    }
-  }, [refreshSlotDate, selectedDate, selectedTime, fetchSlotStatus, fetchBookedSlots]);
-
-  useEffect(() => {
-    const handleSlotsUpdated = (data) => {
-      console.log('WebSocket: Slots updated', data);
-      
-      if (data.date === selectedDate.format('YYYY-MM-DD')) {
-        fetchSlotStatus(selectedDate.format('YYYY-MM-DD'));
-      }
-    };
-    
-    const handleAppointmentUpdated = (data) => {
-      console.log('WebSocket: Appointment updated', data);
-      
-      if (data.date === selectedDate.format('YYYY-MM-DD')) {
-        if (selectedTime === data.time) {
-          if (data.appointment) {
-            setLocalBookedSlots(prev => updateLocalData(prev, data.appointment, 'appointmentId', 'UPDATE'));
-          } else {
-            fetchBookedSlots(selectedDate.format('YYYY-MM-DD'), selectedTime);
-          }
-        }
-        fetchSlotStatus(selectedDate.format('YYYY-MM-DD'));
-      }
-    };
-    
-    const handleAppointmentCancelled = (data) => {
-      console.log('WebSocket: Appointment cancelled', data);
-      
-      if (data.date === selectedDate.format('YYYY-MM-DD')) {
-        if (data.appointmentId && selectedTime === data.time) {
-          setLocalBookedSlots(prev => 
-            prev.filter(slot => slot.appointmentId !== data.appointmentId)
-          );
-        }
-        fetchSlotStatus(selectedDate.format('YYYY-MM-DD'));
-      }
-    };
-    
-    const handlePetRemoved = (data) => {
-      console.log('WebSocket: Pet removed', data);
-      
-      if (data.date === selectedDate.format('YYYY-MM-DD')) {
-        if (selectedTime === data.time) {
-          if (data.petsRemaining === 0) {
-            setLocalBookedSlots(prev => 
-              prev.filter(slot => slot.appointmentId !== data.appointmentId)
-            );
-          } else {
-            setLocalBookedSlots(prev => prev.map(slot => 
-              slot.appointmentId === data.appointmentId 
-                ? { ...slot, petCount: data.petsRemaining } 
-                : slot
-            ));
-          }
-        }
-        fetchSlotStatus(selectedDate.format('YYYY-MM-DD'));
-      }
-    };
-    
-    const unsubscribeSlotsUpdated = WebSocketService.onSlotsUpdated(handleSlotsUpdated);
-    const unsubscribeAppointmentUpdated = WebSocketService.onAppointmentUpdated(handleAppointmentUpdated);
-    const unsubscribeAppointmentCancelled = WebSocketService.onAppointmentCancelled(handleAppointmentCancelled);
-    const unsubscribePetRemoved = WebSocketService.onPetRemoved(handlePetRemoved);
-    const unsubscribeAppointmentConfirmed = WebSocketService.onAppointmentConfirmed(() => {
-      if (selectedDate) {
-        fetchSlotStatus(selectedDate.format('YYYY-MM-DD'));
-        if (selectedTime) {
-          fetchBookedSlots(selectedDate.format('YYYY-MM-DD'), selectedTime);
-        }
-      }
-    });
-    
-    return () => {
-      unsubscribeSlotsUpdated();
-      unsubscribeAppointmentUpdated();
-      unsubscribeAppointmentCancelled();
-      unsubscribePetRemoved();
-      unsubscribeAppointmentConfirmed();
-    };
-  }, [selectedDate, selectedTime, fetchSlotStatus, fetchBookedSlots]);
-
-  const handleCancelService = async (record) => {
-    try {
-      const modal = Modal.confirm({
-        title: 'Xác nhận hủy lịch hẹn',
-        content: (
-          <div>
-            <p>Bạn có chắc chắn muốn hủy lịch hẹn #{record.appointmentId}?</p>
-            <p>Thú cưng: {record.petName} - Khách hàng: {record.customerName}</p>
-            <p>Hoàn tiền: {record.paidAmount ? record.paidAmount.toLocaleString('vi-VN') + 'đ' : '0đ'}</p>
-            <Input
-              placeholder="Nhập lý do hủy"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              style={{ marginTop: '10px' }}
-            />
-          </div>
-        ),
-        okText: 'Hủy lịch',
-        cancelText: 'Đóng',
-        okButtonProps: { danger: true },
-        onOk: async () => {
-          if (!reason.trim()) {
-            message.warning('Vui lòng nhập lý do hủy');
-            return Promise.reject();
-          }
-          try {
-            modal.update({ okButtonProps: { loading: true } });
-            
-            const payload = {
-              appointmentIds: [record.appointmentId],
-              reason: reason
-            };
-            
-            await BookingService.cancelConfirmedAppointments(payload);
-            message.success(`Đã hủy lịch hẹn #${record.appointmentId} thành công`);
-            
-            setLocalBookedSlots(prev => 
-              prev.filter(slot => slot.appointmentId !== record.appointmentId)
-            );
-            setReason(''); // Reset lý do hủy
-            
-            fetchSlotStatus(selectedDate.format('YYYY-MM-DD'));
-          } catch (error) {
-            console.error('Error canceling appointment:', error);
-            message.error(`Không thể hủy lịch hẹn: ${error.message || 'Đã xảy ra lỗi'}`);
-            return Promise.reject();
-          }
-        }
-      });
-    } catch (error) {
-      console.error('Error in handleCancelService:', error);
-      message.error('Không thể hiển thị hộp thoại hủy lịch hẹn');
     }
   };
 
   useEffect(() => {
-    setBookedSlots(localBookedSlots);
-  }, [localBookedSlots]);
-  
+    fetchSlotStatus(selectedDate);
+    fetchBookedSlots(selectedDate, selectedTime);
+  }, [selectedDate, selectedTime]);
+
   useEffect(() => {
-    setTimeSlots(localSlotStatus);
-  }, [localSlotStatus]);
+    if (
+      refreshSlotDate &&
+      refreshSlotDate === selectedDate.format("YYYY-MM-DD")
+    ) {
+      fetchSlotStatus(selectedDate);
+      fetchBookedSlots(selectedDate, selectedTime);
+    }
+  }, [refreshSlotDate, selectedDate]);
 
   const getSlotStatusColor = (slot) => {
     const { total, booked } = slot;
@@ -316,7 +157,6 @@ const Calendar = ({ refreshSlotDate }) => {
     setSelectedTime(time);
     setSelectedCustomer(null);
     setSlotDetails([]);
-    fetchBookedSlots(selectedDate.format('YYYY-MM-DD'), time);
   };
 
   const handleSelectBookedSlot = async (record) => {
@@ -385,7 +225,7 @@ const Calendar = ({ refreshSlotDate }) => {
           petType: petType,
           rawPetType: rawPetType,
           petName: petDisplayName,
-          service: pet.service || "Không có dịch vụ",
+          service: pet.serviceName || "Không có dịch vụ",
           staffId: null,
           price: pet.price || 0,
           weightRange: weightRange,
@@ -421,6 +261,27 @@ const Calendar = ({ refreshSlotDate }) => {
         slot.key === record.key ? { ...slot, status: "completed" } : slot
       )
     );
+  };
+
+  const handleCancelService = async (record) => {
+    try {
+      const payload = {
+        appointmentIds: [record.key],
+        reason: "Hủy bởi quản trị viên"
+      };
+      await BookingService.cancelConfirmedAppointments(payload);
+      setBookedSlots((prev) =>
+        prev.map((slot) =>
+          slot.key === record.key ? { ...slot, status: "cancelled" } : slot
+        )
+      );
+      message.success("Đã hủy lịch hẹn thành công");
+      fetchSlotStatus(selectedDate);
+      refreshSlotDate && refreshSlotDate(selectedDate.format("YYYY-MM-DD"));
+    } catch (error) {
+      console.error("Error canceling appointment:", error);
+      message.error(error.message || "Không thể hủy lịch hẹn");
+    }
   };
 
   const handleDeleteService = (key) => {
@@ -626,7 +487,6 @@ const Calendar = ({ refreshSlotDate }) => {
                 onChange={(date) => {
                   setSelectedDate(date);
                   setSelectedTime(null);
-                  fetchSlotStatus(date.format('YYYY-MM-DD'));
                 }}
                 format="DD/MM/YYYY"
                 className="custom-datepicker w-full"

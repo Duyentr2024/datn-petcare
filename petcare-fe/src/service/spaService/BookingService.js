@@ -205,12 +205,32 @@ const BookingService = {
                 }
                 return formattedTime;
             };
-            const response = await retryRequest(() => 
-                axios.get(`${API_BASE_URL}/time-slots/confirmed`, {
-                    params: { date },
-                    timeout: 10000,
-                })
-            );
+            
+            // Log the exact API endpoint being called
+            const endpoint = `${API_BASE_URL}/time-slots/confirmed`;
+            console.log(`Calling API endpoint: ${endpoint} with date=${date}`);
+            
+            // Use retry with more detailed logging
+            const response = await retryRequest(async () => {
+                try {
+                    return await axios.get(endpoint, {
+                        params: { date },
+                        timeout: 15000, // Increase timeout for more reliable requests
+                    });
+                } catch (error) {
+                    // Log detailed error information
+                    if (error.response) {
+                        console.error(`API responded with error status ${error.response.status}:`, 
+                            error.response.data || 'No response data');
+                    } else if (error.request) {
+                        console.error('No response received from API:', error.request);
+                    } else {
+                        console.error('Error setting up request:', error.message);
+                    }
+                    throw error; // Re-throw to let retryRequest handle it
+                }
+            }, 3, 1500); // Increase retries and delay
+            
             console.log('Confirmed slots response:', response.data);
             const result = response.data || { morning: [], afternoon: [] };
             if (!Array.isArray(result.morning)) {
@@ -241,7 +261,14 @@ const BookingService = {
             return result;
         } catch (error) {
             console.error('Error fetching confirmed slots:', error);
-            return { morning: [], afternoon: [] };
+            const errorMessage = error.response?.data?.message || 
+                             error.response?.data || 
+                             error.message || 
+                             'Không thể tải danh sách khung giờ đã xác nhận';
+            
+            // Log information that might help with debugging
+            console.error(`Failed to fetch confirmed slots with date=${date}. Error: ${errorMessage}`);
+            throw new Error(errorMessage);
         }
     },
 
@@ -490,16 +517,50 @@ const BookingService = {
             const normalizedTime = time.includes(':') ? time : `${time}:00`;
             const formattedTime = normalizedTime.length === 4 ? `0${normalizedTime}` : normalizedTime;
             console.log(`Fetching confirmed appointments for date: ${date}, time: ${formattedTime}`);
-            const response = await retryRequest(() => 
-                axios.get(`${API_BASE_URL}/appointments/confirmed-by-date-and-time`, {
-                    params: { date, time: formattedTime },
-                    timeout: 10000,
-                })
-            );
-            return response.data;
+            
+            // Log the exact API endpoint being called
+            const endpoint = `${API_BASE_URL}/appointments/confirmed-by-date-and-time`;
+            console.log(`Calling API endpoint: ${endpoint} with date=${date}, time=${formattedTime}`);
+            
+            // Validate input parameters
+            if (!date || !time) {
+                console.error('Missing required parameters:', { date, time });
+                throw new Error('Thiếu thông tin ngày hoặc giờ');
+            }
+            
+            // Use retry with more detailed logging
+            const response = await retryRequest(async () => {
+                try {
+                    return await axios.get(endpoint, {
+                        params: { date, time: formattedTime },
+                        timeout: 15000, // Increase timeout for more reliable requests
+                    });
+                } catch (error) {
+                    // Log detailed error information
+                    if (error.response) {
+                        console.error(`API responded with error status ${error.response.status}:`, 
+                            error.response.data || 'No response data');
+                    } else if (error.request) {
+                        console.error('No response received from API:', error.request);
+                    } else {
+                        console.error('Error setting up request:', error.message);
+                    }
+                    throw error; // Re-throw to let retryRequest handle it
+                }
+            }, 3, 1500); // Increase retries and delay
+            
+            console.log('Confirmed appointments by date and time response:', response.data);
+            return response.data || [];
         } catch (error) {
             console.error('Error fetching confirmed appointments by date and time:', error);
-            throw new Error('Không thể tải danh sách lịch hẹn đã xác nhận');
+            const errorMessage = error.response?.data?.message || 
+                             error.response?.data || 
+                             error.message || 
+                             'Không thể tải danh sách lịch hẹn đã xác nhận';
+            
+            // Log information that might help with debugging
+            console.error(`Failed to fetch confirmed appointments with date=${date}, time=${time}. Error: ${errorMessage}`);
+            throw new Error(errorMessage);
         }
     },
 

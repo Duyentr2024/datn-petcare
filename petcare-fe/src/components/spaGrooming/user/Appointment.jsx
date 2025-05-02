@@ -18,6 +18,7 @@ import BookingService from "../../../service/spaService/BookingService";
 import PetServiceService from "../../../service/spaService/PetServiceService";
 import PetWeightService from "../../../service/spaService/PetWeightService";
 import TimeSlotService from "../../../service/spaService/TimeSlotService";
+import webSocketService from "../../../service/WebSocketService";
 import ServiceModal from "./ServiceModal";
 import CustomerModal from "./CustomerModal";
 import "./appointment.css";
@@ -88,6 +89,28 @@ const Appointment = () => {
             }
         };
         fetchBookingStatus();
+
+        // Subscribe to booking status updates
+        const unsubscribe = webSocketService.onBookingStatusUpdated((data) => {
+            if (data.type === 'BOOKING_STATUS_UPDATED') {
+                console.log('Received booking status update:', data.status);
+                setIsBookingEnabled(data.status);
+                showToast(
+                    data.status ? 
+                    "Hệ thống đặt lịch đã được kích hoạt." : 
+                    "Hệ thống đặt lịch đã bị vô hiệu hóa.",
+                    data.status ? "success" : "warning"
+                );
+            }
+        });
+
+        // Start WebSocket connection
+        webSocketService.connect();
+
+        return () => {
+            unsubscribe();
+            // WebSocketService will handle its own cleanup
+        };
     }, []);
 
     useEffect(() => {

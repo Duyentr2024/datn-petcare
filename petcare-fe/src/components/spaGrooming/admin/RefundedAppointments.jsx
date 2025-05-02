@@ -10,14 +10,11 @@ import './AdminAppointment.css';
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 
-// Hàm tiện ích để cập nhật dữ liệu cục bộ
 const updateRefundedData = (currentData, newData) => {
   if (!newData || !Array.isArray(newData)) return currentData;
   
-  // Tạo map từ dữ liệu hiện có để dễ dàng cập nhật
   const dataMap = new Map(currentData.map(item => [item.appointmentId, item]));
   
-  // Cập nhật hoặc thêm mới các mục từ dữ liệu mới
   newData.forEach(item => {
     dataMap.set(item.appointmentId, item);
   });
@@ -26,7 +23,6 @@ const updateRefundedData = (currentData, newData) => {
 };
 
 const RefundedAppointments = () => {
-  // State variables
   const [searchText, setSearchText] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateRange, setDateRange] = useState(null);
@@ -39,22 +35,18 @@ const RefundedAppointments = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
   
-  // Thêm state mới và refs cho việc cập nhật dữ liệu tốt hơn
   const [localRefundedData, setLocalRefundedData] = useState([]);
   const lastFetchRef = useRef(0);
   const currentFetchPromise = useRef(null);
-  const debounceTimer = useRef(null);
+  const webSocketInitialized = useRef(false); // Track WebSocket initialization
 
-  // Cải thiện fetchRefundedData thành useCallback để tối ưu performance
   const fetchRefundedData = useCallback(async (showLoading = true, force = false) => {
-    // Tránh fetch liên tục trong thời gian ngắn
     const now = Date.now();
     if (!force && now - lastFetchRef.current < 2000) {
       console.log('Skipping refunded data fetch, too soon since last fetch');
       return;
     }
     
-    // Nếu đang có một fetch đang chạy, đợi nó hoàn thành
     if (currentFetchPromise.current) {
       try {
         await currentFetchPromise.current;
@@ -66,25 +58,20 @@ const RefundedAppointments = () => {
     try {
       if (showLoading) setLoading(true);
       
-      // Lưu promise của fetch hiện tại
       const fetchPromise = BookingService.getRefundedAppointments();
       currentFetchPromise.current = fetchPromise;
       lastFetchRef.current = now;
       
       const response = await fetchPromise;
       
-      // Clear promise hiện tại sau khi hoàn thành
       currentFetchPromise.current = null;
       
-      // Cập nhật dữ liệu cục bộ và state
       const newData = response.data;
       
-      // Nếu là lần đầu load hoặc force refresh, thay thế hoàn toàn
       if (force || localRefundedData.length === 0) {
         setLocalRefundedData(newData);
         setRefundedData(newData);
       } else {
-        // Ngược lại, merge dữ liệu mới vào dữ liệu hiện có
         const updatedData = updateRefundedData(localRefundedData, newData);
         setLocalRefundedData(updatedData);
         setRefundedData(updatedData);
@@ -92,7 +79,6 @@ const RefundedAppointments = () => {
     } catch (error) {
       console.error('Error fetching refunded appointments:', error);
       message.error('Không thể tải danh sách lịch hẹn hoàn tiền');
-      // Nếu chưa có dữ liệu, set empty array
       if (localRefundedData.length === 0) {
         setRefundedData([]);
       }
@@ -101,53 +87,18 @@ const RefundedAppointments = () => {
     }
   }, [localRefundedData]);
 
-  // Cải thiện WebSocket handling để tránh reload liên tục
   useEffect(() => {
-    // Load dữ liệu lần đầu
+    // Load data only once on component mount
     fetchRefundedData(true, true);
 
-    // Xử lý sự kiện WebSocket
-    const handleRefundUpdate = (data) => {
-      console.log('RefundedAppointments: Refund update via WebSocket', data);
-      
-      // Tránh fetch liên tục bằng debounce
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-      }
-      
-      if (data.appointmentId) {
-        message.info(`Trạng thái hoàn tiền cho lịch hẹn #${data.appointmentId} đã được cập nhật`);
-        
-        // Thử cập nhật cục bộ trước
-        if (data.refundStatus) {
-          setLocalRefundedData(prev => {
-            return prev.map(item => {
-              if (item.appointmentId === data.appointmentId) {
-                return { ...item, refundStatus: data.refundStatus, refundMethod: data.refundMethod, refundNote: data.refundNote };
-              }
-              return item;
-            });
-          });
-        } else {
-          // Nếu không có đủ thông tin, fetch lại sau một khoảng thời gian
-          debounceTimer.current = setTimeout(() => {
-            fetchRefundedData(false);
-          }, 500);
-        }
-      } else {
-        // Nếu không có appointmentId cụ thể, fetch lại sau một khoảng thời gian
-        debounceTimer.current = setTimeout(() => {
-          fetchRefundedData(false);
-        }, 500);
-      }
-    };
+    // Prevent re-initializing WebSocket if already set up
+    if (webSocketInitialized.current) return;
 
     // Setup WebSocket connection if not already connected
     if (!webSocketService.connected) {
       webSocketService.connect();
     }
 
-    // Listen for WebSocket events
     const unsubscribeConnect = webSocketService.onConnect(() => {
       console.log('RefundedAppointments: WebSocket connected');
       setIsWebSocketConnected(true);
@@ -158,50 +109,51 @@ const RefundedAppointments = () => {
       setIsWebSocketConnected(false);
     });
 
-    // Listen for refund status updates via WebSocket
+    const handleRefundUpdate = (data) => {
+      console.log('RefundedAppointments: Refund update via WebSocket', data);
+      
+      if (data.appointmentId && data.refundStatus) {
+        message.info(`Trạng thái hoàn tiền cho lịch hẹn #${data.appointmentId} đã được cập nhật`);
+        setLocalRefundedData(prev => {
+          const updatedData = prev.map(item => {
+            if (item.appointmentId === data.appointmentId) {
+              return { ...item, refundStatus: data.refundStatus, refundMethod: data.refundMethod, refundNote: data.refundNote };
+            }
+            return item;
+          });
+          return updatedData;
+        });
+      }
+    };
+
     const unsubscribeRefundUpdated = webSocketService.onRefundStatusUpdated(handleRefundUpdate);
 
-    // Fallback polling for non-WebSocket connections - ít thường xuyên hơn
-    const intervalId = setInterval(() => {
-      if (!isWebSocketConnected) {
-        console.log('RefundedAppointments: Polling for updates because WebSocket is not connected');
-        fetchRefundedData(false);
-      }
-    }, 30000); // 30 giây thay vì 10 giây
+    webSocketInitialized.current = true; // Mark WebSocket as initialized
 
     return () => {
-      // Cleanup WebSocket listeners
       unsubscribeConnect();
       unsubscribeDisconnect();
       unsubscribeRefundUpdated();
-      clearInterval(intervalId);
-      if (debounceTimer.current) {
-        clearTimeout(debounceTimer.current);
-      }
+      webSocketInitialized.current = false; // Reset on unmount
     };
-  }, [fetchRefundedData, isWebSocketConnected]);
+  }, [fetchRefundedData]); // Dependency is stable, won't cause re-runs
 
-  // Cập nhật state chính khi localRefundedData thay đổi
   useEffect(() => {
     setRefundedData(localRefundedData);
   }, [localRefundedData]);
 
-  // Handle search input change
   const handleSearchChange = (e) => {
     setSearchText(e.target.value);
   };
 
-  // Handle status filter change
   const handleStatusFilterChange = (value) => {
     setStatusFilter(value);
   };
 
-  // Handle date range filter change
   const handleDateRangeChange = (dates) => {
     setDateRange(dates);
   };
 
-  // Show refund confirmation modal
   const showRefundModal = (appointment) => {
     setSelectedAppointment(appointment);
     setRefundMethod('CASH');
@@ -209,12 +161,10 @@ const RefundedAppointments = () => {
     setIsModalVisible(true);
   };
 
-  // Handle modal cancel
   const handleModalCancel = () => {
     setIsModalVisible(false);
   };
 
-  // Handle refund method change
   const handleRefundMethodChange = (value) => {
     setRefundMethod(value);
     if (value === 'CASH') {
@@ -222,29 +172,25 @@ const RefundedAppointments = () => {
     }
   };
 
-  // Cải thiện handleRefundConfirm để cập nhật UI tốt hơn
   const handleRefundConfirm = async () => {
     if (!selectedAppointment) return;
 
     try {
       setIsSubmitting(true);
       
-      // Validate bank transfer note
       if (refundMethod === 'BANK_TRANSFER' && !refundNote.trim()) {
         message.warning('Vui lòng nhập thông tin chuyển khoản');
         return;
       }
 
-      // Call API to update refund status
       const response = await BookingService.updateRefundStatus(selectedAppointment.appointmentId, {
         refundStatus: 'COMPLETED',
         refundMethod: refundMethod,
         refundNote: refundNote || null
       });
 
-      // Cập nhật UI ngay lập tức
       setLocalRefundedData(prev => {
-        return prev.map(item => {
+        const updatedData = prev.map(item => {
           if (item.appointmentId === selectedAppointment.appointmentId) {
             return { 
               ...item, 
@@ -255,12 +201,12 @@ const RefundedAppointments = () => {
           }
           return item;
         });
+        return updatedData;
       });
       
       message.success(`Đã hoàn tiền cho lịch hẹn #${selectedAppointment.appointmentId}`);
       setIsModalVisible(false);
       
-      // Notify other clients via WebSocket
       webSocketService.notifyRefundStatusUpdated(selectedAppointment.appointmentId);
     } catch (error) {
       console.error('Error updating refund status:', error);
@@ -270,12 +216,10 @@ const RefundedAppointments = () => {
     }
   };
 
-  // Helper function to format currency
   const formatCurrency = (amount) => {
     return amount ? `${amount.toLocaleString('vi-VN')}đ` : '0đ';
   };
 
-  // Table columns configuration
   const columns = [
     {
       title: 'ID lịch hẹn',
@@ -439,17 +383,13 @@ const RefundedAppointments = () => {
     },
   ];
 
-  // Filter data based on search and filters
   const filteredData = refundedData.filter(item => {
-    // Filter by search text (phone number)
     const matchSearch = searchText ? 
       (item.phone?.includes(searchText) || `#${item.appointmentId}`.includes(searchText)) : true;
     
-    // Filter by refund status
     const matchStatus = statusFilter === 'all' ? true : 
       (statusFilter === 'pending' ? item.refundStatus === 'PENDING' : item.refundStatus === 'COMPLETED');
     
-    // Filter by date range
     const matchDate = dateRange && dateRange[0] && dateRange[1] ? 
       (dayjs(item.cancelDate || item.date).isAfter(dateRange[0]) && 
        dayjs(item.cancelDate || item.date).isBefore(dateRange[1])) : true;
@@ -457,10 +397,8 @@ const RefundedAppointments = () => {
     return matchSearch && matchStatus && matchDate;
   });
 
-  // Function to export data to Excel
   const handleExportExcel = () => {
     message.info('Chức năng xuất Excel đang được phát triển');
-    // Implementation would go here, using xlsx library
   };
 
   return (
@@ -547,7 +485,6 @@ const RefundedAppointments = () => {
         </div>
       )}
 
-      {/* Modal xác nhận hoàn tiền */}
       <Modal
         title="Xác nhận hoàn tiền"
         open={isModalVisible}
@@ -638,4 +575,4 @@ const RefundedAppointments = () => {
   );
 };
 
-export default RefundedAppointments; 
+export default RefundedAppointments;
