@@ -276,39 +276,93 @@ const Appointment = () => {
     useEffect(() => {
         const fetchServicesAndWeights = async () => {
             try {
-                const catServices = await PetServiceService.getServicesByPetType("CAT");
-                const dogServices = await PetServiceService.getServicesByPetType("DOG");
-                const catWeights = await PetWeightService.getWeightsByPetType("CAT");
-                const dogWeights = await PetWeightService.getWeightsByPetType("DOG");
+                console.log('Gọi PetServiceService.getServicesByPetType("CAT")');
+                const catServicesResponse = await PetServiceService.getServicesByPetType("CAT");
+                const catServices = Array.isArray(catServicesResponse) ? catServicesResponse : [];
+                console.log('Phản hồi dịch vụ CAT thô:', catServices);
 
-                console.log("Fetched CAT services:", catServices);
-                console.log("Fetched DOG services:", dogServices);
-                console.log("Fetched CAT weights:", catWeights);
-                console.log("Fetched DOG weights:", dogWeights);
+                if (catServices.length > 0) {
+                    console.log('Cấu trúc đối tượng dịch vụ mẫu:', JSON.stringify(catServices[0], null, 2));
+                }
+
+                console.log('Gọi PetServiceService.getServicesByPetType("DOG")');
+                const dogServicesResponse = await PetServiceService.getServicesByPetType("DOG");
+                const dogServices = Array.isArray(dogServicesResponse) ? dogServicesResponse : [];
+                console.log('Phản hồi dịch vụ DOG thô:', dogServices);
+
+                console.log('Gọi PetWeightService.getWeightsByPetType("CAT")');
+                const catWeightsResponse = await PetWeightService.getWeightsByPetType("CAT");
+                const catWeights = Array.isArray(catWeightsResponse) ? catWeightsResponse : [];
+                console.log('Phản hồi cân nặng CAT thô:', catWeights);
+
+                if (catWeights.length > 0) {
+                    console.log('Cấu trúc đối tượng cân nặng mẫu:', JSON.stringify(catWeights[0], null, 2));
+                }
+
+                console.log('Gọi PetWeightService.getWeightsByPetType("DOG")');
+                const dogWeightsResponse = await PetWeightService.getWeightsByPetType("DOG");
+                const dogWeights = Array.isArray(dogWeightsResponse) ? dogWeightsResponse : [];
+                console.log('Phản hồi cân nặng DOG thô:', dogWeights);
+
+                console.log("Dịch vụ CAT đã lấy:", catServices);
+                console.log("Dịch vụ DOG đã lấy:", dogServices);
+                console.log("Cân nặng CAT đã lấy:", catWeights);
+                console.log("Cân nặng DOG đã lấy:", dogWeights);
 
                 const mapServices = (services) => {
                     if (!services || services.length === 0) {
-                        console.warn("No services available for this pet type");
+                        console.warn("Không có dịch vụ nào khả dụng cho loại thú cưng này");
                         return [];
                     }
-                    return services.map((service) => ({
-                        value: service.id.toString(),
-                        label: service.serviceName,
-                        price: Number(service.basePrice),
-                    }));
+
+                    if (services.length > 0) {
+                        console.log('Các trường có sẵn trong đối tượng dịch vụ:', Object.keys(services[0]));
+                    }
+
+                    return services.map((service) => {
+                        const serviceId = service.id || service.petServiceId || service.serviceId;
+                        const serviceName = service.serviceName || service.name || service.service;
+                        const basePrice = service.basePrice || service.price;
+
+                        if (!serviceId) {
+                            console.error("Không tìm thấy ID dịch vụ trong đối tượng:", service);
+                        }
+
+                        return {
+                            value: serviceId ? serviceId.toString() : '',
+                            label: serviceName || 'Không có tên',
+                            price: Number(basePrice || 0),
+                        };
+                    });
                 };
 
                 const mapWeights = (weights) => {
                     if (!weights || weights.length === 0) {
-                        console.warn("No weights available for this pet type");
+                        console.warn("Không có cân nặng nào khả dụng cho loại thú cưng này");
                         return [];
                     }
-                    return weights.map((weight) => ({
-                        value: weight.petWeightId.toString(),
-                        label: weight.weightRange,
-                        priceMultiplier: weight.priceMultiplier,
-                        active: weight.statusType === 'ACTIVE'
-                    }));
+
+                    if (weights.length > 0) {
+                        console.log('Các trường có sẵn trong đối tượng cân nặng:', Object.keys(weights[0]));
+                    }
+
+                    return weights.map((weight) => {
+                        const weightId = weight.id || weight.petWeightId || weight.weightId;
+                        const weightRange = weight.weightRange || weight.range || weight.name;
+                        const multiplier = weight.priceMultiplier || weight.multiplier || 1;
+                        const status = weight.statusType || weight.status || 'ACTIVE';
+
+                        if (!weightId) {
+                            console.error("Không tìm thấy ID cân nặng trong đối tượng:", weight);
+                        }
+
+                        return {
+                            value: weightId ? weightId.toString() : '',
+                            label: weightRange || 'Không có khoảng cân nặng',
+                            priceMultiplier: Number(multiplier),
+                            active: status === 'ACTIVE'
+                        };
+                    });
                 };
 
                 const newServiceOptions = {
@@ -321,21 +375,33 @@ const Appointment = () => {
                     dog: mapWeights(dogWeights),
                 };
 
-                console.log("Processed service options:", newServiceOptions);
-                console.log("Processed weight options:", newWeightOptions);
+                console.log("Tùy chọn dịch vụ đã xử lý:", newServiceOptions);
+                console.log("Tùy chọn cân nặng đã xử lý:", newWeightOptions);
 
                 setServiceOptions(newServiceOptions);
                 setWeightOptions(newWeightOptions);
 
                 if (newServiceOptions.cat.length === 0 && newServiceOptions.dog.length === 0) {
                     showToast("Không có dịch vụ nào khả dụng. Vui lòng liên hệ quản trị viên.", "warning");
+                } else if (newServiceOptions.cat.length === 0) {
+                    showToast("Không có dịch vụ nào khả dụng cho mèo. Vui lòng liên hệ quản trị viên.", "warning");
+                } else if (newServiceOptions.dog.length === 0) {
+                    showToast("Không có dịch vụ nào khả dụng cho chó. Vui lòng liên hệ quản trị viên.", "warning");
                 }
+
                 if (newWeightOptions.cat.length === 0 && newWeightOptions.dog.length === 0) {
                     showToast("Không có thông tin cân nặng nào khả dụng. Vui lòng liên hệ quản trị viên.", "warning");
+                } else if (newWeightOptions.cat.length === 0) {
+                    showToast("Không có thông tin cân nặng nào khả dụng cho mèo. Vui lòng liên hệ quản trị viên.", "warning");
+                } else if (newWeightOptions.dog.length === 0) {
+                    showToast("Không có thông tin cân nặng nào khả dụng cho chó. Vui lòng liên hệ quản trị viên.", "warning");
                 }
             } catch (error) {
-                console.error("Error fetching services and weights:", error);
+                console.error("Lỗi khi lấy dịch vụ và cân nặng:", error);
                 showToast("Không thể tải dữ liệu dịch vụ và cân nặng. Vui lòng thử lại sau.", "error");
+                // Đặt tùy chọn mặc định rỗng để tránh giao diện bị lỗi
+                setServiceOptions({ cat: [], dog: [] });
+                setWeightOptions({ cat: [], dog: [] });
             }
         };
         fetchServicesAndWeights();

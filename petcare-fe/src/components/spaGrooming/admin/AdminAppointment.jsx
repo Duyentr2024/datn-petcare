@@ -225,7 +225,7 @@ const AdminAppointment = () => {
               onClick={handleAddAppointment}
               className="bg-green-500 hover:bg-green-600"
             >
-              Thêm lịch
+              Tạo hóa đơn
             </Button>
           </div>
         </div>

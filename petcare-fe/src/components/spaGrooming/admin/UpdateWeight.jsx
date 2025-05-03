@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Select, message } from "antd";
 import BookingService from "../../../service/spaService/BookingService";
+import { jwtDecode } from "jwt-decode";
+import Cookies from "js-cookie";
 
 const UpdateWeight = ({
   visible,
@@ -14,9 +16,30 @@ const UpdateWeight = ({
   const [newPrice, setNewPrice] = useState(null);
   const [priceDiff, setPriceDiff] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [userId, setUserId] = useState(null);
 
-  // Giả sử userId được lấy từ context hoặc localStorage
-  const userId = 1; // Thay bằng logic thực tế để lấy userId (ví dụ: từ auth context)
+  // Lấy userId từ token khi component được mount
+  useEffect(() => {
+    const token = Cookies.get("accessToken");
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        console.log("Decoded token in UpdateWeight:", decoded);
+        const id = decoded.userId || decoded.sub || decoded.id;
+        if (!id) {
+          throw new Error("Token không chứa userId, sub, hoặc id.");
+        }
+        setUserId(String(id));
+      } catch (error) {
+        console.error("Lỗi giải mã token:", error);
+        message.error("Không thể xác định người dùng: " + error.message);
+        setUserId(null);
+      }
+    } else {
+      message.error("Không tìm thấy token đăng nhập. Vui lòng đăng nhập lại.");
+      setUserId(null);
+    }
+  }, []);
 
   useEffect(() => {
     if (visible && pet) {
@@ -24,6 +47,9 @@ const UpdateWeight = ({
       setSelectedWeightRange(pet.weightRange || "Không xác định");
       setNewPrice(pet.price || 0);
       setPriceDiff(0);
+      // Log để kiểm tra petServiceId
+      console.log("Pet data in UpdateWeight:", pet);
+      console.log("Weight options in UpdateWeight:", weightOptions);
     }
   }, [visible, pet]);
 
@@ -33,13 +59,19 @@ const UpdateWeight = ({
       setSelectedWeightId(value);
       setSelectedWeightRange(option.label);
 
+      // Kiểm tra petServiceId trước khi gọi API
+      if (!pet.petServiceId) {
+        throw new Error("Không tìm thấy ID dịch vụ của thú cưng");
+      }
+
       const priceResponse = await BookingService.getServicePrice(pet.petServiceId, value);
       if (!priceResponse || typeof priceResponse.price !== "number") {
         throw new Error("Giá dịch vụ không hợp lệ");
       }
 
-      const updatedPrice = priceResponse.price;
-      const oldPrice = pet.price || 0;
+      // Làm tròn giá mới về 0 chữ số thập phân
+      const updatedPrice = Math.round(priceResponse.price);
+      const oldPrice = Math.round(pet.price || 0);
       const diff = updatedPrice - oldPrice;
 
       setNewPrice(updatedPrice);
@@ -57,6 +89,11 @@ const UpdateWeight = ({
   };
 
   const handleOk = async () => {
+    if (!userId) {
+      message.error("Không thể xác định người dùng. Vui lòng đăng nhập lại.");
+      return;
+    }
+
     if (!selectedWeightId || selectedWeightId === pet.weightId) {
       message.info("Không có thay đổi để cập nhật");
       onCancel();
@@ -75,18 +112,39 @@ const UpdateWeight = ({
         price: newPrice,
         appointmentId: pet.appointmentId,
         reason: reason,
-        userId: userId,
+        userId: userId, // Sử dụng userId từ token
       });
 
-      // Tạo phí phụ thu nếu giá tăng
-      if (priceDiff > 0) {
-        await BookingService.createAdditionalFee({
-          appointmentId: pet.appointmentId,
-          petId: pet.petId,
-          amount: priceDiff,
-          reason: `Chênh lệch giá do thay đổi cân nặng từ ${pet.weightRange || "Chưa xác định"} sang ${selectedWeightRange}`,
-          userId: userId,
-        });
+      // Xử lý chênh lệch giá
+      if (priceDiff !== 0) {
+        try {
+          if (priceDiff > 0) {
+            // Giá tăng: Lưu phí phụ thu
+            await BookingService.createAdditionalFee({
+              appointmentId: pet.appointmentId,
+              petId: pet.petId,
+              amount: Math.abs(priceDiff),
+              reason: `Chênh lệch giá do thay đổi cân nặng từ ${pet.weightRange || "Chưa xác định"} sang ${selectedWeightRange}`,
+              userId: userId,
+              transactionType: "PAYMENT",
+            });
+            message.info("Đã tạo phí phụ thu: " + Math.abs(priceDiff).toLocaleString("vi-VN") + "đ");
+          } else {
+            // Giá giảm: Lưu giao dịch hoàn tiền
+            await BookingService.createAdditionalFee({
+              appointmentId: pet.appointmentId,
+              petId: pet.petId,
+              amount: Math.abs(priceDiff),
+              reason: `Hoàn tiền do giảm giá từ ${pet.weightRange || "Chưa xác định"} sang ${selectedWeightRange}`,
+              userId: userId,
+              transactionType: "REFUNDED",
+            });
+            message.info("Đã tạo giao dịch hoàn tiền: " + Math.abs(priceDiff).toLocaleString("vi-VN") + "đ");
+          }
+        } catch (error) {
+          console.error("Failed to handle price difference:", error);
+          message.warning("Cập nhật cân nặng thành công nhưng không thể xử lý chênh lệch giá: " + (error.message || "Lỗi không xác định"));
+        }
       }
 
       message.success({ content: "Cập nhật cân nặng và giá thành công", key: "weightUpdate" });
@@ -116,6 +174,7 @@ const UpdateWeight = ({
       {pet ? (
         <div>
           <p><strong>Thú cưng:</strong> {pet.petName} ({pet.petType})</p>
+          <p><strong>Dịch vụ:</strong> {pet.service || "Không xác định"}</p>
           <p><strong>Cân nặng hiện tại:</strong> {pet.weightRange || "Không xác định"}</p>
           <p><strong>Giá hiện tại:</strong> {(pet.price || 0).toLocaleString("vi-VN")}đ</p>
 
