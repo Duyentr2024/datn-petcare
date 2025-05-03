@@ -1,72 +1,95 @@
 import axios from "axios";
+import Cookies from "js-cookie"; // Import js-cookie để lấy token
+import API_BASE_URL from "../../config";
+const API_URL = `${API_BASE_URL}/api/categories`; // Điều chỉnh URL nếu cần
 
-const API_URL = "http://localhost:8080/api/categories"; // Adjust URL as needed
+// Tạo instance của Axios
+const api = axios.create({
+  baseURL: API_URL,
+});
+
+// Thêm interceptor để tự động thêm token vào header
+api.interceptors.request.use(
+  (config) => {
+    const token = Cookies.get("accessToken"); // Lấy token từ cookie với tên "accessToken"
+    if (token) {
+      config.headers["Authorization"] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 const ProductCategoriesService = {
-    // Get list of all categories
-    getAllCategories: async () => {
-        try {
-            const response = await axios.get(`${API_URL}/getAllCategories`);
-            return response.data;
-        } catch (error) {
-            console.error("Error fetching categories:", error);
-            throw error;
-        }
-    },
+  // Lấy danh sách tất cả danh mục
+  getAllCategories: async () => {
+    try {
+      const response = await api.get("/getAllCategories");
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi lấy danh mục:", error);
+      throw error;
+    }
+  },
 
-    // Get list of active categories
-    getActiveCategories: async () => {
-        try {
-            const response = await axios.get(`${API_URL}/activeProductCategories`);
-            return response.data;
-        } catch (error) {
-            console.error("Error fetching active categories:", error);
-            throw error;
-        }
-    },
+  // Lấy danh sách danh mục đang hoạt động
+  getActiveCategories: async () => {
+    try {
+      const response = await api.get("/activeProductCategories");
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi lấy danh mục đang hoạt động:", error);
+      throw error;
+    }
+  },
 
-    // Get a category by its ID
-    getCategoryById: async (categoryId) => {
-        try {
-            const response = await axios.get(`${API_URL}/getByIdCategories/${categoryId}`);
-            return response.data;
-        } catch (error) {
-            console.error(`Error fetching category by ID ${categoryId}:`, error);
-            throw error;
-        }
-    },
+  // Lấy danh mục theo ID
+  getCategoryById: async (categoryId) => {
+    try {
+      const response = await api.get(`/getByIdCategories/${categoryId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Lỗi khi lấy danh mục theo ID ${categoryId}:`, error);
+      throw error;
+    }
+  },
 
-    // Create a new category
-    createCategory: async (category) => {
-        try {
-            const response = await axios.post(`${API_URL}/createCategories`, category);
-            return response.data;
-        } catch (error) {
-            console.error("Error creating category:", error);
-            throw error;
-        }
-    },
+  // Tạo danh mục mới
+  createCategory: async (category) => {
+    try {
+      const response = await api.post("/createCategories", category);
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi tạo danh mục:", error);
+      throw error;
+    }
+  },
 
-    // Update a category by its ID
-    updateCategory: async (categoryId, categoryDetails) => {
-        try {
-            const response = await axios.put(`${API_URL}/updateProductCategories/${categoryId}`, categoryDetails);
-            return response.data;
-        } catch (error) {
-            console.error(`Error updating category ID ${categoryId}:`, error);
-            throw error;
-        }
-    },
+  // Cập nhật danh mục theo ID
+  updateCategory: async (categoryId, categoryDetails) => {
+    try {
+      const response = await api.put(
+        `/updateProductCategories/${categoryId}`,
+        categoryDetails
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Lỗi khi cập nhật danh mục ID ${categoryId}:`, error);
+      throw error;
+    }
+  },
 
-    // Delete a category by its ID
-    deleteCategory: async (categoryId) => {
-        try {
-            await axios.delete(`${API_URL}/deleteCategories/${categoryId}`);
-        } catch (error) {
-            console.error(`Error deleting category ID ${categoryId}:`, error);
-            throw error;
-        }
-    },
+  // Xóa danh mục theo ID
+  deleteCategory: async (categoryId) => {
+    try {
+      await api.delete(`/deleteCategories/${categoryId}`);
+    } catch (error) {
+      console.error(`Lỗi khi xóa danh mục ID ${categoryId}:`, error);
+      throw error;
+    }
+  },
 };
 
 export default ProductCategoriesService;

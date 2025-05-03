@@ -357,7 +357,7 @@ const ManageProducts = () => {
                     className={`flex-1 py-2 text-center font-medium ${activeTab === "active"
                         ? "border-b-2 border-[#f0b040] text-[#f0b040]"
                         : "text-gray-500 hover:text-[#e0a030]"
-                        } transition-colors`}
+                    } transition-colors`}
                     onClick={() => {
                         setActiveTab("active");
                         setCurrentPage(1);
@@ -369,7 +369,7 @@ const ManageProducts = () => {
                     className={`flex-1 py-2 text-center font-medium ${activeTab === "inactive"
                         ? "border-b-2 border-[#f0b040] text-[#f0b040]"
                         : "text-gray-500 hover:text-[#e0a030]"
-                        } transition-colors`}
+                    } transition-colors`}
                     onClick={() => {
                         setActiveTab("inactive");
                         setCurrentPage(1);

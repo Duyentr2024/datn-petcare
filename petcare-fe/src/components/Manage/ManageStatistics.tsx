@@ -8,10 +8,53 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
   FiUser,
-  FiPhone, // Biểu tượng điện thoại
-  FiShoppingCart // Biểu tượng giỏ hàng
+  FiPhone,
+  FiShoppingCart
 } from "react-icons/fi";
 
+// Hàm định dạng tiền tệ
+const formatCurrency = (value) => {
+  return value !== null && value !== undefined
+    ? value.toLocaleString("vi-VN", { style: "currency", currency: "VND" })
+    : "Đang tải...";
+};
+
+// Component Tooltip tùy chỉnh
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    const offlineData = payload.find((p) => p.name === "Offline");
+    return (
+      <div className="bg-white border border-gray-200 rounded-md p-2 shadow-md" style={{ fontSize: "11px" }}>
+        <p className="font-semibold">{label}</p>
+        {payload.map((entry, index) => (
+          <div key={index}>
+            {entry.name === "Offline" ? (
+              <div>
+                <p style={{ color: entry.fill }}>
+                  {`${entry.name}: ${formatCurrency(entry.value)}`}
+                  {offlineData && (
+                    <span className="ml-2">
+                      (Tiền mặt: {formatCurrency(offlineData.payload.cashRevenue)} - MOMO: {formatCurrency(offlineData.payload.momoRevenue)})
+                    </span>
+                  )}
+                </p>
+              </div>
+            ) : (
+              <p style={{ color: entry.fill }}>
+                {`${entry.name}: ${
+                  entry.name.includes("đơn") || entry.name.includes("Tổng đơn")
+                    ? entry.value.toLocaleString("vi-VN")
+                    : formatCurrency(entry.value)
+                }`}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
 const ManageStatistics = () => {
   // Tab Management
@@ -35,6 +78,8 @@ const ManageStatistics = () => {
   const [totalRevenue, setTotalRevenue] = useState(null);
   const [totalOnlineRevenue, setTotalOnlineRevenue] = useState(0);
   const [totalOfflineRevenue, setTotalOfflineRevenue] = useState(0);
+  const [offlineRevenueByPaymentMethod, setOfflineRevenueByPaymentMethod] = useState([]);
+  const [viewTypePaymentMethod, setViewTypePaymentMethod] = useState("daily");
   const [totalOrdersToday, setTotalOrdersToday] = useState({
     totalOrders: null,
     offlineOrders: null,
@@ -104,17 +149,16 @@ const ManageStatistics = () => {
     titleRow.font = { name: 'Calibri', bold: true, size: 14, color: { argb: "FFFFFF" } };
     titleRow.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
     titleRow.height = 35;
-    worksheet.mergeCells("A1:J1"); // Merge từ A đến J (10 cột)
-    // Áp dụng gradient fill chỉ cho các ô từ A1 đến J1
-    for (let col = 1; col <= 10; col++) { // Từ cột A (1) đến J (10)
+    worksheet.mergeCells("A1:J1");
+    for (let col = 1; col <= 10; col++) {
       const cell = worksheet.getRow(1).getCell(col);
       cell.fill = {
         type: "gradient",
         gradient: "angle",
         degree: 45,
         stops: [
-          { position: 0, color: { argb: "BFDBFE" } }, // Xanh nhạt
-          { position: 1, color: { argb: "93C5FD" } }, // Xanh nhạt hơn
+          { position: 0, color: { argb: "BFDBFE" } },
+          { position: 1, color: { argb: "93C5FD" } },
         ],
       };
       cell.border = {
@@ -130,8 +174,7 @@ const ManageStatistics = () => {
     dateRow.font = { name: 'Calibri', bold: true, size: 11, color: { argb: "FFFFFF" } };
     dateRow.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
     dateRow.height = 25;
-    worksheet.mergeCells("A2:J2"); // Merge từ A đến J
-    // Áp dụng gradient fill chỉ cho các ô từ A2 đến J2
+    worksheet.mergeCells("A2:J2");
     for (let col = 1; col <= 10; col++) {
       const cell = worksheet.getRow(2).getCell(col);
       cell.fill = {
@@ -139,8 +182,8 @@ const ManageStatistics = () => {
         gradient: "angle",
         degree: 45,
         stops: [
-          { position: 0, color: { argb: "9CA3AF" } }, // Xám nhạt
-          { position: 1, color: { argb: "D1D5DB" } }, // Xám nhạt hơn
+          { position: 0, color: { argb: "9CA3AF" } },
+          { position: 1, color: { argb: "D1D5DB" } },
         ],
       };
       cell.border = {
@@ -161,8 +204,7 @@ const ManageStatistics = () => {
     periodRow.font = { name: 'Calibri', bold: true, size: 11, color: { argb: "FFFFFF" } };
     periodRow.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
     periodRow.height = 25;
-    worksheet.mergeCells("A3:J3"); // Merge từ A đến J
-    // Áp dụng gradient fill chỉ cho các ô từ A3 đến J3
+    worksheet.mergeCells("A3:J3");
     for (let col = 1; col <= 10; col++) {
       const cell = worksheet.getRow(3).getCell(col);
       cell.fill = {
@@ -170,8 +212,8 @@ const ManageStatistics = () => {
         gradient: "angle",
         degree: 45,
         stops: [
-          { position: 0, color: { argb: "9CA3AF" } }, // Xám nhạt
-          { position: 1, color: { argb: "D1D5DB" } }, // Xám nhạt hơn
+          { position: 0, color: { argb: "9CA3AF" } },
+          { position: 1, color: { argb: "D1D5DB" } },
         ],
       };
       cell.border = {
@@ -182,7 +224,7 @@ const ManageStatistics = () => {
       };
     }
 
-    worksheet.addRow([]); // Dòng trống
+    worksheet.addRow([]);
 
     // Header
     const headerRow = worksheet.addRow([
@@ -245,7 +287,6 @@ const ManageStatistics = () => {
     });
 
     // Tổng cộng
-    // Thêm hàng tổng cộng
     const totalRow = worksheet.addRow([
       "",
       "Tổng cộng",
@@ -260,35 +301,32 @@ const ManageStatistics = () => {
     ]);
     totalRow.font = { name: 'Calibri', bold: true, size: 11 };
     totalRow.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-
-    // Áp dụng màu nền và viền chỉ cho các ô từ A đến J
-    for (let col = 1; col <= 10; col++) { // Từ cột A (1) đến J (10)
+    for (let col = 1; col <= 10; col++) {
       const cell = totalRow.getCell(col);
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "E5E7EB" } }; // Màu xám nhạt
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "E5E7EB" } };
       cell.border = {
         top: { style: "thin", color: { argb: "000000" } },
         left: { style: "thin", color: { argb: "000000" } },
         bottom: { style: "double", color: { argb: "000000" } },
         right: { style: "thin", color: { argb: "000000" } },
       };
-      // Định dạng số cho các ô dữ liệu
-      if (col >= 3 && col <= 5) cell.numFmt = "#,##0 ₫"; // Doanh thu
-      if (col >= 6 && col <= 8) cell.numFmt = "#,##0"; // Số đơn
-      if (col >= 9 && col <= 10) cell.numFmt = "0.00"; // Tỷ lệ
-    };
+      if (col >= 3 && col <= 5) cell.numFmt = "#,##0 ₫";
+      if (col >= 6 && col <= 8) cell.numFmt = "#,##0";
+      if (col >= 9 && col <= 10) cell.numFmt = "0.00";
+    }
 
     // Điều chỉnh độ rộng cột
     worksheet.columns = [
-      { width: 6 }, // STT
-      { width: 16 }, // Ngày/Tuần/Tháng
-      { width: 16 }, // Doanh thu
-      { width: 16 }, // Doanh thu Online
-      { width: 16 }, // Doanh thu Offline
-      { width: 10 }, // Tổng đơn
-      { width: 10 }, // Đơn Online
-      { width: 10 }, // Đơn Offline
-      { width: 10 }, // Tỷ lệ Online
-      { width: 10 }, // Tỷ lệ Offline
+      { width: 6 },
+      { width: 16 },
+      { width: 16 },
+      { width: 16 },
+      { width: 16 },
+      { width: 10 },
+      { width: 10 },
+      { width: 10 },
+      { width: 10 },
+      { width: 10 },
     ];
 
     try {
@@ -316,12 +354,14 @@ const ManageStatistics = () => {
       StatisticsService.getDailyOrderCountByType(startOfMonth, endOfMonth),
       StatisticsService.getOrdersByDateRange(startOfMonth, endOfMonth),
       StatisticsService.getDailyRevenueByType(startOfMonth, endOfMonth),
+      StatisticsService.getDailyOfflineRevenueByPaymentMethod(startOfMonth, endOfMonth),
     ])
-      .then(([revenueRes, orderCountRes, ordersByRangeRes, revenueByTypeRes]) => {
+      .then(([revenueRes, orderCountRes, ordersByRangeRes, revenueByTypeRes, offlineRevenueByPaymentRes]) => {
         console.log("Default Monthly - Revenue data:", revenueRes.data);
         console.log("Default Monthly - Order count data:", orderCountRes.data);
         console.log("Default Monthly - Orders by range:", ordersByRangeRes.data);
         console.log("Default Monthly - Revenue by type:", revenueByTypeRes.data);
+        console.log("Default Monthly - Offline Revenue by Payment Method:", offlineRevenueByPaymentRes.data);
 
         setOrdersByRange({
           onlineOrders: Number(ordersByRangeRes.data?.onlineOrders || 0),
@@ -360,6 +400,12 @@ const ManageStatistics = () => {
           return acc;
         }, {});
 
+        const offlineRevenueByPaymentData = Object.entries(offlineRevenueByPaymentRes.data || {}).map(([date, stats]) => ({
+          date: formatDateFromBE(date),
+          cashRevenue: Number(stats.cashRevenue || 0),
+          momoRevenue: Number(stats.momoRevenue || 0),
+        }));
+
         const combinedData = dateList.map((date) => {
           const formattedDate = formatDateFromBE(date.toISOString());
           const revenueItem = revenueData.find((item) => item.date === formattedDate) || {
@@ -374,6 +420,10 @@ const ManageStatistics = () => {
             onlineRevenue: 0,
             offlineRevenue: 0,
           };
+          const offlinePayment = offlineRevenueByPaymentData.find((item) => item.date === formattedDate) || {
+            cashRevenue: 0,
+            momoRevenue: 0,
+          };
 
           return {
             date: formattedDate,
@@ -383,6 +433,8 @@ const ManageStatistics = () => {
             offlineOrders: orderItem.offlineOrders,
             onlineRevenue: revenueByType.onlineRevenue,
             offlineRevenue: revenueByType.offlineRevenue,
+            cashRevenue: offlinePayment.cashRevenue,
+            momoRevenue: offlinePayment.momoRevenue,
           };
         });
 
@@ -424,7 +476,7 @@ const ManageStatistics = () => {
       StatisticsService.getTotalCustomers(),
       StatisticsService.getTopFiveCustomers(),
       StatisticsService.getBestSellingProducts(),
-      StatisticsService.getTopFavoriteProducts(), // Thêm API mới
+      StatisticsService.getTopFavoriteProducts(),
     ])
       .then(
         ([
@@ -442,9 +494,8 @@ const ManageStatistics = () => {
           totalCustomersRes,
           topFiveCustomersRes,
           bestSellingProductsRes,
-          topFavoriteProductsRes, // Thêm response mới
+          topFavoriteProductsRes,
         ]) => {
-          // Xử lý dữ liệu hôm nay
           const totalRevenueToday = revenueTodayRes.data;
           setRevenueToday(totalRevenueToday);
           setRevenueTodayOnline(revenueTodayByTypeRes.data?.onlineRevenue || 0);
@@ -455,7 +506,6 @@ const ManageStatistics = () => {
             onlineOrders: ordersTodayRes.data?.onlineOrders || 0,
           });
 
-          // Xử lý dữ liệu hôm qua
           const totalRevenueYesterday = revenueYesterdayRes.data;
           setRevenueYesterday(totalRevenueYesterday);
           setRevenueYesterdayOnline(revenueYesterdayByTypeRes.data?.onlineRevenue || 0);
@@ -466,7 +516,6 @@ const ManageStatistics = () => {
             onlineOrders: statsYesterdayRes.data?.onlineOrdersYesterday || 0,
           });
 
-          // Xử lý dữ liệu tháng này
           const totalRevenueThisMonth = revenueThisMonthRes.data;
           setMonthlyRevenue(totalRevenueThisMonth);
           setMonthlyRevenueOnline(revenueThisMonthByTypeRes.data?.onlineRevenue || 0);
@@ -477,13 +526,10 @@ const ManageStatistics = () => {
             onlineOrders: ordersThisMonthRes.data?.onlineOrders || 0,
           });
 
-          // Xử lý tổng kho, khách hàng, top khách hàng, top sản phẩm
           setTotalStock(totalStockRes.data || 0);
           setTotalCustomers(totalCustomersRes.data || 0);
           setTopFiveCustomers(topFiveCustomersRes.data || []);
           setBestSellingProducts(bestSellingProductsRes.data?.slice(0, 5) || []);
-
-          // Xử lý top 5 sản phẩm yêu thích
           setTopFavoriteProducts(topFavoriteProductsRes.data?.slice(0, 5) || []);
 
           console.log("Today - Total:", totalRevenueToday, "Online:", revenueTodayByTypeRes.data?.onlineRevenue, "Offline:", revenueTodayByTypeRes.data?.offlineRevenue);
@@ -528,12 +574,14 @@ const ManageStatistics = () => {
         StatisticsService.getDailyOrderCountByType(startDate, endDate),
         StatisticsService.getOrdersByDateRange(startDate, endDate),
         StatisticsService.getDailyRevenueByType(startDate, endDate),
+        StatisticsService.getDailyOfflineRevenueByPaymentMethod(startDate, endDate),
       ])
-        .then(([revenueRes, orderCountRes, ordersByRangeRes, revenueByTypeRes]) => {
+        .then(([revenueRes, orderCountRes, ordersByRangeRes, revenueByTypeRes, offlineRevenueByPaymentRes]) => {
           console.log("Search Daily - Raw revenue data:", revenueRes.data);
           console.log("Search Daily - Raw order count data:", orderCountRes.data);
           console.log("Search Daily - Raw orders by range:", ordersByRangeRes.data);
           console.log("Search Daily - Raw revenue by type:", revenueByTypeRes.data);
+          console.log("Search Daily - Raw offline revenue by payment:", offlineRevenueByPaymentRes.data);
 
           const dateList = [];
           let currentDate = new Date(start);
@@ -566,6 +614,12 @@ const ManageStatistics = () => {
             return acc;
           }, {});
 
+          const offlineRevenueByPaymentData = Object.entries(offlineRevenueByPaymentRes.data || {}).map(([date, stats]) => ({
+            date: formatDateFromBE(date),
+            cashRevenue: Number(stats.cashRevenue || 0),
+            momoRevenue: Number(stats.momoRevenue || 0),
+          }));
+
           const combinedData = dateList.map((date) => {
             const formattedDate = formatDateFromBE(date.toISOString());
             const revenueItem = revenueData.find((item) => item.date === formattedDate) || {
@@ -580,6 +634,10 @@ const ManageStatistics = () => {
               onlineRevenue: 0,
               offlineRevenue: 0,
             };
+            const offlinePayment = offlineRevenueByPaymentData.find((item) => item.date === formattedDate) || {
+              cashRevenue: 0,
+              momoRevenue: 0,
+            };
 
             return {
               date: formattedDate,
@@ -589,6 +647,8 @@ const ManageStatistics = () => {
               offlineOrders: orderItem.offlineOrders,
               onlineRevenue: revenueByType.onlineRevenue,
               offlineRevenue: revenueByType.offlineRevenue,
+              cashRevenue: offlinePayment.cashRevenue,
+              momoRevenue: offlinePayment.momoRevenue,
             };
           });
 
@@ -621,7 +681,7 @@ const ManageStatistics = () => {
           setTotalOnlineRevenue(0);
           setTotalOfflineRevenue(0);
           setOrdersByRange({ onlineOrders: 0, offlineOrders: 0 });
-      });
+        });
     } else if (daysDiff <= 90) {
       setViewType("weekly");
       Promise.all([
@@ -629,12 +689,14 @@ const ManageStatistics = () => {
         StatisticsService.getWeeklyOrderCountByType(startDate, endDate),
         StatisticsService.getOrdersByDateRange(startDate, endDate),
         StatisticsService.getWeeklyRevenueByType(startDate, endDate),
+        StatisticsService.getWeeklyOfflineRevenueByPaymentMethod(startDate, endDate),
       ])
-        .then(([revenueRes, orderCountRes, ordersByRangeRes, revenueByTypeRes]) => {
+        .then(([revenueRes, orderCountRes, ordersByRangeRes, revenueByTypeRes, offlineRevenueByPaymentRes]) => {
           console.log("Search Weekly - Raw revenue data:", revenueRes.data);
           console.log("Search Weekly - Raw order count data:", orderCountRes.data);
           console.log("Search Weekly - Raw orders by range:", ordersByRangeRes.data);
           console.log("Search Weekly - Raw revenue by type:", revenueByTypeRes.data);
+          console.log("Search Weekly - Raw offline revenue by payment:", offlineRevenueByPaymentRes.data);
 
           const weekList = [];
           let currentDate = new Date(start);
@@ -682,6 +744,13 @@ const ManageStatistics = () => {
             return acc;
           }, {});
 
+          const offlineRevenueByPaymentData = (offlineRevenueByPaymentRes.data || []).map((item) => ({
+            weekKey: item.week?.toString() || "",
+            week: formatWeek(item.week || ""),
+            cashRevenue: Number(item.cashRevenue || 0),
+            momoRevenue: Number(item.momoRevenue || 0),
+          }));
+
           const combinedData = weekList.map((weekKey) => {
             const formattedWeek = formatWeek(weekKey);
             const revenueItem = revenueData.find((item) => item.weekKey === weekKey) || {
@@ -697,6 +766,10 @@ const ManageStatistics = () => {
               onlineRevenue: 0,
               offlineRevenue: 0,
             };
+            const offlinePayment = offlineRevenueByPaymentData.find((item) => item.weekKey === weekKey) || {
+              cashRevenue: 0,
+              momoRevenue: 0,
+            };
 
             return {
               week: formattedWeek,
@@ -706,6 +779,8 @@ const ManageStatistics = () => {
               offlineOrders: orderItem.offlineOrders,
               onlineRevenue: revenueByType.onlineRevenue,
               offlineRevenue: revenueByType.offlineRevenue,
+              cashRevenue: offlinePayment.cashRevenue,
+              momoRevenue: offlinePayment.momoRevenue,
             };
           });
 
@@ -738,44 +813,41 @@ const ManageStatistics = () => {
           setTotalOnlineRevenue(0);
           setTotalOfflineRevenue(0);
           setOrdersByRange({ onlineOrders: 0, offlineOrders: 0 });
-      });
+        });
     } else {
       setViewType("monthly");
       Promise.all([
         StatisticsService.getMonthlyRevenue(startDate, endDate),
         StatisticsService.getMonthlyOrderCountByType(startDate, endDate),
         StatisticsService.getOrdersByDateRange(startDate, endDate),
-        StatisticsService.getMonthlyRevenueByType(startDate, endDate), // Thêm API mới vào
+        StatisticsService.getMonthlyRevenueByType(startDate, endDate),
+        StatisticsService.getMonthlyOfflineRevenueByPaymentMethod(startDate, endDate),
       ])
-        .then(([revenueRes, orderCountRes, ordersByRangeRes, revenueByTypeRes]) => { // Thêm `revenueByTypeRes` cho dữ liệu doanh thu online/offline
+        .then(([revenueRes, orderCountRes, ordersByRangeRes, revenueByTypeRes, offlineRevenueByPaymentRes]) => {
           console.log("Search Monthly - Raw revenue data:", revenueRes.data);
           console.log("Search Monthly - Raw order count data:", orderCountRes.data);
           console.log("Search Monthly - Raw orders by range:", ordersByRangeRes.data);
-          console.log("Search Monthly - Raw revenue by type data:", revenueByTypeRes.data); // Log dữ liệu doanh thu online/offline
+          console.log("Search Monthly - Raw revenue by type data:", revenueByTypeRes.data);
+          console.log("Search Monthly - Raw offline revenue by payment:", offlineRevenueByPaymentRes.data);
 
-          // Tạo danh sách tháng đầy đủ
           const monthList = [];
           let currentDate = new Date(start);
-          currentDate.setDate(1); // Đặt về đầu tháng
-          const endMonth = new Date(end.getFullYear(), end.getMonth() + 1, 0); // Cuối tháng của endDate
+          currentDate.setDate(1);
+          const endMonth = new Date(end.getFullYear(), end.getMonth() + 1, 0);
           while (currentDate <= endMonth) {
             const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
             const monthStr = formatMonth(monthKey);
             monthList.push({ monthKey, monthStr });
             currentDate.setMonth(currentDate.getMonth() + 1);
           }
-          console.log("Search Monthly - Month List:", monthList);
 
-          // Xử lý dữ liệu doanh thu
           const revenueData = (revenueRes.data || []).map((item) => ({
             monthKey: item.month || "",
             month: formatMonth(item.month || ""),
             revenue: Number(item.revenue || 0),
             orderCount: Number(item.orderCount || 0),
           }));
-          console.log("Search Monthly - Processed Revenue Data:", revenueData);
 
-          // Xử lý dữ liệu số đơn hàng
           const orderCountData = (orderCountRes.data || []).reduce((acc, item) => {
             const monthKey = item.month || "";
             acc[monthKey] = {
@@ -786,9 +858,7 @@ const ManageStatistics = () => {
             };
             return acc;
           }, {});
-          console.log("Search Monthly - Processed Order Count Data:", orderCountData);
 
-          // Xử lý dữ liệu doanh thu online và offline
           const revenueByTypeData = (revenueByTypeRes.data || []).reduce((acc, item) => {
             const monthKey = item.month || "";
             acc[monthKey] = {
@@ -797,9 +867,14 @@ const ManageStatistics = () => {
             };
             return acc;
           }, {});
-          console.log("Search Monthly - Processed Revenue By Type Data:", revenueByTypeData);
 
-          // Kết hợp dữ liệu
+          const offlineRevenueByPaymentData = (offlineRevenueByPaymentRes.data || []).map((item) => ({
+            monthKey: item.month || "",
+            month: formatMonth(item.month || ""),
+            cashRevenue: Number(item.cashRevenue || 0),
+            momoRevenue: Number(item.momoRevenue || 0),
+          }));
+
           const combinedData = monthList.map(({ monthKey, monthStr }) => {
             const revenueItem = revenueData.find((item) => item.monthKey === monthKey) || {
               revenue: 0,
@@ -814,6 +889,10 @@ const ManageStatistics = () => {
               onlineRevenue: 0,
               offlineRevenue: 0,
             };
+            const offlinePayment = offlineRevenueByPaymentData.find((item) => item.monthKey === monthKey) || {
+              cashRevenue: 0,
+              momoRevenue: 0,
+            };
 
             return {
               month: monthStr,
@@ -823,11 +902,13 @@ const ManageStatistics = () => {
               offlineOrders: orderItem.offlineOrders,
               onlineRevenue: revenueByTypeItem.onlineRevenue,
               offlineRevenue: revenueByTypeItem.offlineRevenue,
+              cashRevenue: offlinePayment.cashRevenue,
+              momoRevenue: offlinePayment.momoRevenue,
             };
           });
+
           console.log("Search Monthly - Combined Data:", combinedData);
 
-          // Tính tổng
           const total = combinedData.reduce((sum, item) => sum + item.revenue, 0);
           const totalOnlineRevenueSum = combinedData.reduce((sum, item) => sum + item.onlineRevenue, 0);
           const totalOfflineRevenueSum = combinedData.reduce((sum, item) => sum + item.offlineRevenue, 0);
@@ -857,13 +938,6 @@ const ManageStatistics = () => {
           setOrdersByRange({ onlineOrders: 0, offlineOrders: 0 });
         });
     }
-
-  };
-
-  const formatCurrency = (value) => {
-    return value !== null && value !== undefined
-      ? value.toLocaleString("vi-VN", { style: "currency", currency: "VND" })
-      : "Đang tải...";
   };
 
   const formatNumber = (value) => {
@@ -895,10 +969,11 @@ const ManageStatistics = () => {
         ].map((tab) => (
           <button
             key={tab.name}
-            className={`py-1.5 px-3.5 font-medium text-xs md:text-sm rounded-t-md transition-colors whitespace-nowrap ${activeTab === tab.name
-              ? "bg-white text-blue-600 border-b-2 border-blue-600"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+            className={`py-1.5 px-3.5 font-medium text-xs md:text-sm rounded-t-md transition-colors whitespace-nowrap ${
+              activeTab === tab.name
+                ? "bg-white text-blue-600 border-b-2 border-blue-600"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
             onClick={() => setActiveTab(tab.name)}
           >
             <span className="inline-flex items-center gap-1">
@@ -918,48 +993,48 @@ const ManageStatistics = () => {
               {[
                 {
                   title: "Hôm nay",
-            revenue: revenueToday,
-            orders: totalOrdersToday,
+                  revenue: revenueToday,
+                  orders: totalOrdersToday,
                   icon: <FaDollarSign size={12} />,
                   color: "text-green-500",
-          },
-          {
+                },
+                {
                   title: "Hôm qua",
-            revenue: revenueYesterday,
-            orders: totalOrdersYesterday,
+                  revenue: revenueYesterday,
+                  orders: totalOrdersYesterday,
                   icon: <FaChartBar size={12} />,
                   color: "text-orange-500",
-          },
-          {
+                },
+                {
                   title: "Tháng này",
-            revenue: monthlyRevenue,
-            orders: totalOrdersThisMonth,
+                  revenue: monthlyRevenue,
+                  orders: totalOrdersThisMonth,
                   icon: <FaBoxOpen size={12} />,
                   color: "text-blue-500",
-          },
-          {
+                },
+                {
                   title: "Sản phẩm",
-            value: totalStock,
+                  value: totalStock,
                   icon: <FaBoxOpen size={12} />,
                   color: "text-purple-500",
-          },
-          {
+                },
+                {
                   title: "Khách hàng",
-            value: totalCustomers,
+                  value: totalCustomers,
                   icon: <FaUsers size={12} />,
                   color: "text-teal-500",
-          },
-        ].map((item, index) => (
-          <div
-            key={index}
+                },
+              ].map((item, index) => (
+                <div
+                  key={index}
                   className="border border-gray-200 p-2 rounded-lg bg-white hover:bg-gray-50 transition flex items-center gap-2 group relative"
-          >
+                >
                   <div className={`text-base ${item.color}`}>{item.icon}</div>
-            <div>
+                  <div>
                     <h3 className="text-xs font-semibold text-gray-600 truncate">{item.title}</h3>
-              {item.revenue !== undefined ? (
-                <>
-                  <p className="text-sm font-bold text-gray-900 truncate">
+                    {item.revenue !== undefined ? (
+                      <>
+                        <p className="text-sm font-bold text-gray-900 truncate">
                           {formatCurrency(item.revenue)}
                         </p>
                         <p className="text-xs text-gray-500 truncate">
@@ -970,7 +1045,6 @@ const ManageStatistics = () => {
                       <p className="text-sm font-bold text-gray-900 truncate">{formatNumber(item.value)}</p>
                     )}
                   </div>
-                  {/* Tooltip for detailed info (hidden by default, shown on hover) */}
                   {item.revenue !== undefined && item.onlineRevenue !== undefined && item.offlineRevenue !== undefined && (
                     <div className="absolute hidden group-hover:block bg-gray-800 text-white text-xs rounded-md p-2 z-10 top-full left-0 mt-1 min-w-[150px] shadow-lg">
                       <p className="truncate">Online: {formatCurrency(item.onlineRevenue)}</p>
@@ -980,12 +1054,12 @@ const ManageStatistics = () => {
                           <p className="truncate">Đơn Online: {formatNumber(item.orders.onlineOrders)}</p>
                           <p className="truncate">Đơn Offline: {formatNumber(item.orders.offlineOrders)}</p>
                         </>
-              )}
-            </div>
+                      )}
+                    </div>
                   )}
-          </div>
-        ))}
-      </div>
+                </div>
+              ))}
+            </div>
 
             <div className="mb-3.5 bg-white p-2.5 rounded-md border border-gray-200">
               <div className="flex items-center mb-1.5 text-gray-800">
@@ -993,27 +1067,27 @@ const ManageStatistics = () => {
                 <span className="text-sm font-semibold">Tìm kiếm doanh thu</span>
               </div>
               <div className="flex flex-row gap-2">
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
                   className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-          />
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
+                />
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
                   className="border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-          />
-          <button
-            onClick={fetchRevenueByDate}
+                />
+                <button
+                  onClick={fetchRevenueByDate}
                   className="bg-blue-600 text-white px-3.5 py-2 rounded hover:bg-blue-700 transition flex items-center text-sm"
-          >
+                >
                   <FaSearch className="mr-1" size={10} /> Tìm
-          </button>
-        </div>
+                </button>
+              </div>
               <div className="flex flex-row justify-between items-center mt-2.5">
-        {totalRevenue !== null && (
+                {totalRevenue !== null && (
                   <div>
                     <p className="text-sm font-semibold text-green-700 truncate">
                       Tổng: {formatCurrency(totalRevenue)}
@@ -1028,14 +1102,14 @@ const ManageStatistics = () => {
                         </p>
                       </div>
                     )}
-          </div>
-        )}
-        <button
-          onClick={exportRevenueReport}
+                  </div>
+                )}
+                <button
+                  onClick={exportRevenueReport}
                   className="bg-green-600 text-white px-3.5 py-2 rounded hover:bg-green-700 transition flex items-center text-sm"
-        >
+                >
                   📥 Excel
-        </button>
+                </button>
               </div>
               {ordersByRange.offlineOrders !== null && ordersByRange.onlineOrders !== null && (
                 <div className="mt-1.5 flex flex-row gap-3.5">
@@ -1047,90 +1121,81 @@ const ManageStatistics = () => {
                   </p>
                 </div>
               )}
-      </div>
+            </div>
 
-      {chartData.length > 0 && (
-              <div className="bg-white p-2.5 rounded-md border border-gray-200">
-                <div className="flex items-center mb-1.5">
-                  <span className="text-sm font-semibold">📈 Biểu đồ</span>
+            {chartData.length > 0 && (
+              <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                <div className="flex items-center mb-2">
+                  <span className="text-base font-semibold text-gray-800">📈 Biểu đồ</span>
                 </div>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey={viewType === "daily" ? "date" : viewType === "weekly" ? "week" : "month"}
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }} barCategoryGap={12}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis
+                      dataKey={viewType === "daily" ? "date" : viewType === "weekly" ? "week" : "month"}
                       tickFormatter={(value) => value}
-                      tick={{ fontSize: 11 }}
-                      height={25}
-              />
-              <YAxis
-                yAxisId="left"
-                orientation="left"
-                stroke="#3B82F6"
-                tickFormatter={(value) => {
-                  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-                  else if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
-                  return value;
-                }}
-                      tick={{ fontSize: 11 }}
-                      width={35}
-              />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                stroke="#82ca9d"
-                allowDecimals={false}
-                tickFormatter={(value) => value}
-                      tick={{ fontSize: 11 }}
-                      width={25}
-              />
-              <Tooltip
-                formatter={(value, name) =>
-                        name === "revenue" || name === "onlineRevenue" || name === "offlineRevenue"
-                          ? formatCurrency(value)
-                          : value.toLocaleString("vi-VN")
-                      }
-                      labelFormatter={(label) => label}
-                      contentStyle={{ fontSize: "11px", padding: "4px 6px" }}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      height={30}
                     />
-                    <Legend wrapperStyle={{ fontSize: "11px", paddingTop: "3px" }} />
-                    <Bar yAxisId="left" dataKey="revenue" fill="#4B5563" name="Tổng doanh thu" barSize={14} />
-                    <Bar yAxisId="left" dataKey="onlineRevenue" fill="#1E90FF" name="Online" barSize={14} />
-                    <Bar yAxisId="left" dataKey="offlineRevenue" fill="#FF8C00" name="Offline" barSize={14} />
-                    <Bar yAxisId="right" dataKey="orderCount" fill="#82ca9d" name="Tổng đơn" barSize={14} />
-                    <Bar yAxisId="right" dataKey="onlineOrders" fill="#4682B4" name="Đơn Online" barSize={14} />
-                    <Bar yAxisId="right" dataKey="offlineOrders" fill="#FFD700" name="Đơn Offline" barSize={14} />
-            </BarChart>
-          </ResponsiveContainer>
+                    <YAxis
+                      yAxisId="left"
+                      orientation="left"
+                      stroke="#3B82F6"
+                      tickFormatter={(value) => {
+                        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                        else if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+                        return value;
+                      }}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      width={40}
+                    />
+                    <YAxis
+                      yAxisId="right"
+                      orientation="right"
+                      stroke="#82ca9d"
+                      allowDecimals={false}
+                      tickFormatter={(value) => value}
+                      tick={{ fontSize: 12, fill: '#6b7280' }}
+                      width={30}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
+                    {/* ===== Doanh thu ===== */}
+                    <Bar yAxisId="left" dataKey="revenue" fill="#4B5563" name="Tổng doanh thu" barSize={10} radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="onlineRevenue" fill="#1E90FF" name="Online" barSize={10} radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="offlineRevenue" fill="#FF8C00" name="Offline" barSize={10} radius={[4, 4, 0, 0]} />
+                    {/* ===== Đơn hàng ===== */}
+                    <Bar yAxisId="right" dataKey="orderCount" fill="#82ca9d" name="Tổng đơn" barSize={10} radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="right" dataKey="onlineOrders" fill="#4682B4" name="Đơn Online" barSize={10} radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="right" dataKey="offlineOrders" fill="#FFD700" name="Đơn Offline" barSize={10} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             )}
-        </div>
-      )}
+          </div>
+        )}
 
         {activeTab === "products" && (
           <div>
-            {/* Products Tab Content */}
             <div className="mb-2.5">
               <span className="text-sm font-semibold text-blue-600">Top 5 sản phẩm bán chạy</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 overflow-x-auto">
               {bestSellingProducts.length > 0 ? (
                 bestSellingProducts.map((product, index) => (
-            <div
-              key={index}
+                  <div
+                    key={index}
                     className="border border-gray-200 rounded-md p-2.5 bg-white transition hover:bg-gray-50 relative group"
-            >
-              <img
-                src={product.image}
-                alt={product.productName}
+                  >
+                    <img
+                      src={product.image}
+                      alt={product.productName}
                       className="h-20 w-full object-cover rounded-md mb-1.5"
                     />
                     <h4 className="text-sm font-semibold text-gray-800 truncate" title={product.productName}>
                       {product.productName}
                     </h4>
-
-                    {/* Hiển thị biến thể */}
-              <p className="text-xs text-gray-600">
+                    <p className="text-xs text-gray-600">
                       Màu: <span className="font-medium">{product.colorValue}</span>
                     </p>
                     <p className="text-xs text-gray-600">
@@ -1139,7 +1204,6 @@ const ManageStatistics = () => {
                     <p className="text-xs text-gray-600 mb-1">
                       Khối lượng: <span className="font-medium">{product.weightValue} kg</span>
                     </p>
-
                     <div className="flex justify-between items-center mt-1">
                       <p className="text-xs text-gray-600 truncate">
                         Bán được: {formatNumber(product.totalSold)}
@@ -1147,15 +1211,14 @@ const ManageStatistics = () => {
                       <p className="text-sm font-bold text-green-600 truncate">
                         {formatCurrency(product.price)}
                       </p>
-            </div>
-        </div>
+                    </div>
+                  </div>
                 ))
               ) : (
                 <p className="text-sm text-gray-600">Không có dữ liệu.</p>
               )}
-      </div>
+            </div>
 
-            {/* Top 5 sản phẩm được yêu thích nhất */}
             <div className="mb-2.5 mt-6">
               <span className="text-sm font-semibold text-blue-600">Top 5 sản phẩm được yêu thích nhất</span>
             </div>
@@ -1174,7 +1237,6 @@ const ManageStatistics = () => {
                     <h4 className="text-sm font-semibold text-gray-800 truncate" title={product.productName}>
                       {product.productName}
                     </h4>
-
                     <div className="flex justify-between items-center mt-1">
                       <p className="text-xs text-gray-600 truncate">
                         Lượt yêu thích: {formatNumber(product.favoriteCount)}
@@ -1191,19 +1253,18 @@ const ManageStatistics = () => {
 
         {activeTab === "customers" && (
           <div>
-            {/* Customers Tab Content */}
             <div className="flex items-center mb-2.5">
               <FiUser className="mr-1.5 text-blue-600" size={13} />
               <span className="text-sm font-semibold text-blue-600">Top 5 khách hàng</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 overflow-x-auto">
-          {topFiveCustomers.length > 0 ? (
-            topFiveCustomers.map((customer, index) => (
-              <div
-                key={index}
+              {topFiveCustomers.length > 0 ? (
+                topFiveCustomers.map((customer, index) => (
+                  <div
+                    key={index}
                     className="border border-gray-200 rounded-md p-2.5 bg-white transition hover:bg-gray-50"
-              >
-                <h6 className="text-sm font-semibold text-gray-800 truncate">{customer.fullName}</h6>
+                  >
+                    <h6 className="text-sm font-semibold text-gray-800 truncate">{customer.fullName}</h6>
                     <div className="mt-1 text-xs text-gray-700 space-y-0.5">
                       <p className="flex items-center gap-1.5 truncate">
                         <FiPhone className="text-gray-600" size={11} />
@@ -1212,14 +1273,14 @@ const ManageStatistics = () => {
                       <p className="flex items-center gap-1.5 truncate">
                         <FiShoppingCart className="text-blue-600" size={11} />
                         <span className="font-bold text-blue-600">{formatNumber(customer.orderCount)}</span> đơn
-                  </p>
-                </div>
-              </div>
-            ))
-          ) : (
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
                 <p className="text-sm text-gray-600">Không có dữ liệu.</p>
-          )}
-        </div>
+              )}
+            </div>
           </div>
         )}
 

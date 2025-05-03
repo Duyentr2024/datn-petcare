@@ -1,10 +1,16 @@
-const BASE_URL = "http://localhost:8080/api";
+import Cookies from "js-cookie"; // Import js-cookie để lấy token
+import API_BASE_URL from "../../config";
+
+const BASE_URL = API_BASE_URL;
 
 const EmployeeService = {
     // API cho bảng user (Staff)
     getAllEmployees: async () => {
         try {
-            const response = await fetch(`${BASE_URL}/users`);
+            const token = Cookies.get("accessToken"); // Lấy token từ cookie
+            const response = await fetch(`${BASE_URL}/api/users`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
             if (!response.ok) {
                 const errorData = await response.text();
                 throw new Error(`Lỗi khi tải danh sách staff: ${response.status} - ${errorData}`);
@@ -18,9 +24,13 @@ const EmployeeService = {
     createEmployee: async (data) => {
         try {
             console.log("Dữ liệu gửi đi (createEmployee):", JSON.stringify(data));
-            const response = await fetch(`${BASE_URL}/users/create-staff`, { // Fixed endpoint
+            const token = Cookies.get("accessToken"); // Lấy token từ cookie
+            const response = await fetch(`${BASE_URL}/api/users/create-staff`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify(data),
             });
             if (!response.ok) {
@@ -36,9 +46,13 @@ const EmployeeService = {
     updateEmployee: async (id, data) => {
         try {
             console.log("Dữ liệu gửi đi (updateEmployee):", JSON.stringify(data));
-            const response = await fetch(`${BASE_URL}/users/update-staff/${id}`, { // Fixed endpoint
+            const token = Cookies.get("accessToken"); // Lấy token từ cookie
+            const response = await fetch(`${BASE_URL}/api/users/update-staff/${id}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify(data),
             });
             if (!response.ok) {
@@ -55,9 +69,13 @@ const EmployeeService = {
     updateEmployeeStatus: async (id, status) => {
         try {
             console.log("Cập nhật trạng thái Staff:", { id, status });
-            const response = await fetch(`${BASE_URL}/users/${id}/status`, {
+            const token = Cookies.get("accessToken"); // Lấy token từ cookie
+            const response = await fetch(`${BASE_URL}/api/users/${id}/status`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify(status), // Gửi trực tiếp boolean
             });
             if (!response.ok) {
@@ -73,7 +91,10 @@ const EmployeeService = {
     // API cho bảng employees (Employee)
     getAllEmployeesFromEmployeeTable: async () => {
         try {
-            const response = await fetch(`${BASE_URL}/employees`);
+            const token = Cookies.get("accessToken"); // Lấy token từ cookie
+            const response = await fetch(`${BASE_URL}/api/employees`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
             if (!response.ok) {
                 const errorData = await response.text();
                 throw new Error(`Lỗi khi tải danh sách employee: ${response.status} - ${errorData}`);
@@ -87,9 +108,13 @@ const EmployeeService = {
     createEmployeeInEmployeeTable: async (data) => {
         try {
             console.log("Dữ liệu gửi đi (createEmployeeInEmployeeTable):", JSON.stringify(data));
-            const response = await fetch(`${BASE_URL}/employees`, {
+            const token = Cookies.get("accessToken"); // Lấy token từ cookie
+            const response = await fetch(`${BASE_URL}/api/employees`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify(data),
             });
             if (!response.ok) {
@@ -105,9 +130,13 @@ const EmployeeService = {
     updateEmployeeInEmployeeTable: async (id, data) => {
         try {
             console.log("Dữ liệu gửi đi (updateEmployeeInEmployeeTable):", JSON.stringify(data));
-            const response = await fetch(`${BASE_URL}/employees/${id}`, {
+            const token = Cookies.get("accessToken"); // Lấy token từ cookie
+            const response = await fetch(`${BASE_URL}/api/employees/${id}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify(data),
             });
             if (!response.ok) {

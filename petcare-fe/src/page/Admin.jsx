@@ -22,6 +22,7 @@ import HeaderAdmin from "../components/header/HeaderAdmin.jsx";
 import ManageOnline from "../components/Manage/ManageOnline.jsx";
 
 import ManageClient from "../components/Manage/ManageClient";
+import ManageHospital from "../components/Manage/ManageHospital.jsx";
 
 function Admin() {
   return (
@@ -35,10 +36,12 @@ function Admin() {
         <main className="flex-1  bg-gray-50 overflow-auto">
           <HeaderAdmin />
           <Routes>
-            <Route path="/" element={<ManageStatistics/>} />
+            
+            <Route path="/sales-statistics" element={<ManageStatistics/>} />
             <Route path="/warehouse" element={<StockPage />} />
             <Route path="/invoice-management" element={<Invoice />} />
             <Route path="/invoice-online" element={<ManageOnline />} />
+            <Route path="/invoice-hospital" element={<ManageHospital />} />
             <Route path="/" element={<h1>Admin Dashboard</h1>} />
             <Route path="/employee" element={<ManageEmployee />} />
             <Route path="/client" element={<ManageClient />} />

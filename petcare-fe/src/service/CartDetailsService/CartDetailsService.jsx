@@ -1,10 +1,9 @@
 import axios from "axios";
 import Cookies from "js-cookie"; // Import js-cookie để lấy token
-
-const BASE_URL = "http://localhost:8080/api/cart-details";
+import API_BASE_URL from "../../config";
 
 const api = axios.create({
-    baseURL: BASE_URL,
+    baseURL: API_BASE_URL,
 });
 
 // Thêm interceptor để tự động thêm token vào header
@@ -24,7 +23,7 @@ api.interceptors.request.use(
 const CartDetailsService = {
     getAllCartDetails: async () => {
         try {
-            const response = await api.get("/all");
+            const response = await api.get("/api/cart-details/all");
             return response.data;
         } catch (error) {
             console.error("Error fetching all cart details:", error);
@@ -34,7 +33,7 @@ const CartDetailsService = {
 
     getCartDetailsById: async (id) => {
         try {
-            const response = await api.get(`/${id}`);
+            const response = await api.get(`/api/cart-details/${id}`);
             return response.data;
         } catch (error) {
             console.error(`Error fetching cart details for id ${id}:`, error);
@@ -49,7 +48,7 @@ const CartDetailsService = {
                 productDetailId,
                 quantityItem,
             };
-            const response = await api.post("/add", payload);
+            const response = await api.post("/api/cart-details/add", payload);
             return response.data;
         } catch (error) {
             console.error("Error adding cart details:", error);
@@ -62,7 +61,7 @@ const CartDetailsService = {
             const payload = {
                 quantityItem,
             };
-            const response = await api.put(`/update/${id}`, payload);
+            const response = await api.put(`/api/cart-details/update/${id}`, payload);
             return response.data;
         } catch (error) {
             console.error(`Error updating cart details for id ${id}:`, error);
@@ -72,7 +71,7 @@ const CartDetailsService = {
 
     deleteCartDetails: async (id) => {
         try {
-            await api.delete(`/delete/${id}`);
+            await api.delete(`/api/cart-details/delete/${id}`);
         } catch (error) {
             console.error(`Error deleting cart details for id ${id}:`, error);
             throw error;
@@ -81,7 +80,7 @@ const CartDetailsService = {
 
     getCartDetailsByUserId: async (userId) => {
         try {
-            const response = await api.get(`/findByCart/${userId}`);
+            const response = await api.get(`/api/cart-details/findByCart/${userId}`);
             return response.data;
         } catch (error) {
             console.error(`Error fetching cart details for userId ${userId}:`, error);

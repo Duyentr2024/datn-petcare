@@ -12,7 +12,6 @@ const TABS = [
   { key: "waiting", label: "Chờ giao hàng" },
   { key: "completed", label: "Đã giao" },
   { key: "cancelled", label: "Đã hủy" },
-  { key: "returned", label: "Trả hàng" },
 ];
 
 const ITEMS_PER_PAGE = 7;
@@ -90,7 +89,9 @@ const OrderManage = () => {
   };
 
   const getPaymentStatusLabel = (paymentStatus) => {
-    return paymentStatus === "Đã thanh toán" ? "Đã thanh toán" : "Chưa thanh toán";
+    return paymentStatus === "Đã thanh toán"
+      ? "Đã thanh toán"
+      : "Chưa thanh toán";
   };
 
   const getPaymentStatusDotColor = (paymentStatus) => {
@@ -100,15 +101,23 @@ const OrderManage = () => {
   const handleStatusChange = async (orderId, newStatus, reason = null) => {
     try {
       const result = await Swal.fire({
-        title: newStatus === statusMap["cancelled"] ? "Hủy đơn hàng" : "Xác nhận thay đổi?",
-        text: newStatus === statusMap["cancelled"]
-          ? "Vui lòng nhập lý do hủy đơn hàng:"
-          : "Bạn có chắc chắn muốn cập nhật trạng thái đơn hàng?",
+        title:
+          newStatus === statusMap["cancelled"]
+            ? "Hủy đơn hàng"
+            : "Xác nhận thay đổi?",
+        text:
+          newStatus === statusMap["cancelled"]
+            ? "Vui lòng nhập lý do hủy đơn hàng:"
+            : "Bạn có chắc chắn muốn cập nhật trạng thái đơn hàng?",
         icon: "question",
         input: newStatus === statusMap["cancelled"] ? "textarea" : null,
-        inputPlaceholder: newStatus === statusMap["cancelled"] ? "Nhập lý do hủy..." : null,
+        inputPlaceholder:
+          newStatus === statusMap["cancelled"] ? "Nhập lý do hủy..." : null,
         inputValidator: (value) => {
-          if (newStatus === statusMap["cancelled"] && (!value || value.trim() === "")) {
+          if (
+            newStatus === statusMap["cancelled"] &&
+            (!value || value.trim() === "")
+          ) {
             return "Lý do hủy không được để trống!";
           }
         },
@@ -120,7 +129,8 @@ const OrderManage = () => {
       });
 
       if (result.isConfirmed) {
-        const reasonText = newStatus === statusMap["cancelled"] ? result.value : reason;
+        const reasonText =
+          newStatus === statusMap["cancelled"] ? result.value : reason;
 
         if (newStatus === statusMap["cancelled"]) {
           setIsLoading(true);
@@ -134,7 +144,11 @@ const OrderManage = () => {
           });
         }
 
-        await OrderManageService.updateOrderStatus(orderId, newStatus, reasonText);
+        await OrderManageService.updateOrderStatus(
+          orderId,
+          newStatus,
+          reasonText
+        );
 
         setOrders((prevOrders) =>
           prevOrders.map((order) =>
@@ -160,9 +174,10 @@ const OrderManage = () => {
         Swal.fire({
           icon: "success",
           title: "Cập nhật thành công!",
-          text: newStatus === statusMap["cancelled"]
-            ? "Đơn hàng đã được hủy và email thông báo đã được gửi đến khách hàng."
-            : "Trạng thái đơn hàng đã được cập nhật.",
+          text:
+            newStatus === statusMap["cancelled"]
+              ? "Đơn hàng đã được hủy và email thông báo đã được gửi đến khách hàng."
+              : "Trạng thái đơn hàng đã được cập nhật.",
         });
       }
     } catch (error) {
@@ -178,22 +193,33 @@ const OrderManage = () => {
 
   const filteredOrders = orders
     .filter((order) => {
-      if (searchTerm && !order.orderId.toString().includes(searchTerm)) return false;
+      if (searchTerm && !order.orderId.toString().includes(searchTerm))
+        return false;
       if (activeTab === "all") return true;
-      if (activeTab === "pending") return order.statusId === statusMap["pending"];
-      if (activeTab === "shipping") return order.statusId === statusMap["shipping"];
-      if (activeTab === "waiting") return order.statusId === statusMap["waiting"];
-      if (activeTab === "completed") return order.statusId === statusMap["completed"];
-      if (activeTab === "cancelled") return order.statusId === statusMap["cancelled"];
-      if (activeTab === "returned") return order.statusId === statusMap["returned"];
+      if (activeTab === "pending")
+        return order.statusId === statusMap["pending"];
+      if (activeTab === "shipping")
+        return order.statusId === statusMap["shipping"];
+      if (activeTab === "waiting")
+        return order.statusId === statusMap["waiting"];
+      if (activeTab === "completed")
+        return order.statusId === statusMap["completed"];
+      if (activeTab === "cancelled")
+        return order.statusId === statusMap["cancelled"];
+      if (activeTab === "returned")
+        return order.statusId === statusMap["returned"];
       return false;
     })
     .sort((a, b) => {
       if (activeTab === "all" || activeTab === "pending") {
         return new Date(b.orderDate) - new Date(a.orderDate);
       } else {
-        const dateA = a.statusUpdateDate ? new Date(a.statusUpdateDate) : new Date(a.orderDate);
-        const dateB = b.statusUpdateDate ? new Date(b.statusUpdateDate) : new Date(b.orderDate);
+        const dateA = a.statusUpdateDate
+          ? new Date(a.statusUpdateDate)
+          : new Date(a.orderDate);
+        const dateB = b.statusUpdateDate
+          ? new Date(b.statusUpdateDate)
+          : new Date(b.orderDate);
         return dateB - dateA;
       }
     });
@@ -206,7 +232,9 @@ const OrderManage = () => {
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen font-sans">
-      <h1 className="text-2xl font-semibold mb-4 text-gray-800">Quản lý đơn hàng (Admin)</h1>
+      <h1 className="text-2xl font-semibold mb-4 text-gray-800">
+        Quản lý đơn hàng (Admin)
+      </h1>
 
       {/* Tabs */}
       <div className="flex border-b mb-6">
@@ -252,12 +280,24 @@ const OrderManage = () => {
           <table className="w-full">
             <thead className="bg-blue-400 text-white text-xs">
               <tr>
-                <th className="py-3 px-4 text-left uppercase font-medium">Mã đơn hàng</th>
-                <th className="py-3 px-4 text-left uppercase font-medium">Tổng tiền</th>
-                <th className="py-3 px-4 text-left uppercase font-medium">Ngày đặt</th>
-                <th className="py-3 px-4 text-left uppercase font-medium">Trạng thái</th>
-                <th className="py-3 px-4 text-left uppercase font-medium">Trạng thái thanh toán</th>
-                <th className="py-3 px-4 text-left uppercase font-medium">Thao tác</th>
+                <th className="py-3 px-4 text-left uppercase font-medium">
+                  Mã đơn hàng
+                </th>
+                <th className="py-3 px-4 text-left uppercase font-medium">
+                  Tổng tiền
+                </th>
+                <th className="py-3 px-4 text-left uppercase font-medium">
+                  Ngày đặt
+                </th>
+                <th className="py-3 px-4 text-left uppercase font-medium">
+                  Trạng thái
+                </th>
+                <th className="py-3 px-4 text-left uppercase font-medium">
+                  Trạng thái thanh toán
+                </th>
+                <th className="py-3 px-4 text-left uppercase font-medium">
+                  Thao tác
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -272,8 +312,12 @@ const OrderManage = () => {
                       index % 2 === 0 ? "bg-white" : "bg-gray-50"
                     }`}
                   >
-                    <td className="py-3 px-4 text-sm text-gray-700">{order.orderId}</td>
-                    <td className="py-3 px-4 text-sm text-gray-700">{order.totalAmount.toLocaleString()} đ</td>
+                    <td className="py-3 px-4 text-sm text-gray-700">
+                      {order.orderId}
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-700">
+                      {order.totalAmount.toLocaleString()} đ
+                    </td>
                     <td className="py-3 px-4 text-sm text-gray-700">
                       {new Date(order.orderDate).toLocaleString("vi-VN", {
                         hour: "2-digit",
@@ -284,82 +328,101 @@ const OrderManage = () => {
                       })}
                     </td>
                     <td className="py-3 px-4 text-sm">
-                      <span className={`inline-block w-3 h-3 rounded-full mr-2 ${getStatusDotColor(order.statusId)}`}></span>
-                      <span className="text-gray-700">{getStatusLabel(order.statusId)}</span>
+                      <span
+                        className={`inline-block w-3 h-3 rounded-full mr-2 ${getStatusDotColor(
+                          order.statusId
+                        )}`}
+                      ></span>
+                      <span className="text-gray-700">
+                        {getStatusLabel(order.statusId)}
+                      </span>
                     </td>
                     <td className="py-3 px-4 text-sm">
-                      <span className={`inline-block w-3 h-3 rounded-full mr-2 ${getPaymentStatusDotColor(order.paymentStatus)}`}></span>
-                      <span className="text-gray-700">{getPaymentStatusLabel(order.paymentStatus)}</span>
+                      <span
+                        className={`inline-block w-3 h-3 rounded-full mr-2 ${getPaymentStatusDotColor(
+                          order.paymentStatus
+                        )}`}
+                      ></span>
+                      <span className="text-gray-700">
+                        {getPaymentStatusLabel(order.paymentStatus)}
+                      </span>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <button
+                      <button 
                         onClick={() => setSelectedOrder(order)}
                         className="text-blue-500 hover:text-blue-700 transition-colors duration-200"
                         title="Xem chi tiết"
                       >
-                        <FaEye size={16} />
-                      </button>
-                      {activeTab === "pending" && order.statusId === statusMap["pending"] && (
-                        <>
+                      <FaEye className="items-center" size={16} />
+                      </button> 
+                      {activeTab === "pending" &&
+                        order.statusId === statusMap["pending"] && (
+                          <>
+                            <button
+                              onClick={() =>
+                                handleStatusChange(
+                                  order.orderId,
+                                  statusMap["shipping"]
+                                )
+                              }
+                              className="ml-2 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs transition-colors duration-200"
+                              disabled={isLoading}
+                            >
+                              Đang vận chuyển
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleStatusChange(
+                                  order.orderId,
+                                  statusMap["cancelled"]
+                                )
+                              }
+                              className="ml-2 px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs transition-colors duration-200"
+                              disabled={isLoading}
+                            >
+                              Hủy hàng
+                            </button>
+                          </>
+                        )}
+                      {activeTab === "shipping" &&
+                        order.statusId === statusMap["shipping"] && (
                           <button
                             onClick={() =>
-                              handleStatusChange(order.orderId, statusMap["shipping"])
+                              handleStatusChange(
+                                order.orderId,
+                                statusMap["waiting"]
+                              )
                             }
-                            className="ml-2 px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-xs transition-colors duration-200"
+                            className="ml-2 px-2 py-1 bg-orange-500 text-white rounded hover:bg-orange-600 text-xs transition-colors duration-200"
                             disabled={isLoading}
                           >
-                            Đang vận chuyển
+                            Chờ giao hàng
                           </button>
+                        )}
+                      {activeTab === "waiting" &&
+                        order.statusId === statusMap["waiting"] && (
                           <button
                             onClick={() =>
-                              handleStatusChange(order.orderId, statusMap["cancelled"])
+                              handleStatusChange(
+                                order.orderId,
+                                statusMap["completed"]
+                              )
                             }
-                            className="ml-2 px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs transition-colors duration-200"
+                            className="ml-2 px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-xs transition-colors duration-200"
                             disabled={isLoading}
                           >
-                            Hủy hàng
+                            Đã giao
                           </button>
-                        </>
-                      )}
-                      {activeTab === "shipping" && order.statusId === statusMap["shipping"] && (
-                        <button
-                          onClick={() =>
-                            handleStatusChange(order.orderId, statusMap["waiting"])
-                          }
-                          className="ml-2 px-2 py-1 bg-orange-500 text-white rounded hover:bg-orange-600 text-xs transition-colors duration-200"
-                          disabled={isLoading}
-                        >
-                          Chờ giao hàng
-                        </button>
-                      )}
-                      {activeTab === "waiting" && order.statusId === statusMap["waiting"] && (
-                        <button
-                          onClick={() =>
-                            handleStatusChange(order.orderId, statusMap["completed"])
-                          }
-                          className="ml-2 px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-xs transition-colors duration-200"
-                          disabled={isLoading}
-                        >
-                          Đã giao
-                        </button>
-                      )}
-                      {activeTab === "completed" && order.statusId === statusMap["completed"] && (
-                        <button
-                          onClick={() =>
-                            handleStatusChange(order.orderId, statusMap["returned"])
-                          }
-                          className="ml-2 px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs transition-colors duration-200"
-                          disabled={isLoading}
-                        >
-                          Trả hàng
-                        </button>
-                      )}
+                        )}
                     </td>
                   </motion.tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="py-4 text-center text-gray-500 text-sm">
+                  <td
+                    colSpan="6"
+                    className="py-4 text-center text-gray-500 text-sm"
+                  >
                     Không có đơn hàng nào
                   </td>
                 </tr>
@@ -388,7 +451,9 @@ const OrderManage = () => {
             className={`w-8 h-8 flex items-center justify-center rounded-full text-gray-600 hover:bg-gray-200 hover:text-gray-800 text-sm transition-all duration-200 ${
               currentPage === totalPages ? "opacity-50 cursor-not-allowed" : ""
             }`}
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
             disabled={currentPage === totalPages || isLoading}
           >
             &gt;
@@ -427,7 +492,8 @@ const OrderManage = () => {
               {(() => {
                 const subtotalProducts =
                   selectedOrder.orderDetails?.reduce(
-                    (sum, item) => sum + (item.price || 0) * (item.quantity || 0),
+                    (sum, item) =>
+                      sum + (item.price || 0) * (item.quantity || 0),
                     0
                   ) || 0;
 
@@ -449,14 +515,17 @@ const OrderManage = () => {
                       <p className="text-sm text-gray-700">
                         <strong className="font-medium">Ngày đặt hàng:</strong>{" "}
                         {selectedOrder.orderDate
-                          ? new Date(selectedOrder.orderDate).toLocaleString("vi-VN", {
-                              timeZone: "Asia/Ho_Chi_Minh",
-                              year: "numeric",
-                              month: "2-digit",
-                              day: "2-digit",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
+                          ? new Date(selectedOrder.orderDate).toLocaleString(
+                              "vi-VN",
+                              {
+                                timeZone: "Asia/Ho_Chi_Minh",
+                                year: "numeric",
+                                month: "2-digit",
+                                day: "2-digit",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }
+                            )
                           : "Không có"}
                       </p>
                       <p className="text-sm text-gray-700">
@@ -477,7 +546,9 @@ const OrderManage = () => {
                         </span>
                       </p>
                       <p className="text-sm text-gray-700">
-                        <strong className="font-medium">Voucher áp dụng:</strong>{" "}
+                        <strong className="font-medium">
+                          Voucher áp dụng:
+                        </strong>{" "}
                         <span className="text-green-600">
                           {selectedOrder.voucherId
                             ? `${(
@@ -490,7 +561,9 @@ const OrderManage = () => {
                         </span>
                       </p>
                       <p className="text-sm text-gray-700">
-                        <strong className="font-medium">Tổng tiền sản phẩm:</strong>{" "}
+                        <strong className="font-medium">
+                          Tổng tiền sản phẩm:
+                        </strong>{" "}
                         <span className="text-red-400">
                           {subtotalProducts.toLocaleString()} đ
                         </span>
@@ -551,7 +624,9 @@ const OrderManage = () => {
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-gray-600">Không có sản phẩm trong đơn hàng</p>
+                  <p className="text-sm text-gray-600">
+                    Không có sản phẩm trong đơn hàng
+                  </p>
                 )}
               </div>
               <div className="text-center mt-4">

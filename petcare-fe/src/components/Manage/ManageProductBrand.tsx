@@ -108,7 +108,7 @@ const ManageProductBrand = () => {
                 draggable
                 pauseOnHover
             />
-            
+
             <h2 className="text-2xl font-bold mb-6 text-gray-800">Quản lý thương hiệu</h2>
 
             <div className="flex gap-4 mb-6">
@@ -134,7 +134,7 @@ const ManageProductBrand = () => {
                     )}
                 </button>
             </div>
-            
+
             <div className="flex justify-end mb-6">
                 <input
                     type="text"
@@ -153,24 +153,24 @@ const ManageProductBrand = () => {
                             <th className="py-3 px-5 text-xs uppercase tracking-wide">Tên thương hiệu</th>
                             <th className="py-3 px-5 text-xs uppercase tracking-wide w-[150px]">Trạng thái</th>
                             <th className="py-3 px-5 text-xs uppercase tracking-wide w-[200px] text-center">Hành động</th>
-                        </tr>
-                    </thead>
+                    </tr>
+                </thead>
                     <tbody className="text-gray-600 text-sm divide-y divide-gray-200">
-                        {paginateBrands().map((brand) => (
+                    {paginateBrands().map((brand) => (
                             <tr key={brand.brandId} className="hover:bg-gray-50 transition duration-150">
                                 <td className="p-3">{brand.brandId}</td>
                                 <td className="p-3">
-                                    {editingBrand && editingBrand.brandId === brand.brandId ? (
+                                {editingBrand && editingBrand.brandId === brand.brandId ? (
                                         <input
                                             type="text"
                                             value={brandInput}
                                             onChange={(e) => setBrandInput(e.target.value)}
                                             className="border border-gray-300 p-2 rounded-md w-full focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                         />
-                                    ) : (
-                                        brand.brandName
-                                    )}
-                                </td>
+                                ) : (
+                                    brand.brandName
+                                )}
+                            </td>
                                 <td className="p-3">
                                     <button
                                         onClick={() => handleChangeBrandStatus(brand)}
@@ -180,43 +180,43 @@ const ManageProductBrand = () => {
                                                 : "bg-red-100 text-red-700"
                                         }`}
                                     >
-                                        {brand.status ? (
+                                {brand.status ? (
                                             <>
                                                 Đang hoạt động
                                             </>
-                                        ) : (
+                                ) : (
                                             <>
                                                 Tạm ngưng
                                             </>
-                                        )}
+                                )}
                                     </button>
-                                </td>
+                            </td>
                                 <td className="p-3">
                                     <div className="flex justify-center gap-2">
-                                        {editingBrand && editingBrand.brandId === brand.brandId ? (
-                                            <button
-                                                onClick={() => setEditingBrand(null)}
+                                {editingBrand && editingBrand.brandId === brand.brandId ? (
+                                    <button
+                                        onClick={() => setEditingBrand(null)}
                                                 className="px-2 py-1 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors duration-200 whitespace-nowrap"
-                                            >
-                                                Hủy
-                                            </button>
-                                        ) : (
-                                            <button
-                                                onClick={() => {
-                                                    setEditingBrand(brand);
-                                                    setBrandInput(brand.brandName);
-                                                }}
+                                    >
+                                        Hủy
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            setEditingBrand(brand);
+                                            setBrandInput(brand.brandName);
+                                        }}
                                                 className="px-2 py-1 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors duration-200 flex items-center gap-1 whitespace-nowrap"
-                                            >
+                                    >
                                                 <FiEdit /> 
-                                            </button>
-                                        )}
+                                    </button>
+                                )}
                                     </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
             </div>
 
             <div className="mt-6 flex justify-between items-center">
