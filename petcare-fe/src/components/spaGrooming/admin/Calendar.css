@@ -70,4 +70,28 @@
 /* Reduce internal padding */
 .custom-datepicker .ant-picker-input {
   padding: 0 !important;
+}
+
+/* Styling cho dropdown cân nặng */
+.pet-weight-selector .ant-select {
+  min-width: 120px;
+}
+
+.pet-weight-selector .ant-select:hover .ant-select-selector {
+  border-color: #1890ff !important;
+}
+
+.pet-weight-selector .ant-select-focused .ant-select-selector {
+  border-color: #1890ff !important;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
+}
+
+/* Kiểu dáng cho modal xác nhận thay đổi cân nặng */
+.ant-modal-confirm-body .ant-modal-confirm-content {
+  margin-top: 16px !important;
+  margin-left: 0 !important;
+}
+
+.ant-modal-confirm-body .ant-modal-confirm-content strong {
+  color: #1890ff;
 } 

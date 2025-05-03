@@ -1,6 +1,8 @@
 import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
+import Cookies from 'js-cookie';
+import dayjs from 'dayjs';
 
-// Function to validate URL
 const isValidUrl = (string) => {
     try {
         new URL(string);
@@ -10,10 +12,69 @@ const isValidUrl = (string) => {
     }
 };
 
-// Get environment variable
+const retryRequest = async (requestFn, maxRetries = 2, retryDelay = 1000) => {
+    let lastError;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+            return await requestFn();
+        } catch (error) {
+            console.warn(`Request failed (attempt ${attempt + 1}/${maxRetries + 1}):`, error.message);
+            lastError = error;
+            if (error.response && error.response.status >= 400 && error.response.status < 500) {
+                throw error;
+            }
+            if (attempt < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+            }
+        }
+    }
+    throw lastError;
+};
+
+// Thêm cơ chế retry mới dành riêng cho các lỗi transaction
+const retryTransactionOperation = async (operation, maxRetries = 3, baseDelay = 1000) => {
+    let lastError = null;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            console.log(`Thực thi operation, lần thử ${attempt + 1}/${maxRetries}`);
+            const result = await operation();
+            return result;
+        } catch (error) {
+            lastError = error;
+            console.error(`Lỗi ở lần thử ${attempt + 1}/${maxRetries}:`, error);
+            
+            // Kiểm tra nếu đây là lỗi transaction
+            const isTransactionError = 
+                (error.message && (
+                    error.message.includes('rolled back') || 
+                    error.message.includes('rollback') ||
+                    error.message.includes('transaction')
+                )) ||
+                (error.response?.data?.message && (
+                    error.response.data.message.includes('rolled back') ||
+                    error.response.data.message.includes('rollback') ||
+                    error.response.data.message.includes('transaction')
+                ));
+            
+            // Chỉ retry nếu là lỗi transaction và chưa đạt số lần thử tối đa
+            if (!isTransactionError || attempt === maxRetries - 1) {
+                throw error;
+            }
+            
+            // Tính toán thời gian chờ với mỗi lần thử tăng dần (exponential backoff)
+            const delay = baseDelay * Math.pow(1.5, attempt);
+            console.log(`Đợi ${delay}ms trước khi thử lại...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+    
+    // Nếu đã thử hết tất cả các lần và không thành công
+    throw lastError || new Error('Thao tác thất bại sau nhiều lần thử');
+};
+
 const envApiUrl = import.meta.env.VITE_API_BASE_URL;
 
-// Determine the API base URL with fallbacks and validation
 let API_BASE_URL;
 if (envApiUrl && isValidUrl(envApiUrl)) {
     API_BASE_URL = `${envApiUrl}/api`;
@@ -34,6 +95,26 @@ if (envApiUrl && isValidUrl(envApiUrl)) {
 }
 
 console.log('Final API_BASE_URL:', API_BASE_URL);
+
+// Hàm lấy userId từ token JWT
+const getCurrentUserId = () => {
+    const token = Cookies.get('accessToken');
+    if (!token) {
+        throw new Error('Không tìm thấy token đăng nhập. Vui lòng đăng nhập lại.');
+    }
+    try {
+        const decoded = jwtDecode(token);
+        console.log('Decoded token:', decoded);
+        const userId = decoded.userId || decoded.sub || decoded.email;
+        if (!userId) {
+            throw new Error('Token không chứa userId, sub, hoặc email. Vui lòng kiểm tra cấu trúc token.');
+        }
+        return String(userId);
+    } catch (error) {
+        console.error('Lỗi giải mã token:', error);
+        throw new Error('Lỗi giải mã token: ' + error.message);
+    }
+};
 
 const BookingService = {
     getEmployees: async () => {
@@ -59,6 +140,14 @@ const BookingService = {
     getAvailableSlots: async (date) => {
         try {
             console.log('Fetching available slots for date:', date);
+            const normalizeTime = (timeStr) => {
+                if (!timeStr) return '';
+                const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
+                if (formattedTime.length === 4) {
+                    return `0${formattedTime}`;
+                }
+                return formattedTime;
+            };
             const response = await axios.get(`${API_BASE_URL}/time-slots`, {
                 params: { date },
                 timeout: 10000,
@@ -74,30 +163,112 @@ const BookingService = {
                 result.afternoon = [];
             }
             result.morning = result.morning.map(slot => {
-                if (slot.time && !slot.hour) {
-                    if (typeof slot.time === 'object' && slot.time.toString) {
-                        slot.hour = slot.time.toString();
-                    } else if (typeof slot.time === 'string') {
-                        slot.hour = slot.time;
-                    }
-                }
-                return slot;
+                const normalizedTime = normalizeTime(slot.time || slot.hour || '');
+                return {
+                    hour: normalizedTime,
+                    time: normalizedTime,
+                    totalSlots: slot.totalSlots !== undefined ? slot.totalSlots : 4,
+                    bookedSlots: slot.bookedSlots !== undefined ? slot.bookedSlots : 0,
+                    availableSlots: slot.availableSlots !== undefined ? slot.availableSlots : (slot.totalSlots || 4) - (slot.bookedSlots || 0),
+                    active: slot.active !== undefined ? slot.active : true,
+                    isMorning: slot.isMorning !== undefined ? slot.isMorning : true
+                };
             });
             result.afternoon = result.afternoon.map(slot => {
-                if (slot.time && !slot.hour) {
-                    if (typeof slot.time === 'object' && slot.time.toString) {
-                        slot.hour = slot.time.toString();
-                    } else if (typeof slot.time === 'string') {
-                        slot.hour = slot.time;
-                    }
-                }
-                return slot;
+                const normalizedTime = normalizeTime(slot.time || slot.hour || '');
+                return {
+                    hour: normalizedTime,
+                    time: normalizedTime,
+                    totalSlots: slot.totalSlots !== undefined ? slot.totalSlots : 4,
+                    bookedSlots: slot.bookedSlots !== undefined ? slot.bookedSlots : 0,
+                    availableSlots: slot.availableSlots !== undefined ? slot.availableSlots : (slot.totalSlots || 4) - (slot.bookedSlots || 0),
+                    active: slot.active !== undefined ? slot.active : true,
+                    isMorning: slot.isMorning !== undefined ? slot.isMorning : false
+                };
             });
-            console.log('Processed available slots result:', result);
+            console.log('Processed available slots result with normalized times:', result);
             return result;
         } catch (error) {
             console.error('Error fetching available slots:', error);
             return { morning: [], afternoon: [] };
+        }
+    },
+
+    getConfirmedSlots: async (date) => {
+        try {
+            console.log('Fetching confirmed slots for date:', date);
+            const normalizeTime = (timeStr) => {
+                if (!timeStr) return '';
+                const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
+                if (formattedTime.length === 4) {
+                    return `0${formattedTime}`;
+                }
+                return formattedTime;
+            };
+            
+            // Log the exact API endpoint being called
+            const endpoint = `${API_BASE_URL}/time-slots/confirmed`;
+            console.log(`Calling API endpoint: ${endpoint} with date=${date}`);
+            
+            // Use retry with more detailed logging
+            const response = await retryRequest(async () => {
+                try {
+                    return await axios.get(endpoint, {
+                        params: { date },
+                        timeout: 15000, // Increase timeout for more reliable requests
+                    });
+                } catch (error) {
+                    // Log detailed error information
+                    if (error.response) {
+                        console.error(`API responded with error status ${error.response.status}:`, 
+                            error.response.data || 'No response data');
+                    } else if (error.request) {
+                        console.error('No response received from API:', error.request);
+                    } else {
+                        console.error('Error setting up request:', error.message);
+                    }
+                    throw error; // Re-throw to let retryRequest handle it
+                }
+            }, 3, 1500); // Increase retries and delay
+            
+            console.log('Confirmed slots response:', response.data);
+            const result = response.data || { morning: [], afternoon: [] };
+            if (!Array.isArray(result.morning)) {
+                console.warn('Response morning slots is not an array, using empty array instead');
+                result.morning = [];
+            }
+            if (!Array.isArray(result.afternoon)) {
+                console.warn('Response afternoon slots is not an array, using empty array instead');
+                result.afternoon = [];
+            }
+            result.morning = result.morning.map(slot => {
+                if (slot.time || slot.hour) {
+                    const normalizedTime = normalizeTime(slot.time || slot.hour);
+                    slot.hour = normalizedTime;
+                    slot.time = normalizedTime;
+                }
+                return slot;
+            });
+            result.afternoon = result.afternoon.map(slot => {
+                if (slot.time || slot.hour) {
+                    const normalizedTime = normalizeTime(slot.time || slot.hour);
+                    slot.hour = normalizedTime;
+                    slot.time = normalizedTime;
+                }
+                return slot;
+            });
+            console.log('Processed confirmed slots result with normalized times:', result);
+            return result;
+        } catch (error) {
+            console.error('Error fetching confirmed slots:', error);
+            const errorMessage = error.response?.data?.message || 
+                             error.response?.data || 
+                             error.message || 
+                             'Không thể tải danh sách khung giờ đã xác nhận';
+            
+            // Log information that might help with debugging
+            console.error(`Failed to fetch confirmed slots with date=${date}. Error: ${errorMessage}`);
+            throw new Error(errorMessage);
         }
     },
 
@@ -115,14 +286,77 @@ const BookingService = {
 
     getPetsByAppointmentId: async (appointmentId) => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/appointments/${appointmentId}/pets`, {
-                timeout: 10000,
-            });
-            console.log('Pets fetched for appointment ID', appointmentId, ':', response.data);
-            return response.data;
+            console.log(`Fetching pets for appointment ID ${appointmentId}`);
+            
+            // Sử dụng retryTransactionOperation để tự động thử lại
+            const rawData = await retryTransactionOperation(async () => {
+                const response = await axios.get(`${API_BASE_URL}/appointments/${appointmentId}/pets`, {
+                    timeout: 10000,
+                });
+                
+                console.log(`Raw pet data for appointment ${appointmentId}:`, response.data);
+                
+                if (!response.data) {
+                    console.warn(`No pet data returned for appointment ${appointmentId}`);
+                    return [];
+                }
+                
+                return response.data;
+            }, 2, 800); // 2 lần thử, độ trễ cơ bản 800ms
+            
+            // Xử lý dữ liệu trả về
+            if (!Array.isArray(rawData)) {
+                console.error(`Invalid response format for pets (expected array):`, rawData);
+                if (typeof rawData === 'object') {
+                    // Nếu rawData là một object riêng lẻ, wrap nó trong array
+                    console.log('Attempting to convert object to array');
+                    return [rawData].filter(Boolean);
+                }
+                return [];
+            }
+            
+            if (rawData.length === 0) {
+                console.log(`No pets found for appointment ${appointmentId}`);
+                return [];
+            }
+            
+            // Chuẩn hóa dữ liệu
+            const enhancedData = rawData.map(pet => {
+                if (!pet) return null;
+                
+                const petWeightId = pet.petWeightId || pet.weightId || pet.weight_id;
+                const weightRange = pet.weightRange || pet.weight_range || "Chưa xác định";
+                const petName = pet.name || pet.petName || pet.namePet || pet.pet_name || `Thú cưng ${pet.id || 'không ID'}`;
+                const petType = pet.petType || pet.type || "DOG";
+                
+                return {
+                    ...pet,
+                    petWeightId: petWeightId,
+                    weightRange: weightRange,
+                    name: petName,
+                    petType: petType,
+                };
+            }).filter(Boolean); // Loại bỏ các phần tử null
+            
+            console.log('Enhanced pet data:', enhancedData);
+            return enhancedData;
         } catch (error) {
-            console.error('Error fetching pets by appointment ID:', error);
-            throw new Error(error.message || 'Không thể tải thông tin thú cưng');
+            console.error(`Error in getPetsByAppointmentId for appointment ${appointmentId}:`, error);
+            
+            // Kiểm tra lỗi không có response từ server
+            if (!error.response) {
+                throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại');
+            }
+            
+            // Kiểm tra và xử lý lỗi từ server
+            const errorMsg = error.response?.data?.message || 
+                            error.response?.data || 
+                            error.message || 
+                            `Không thể tải thông tin thú cưng cho lịch hẹn #${appointmentId}`;
+                            
+            // Log chi tiết lỗi để debug
+            console.error(`Server error in getPetsByAppointmentId: ${errorMsg}`, error.response?.data);
+            throw new Error(errorMsg);
         }
     },
 
@@ -152,36 +386,73 @@ const BookingService = {
     bookAppointment: async (payload) => {
         try {
             console.log('Booking appointment with payload:', payload);
+            let formattedTime = payload.time;
+            if (formattedTime && !formattedTime.includes(':')) {
+                formattedTime = `${formattedTime}:00`;
+            }
             const formattedPayload = {
                 date: payload.date,
-                time: payload.time,
+                time: formattedTime,
                 customerName: payload.customerName,
                 phone: payload.phone,
+                paymentType: payload.paymentType,
                 depositAmount: payload.depositAmount,
                 totalAmount: payload.totalAmount,
-                pets: payload.pets.map(pet => ({
-                    name: pet.name,
-                    petType: pet.petType,
-                    petServiceId: parseInt(pet.petService.id),
-                    petWeightId: parseInt(pet.petWeight.petWeightId),
-                    note: pet.note,
-                    price: pet.price
-                }))
+                paidAmount: payload.paidAmount,
+                pets: payload.pets.map(pet => {
+                    const petServiceId = parseInt(pet.petService?.id || pet.petServiceId, 10);
+                    const petWeightId = parseInt(pet.petWeight?.petWeightId || pet.petWeightId, 10);
+                    if (!petServiceId || !petWeightId) {
+                        throw new Error("Dữ liệu dịch vụ hoặc cân nặng không hợp lệ");
+                    }
+                    return {
+                        name: pet.name,
+                        petType: pet.petType,
+                        petServiceId: petServiceId,
+                        petWeightId: petWeightId,
+                        note: pet.note,
+                        price: pet.price
+                    };
+                }),
+                paymentStatus: payload.paymentStatus,
+                paymentMethod: payload.paymentMethod,
+                paymentChannel: payload.paymentChannel,
             };
+            console.log('Formatted payload being sent to backend:', formattedPayload);
             const response = await axios.post(`${API_BASE_URL}/appointments`, formattedPayload);
             console.log('Book appointment response:', response.data);
             return { success: true, data: response.data };
         } catch (error) {
             console.error('Error booking appointment:', error);
-            return { success: false, message: error.response?.data || error.message };
+            let errorMessage = 'Không thể đặt lịch hẹn';
+            if (error.response && error.response.data) {
+                errorMessage = error.response.data.message || error.response.data || errorMessage;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            return { success: false, message: errorMessage };
         }
     },
 
     checkSlotAvailability: async (date, time, requiredSlots) => {
         try {
+            const normalizeTime = (timeStr) => {
+                if (!timeStr) return '';
+                const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
+                if (formattedTime.length === 4) {
+                    return `0${formattedTime}`;
+                }
+                return formattedTime.split(':').slice(0, 2).join(':');
+            };
+            const normalizedTime = normalizeTime(time);
+            console.log(`Checking availability for normalized time: ${normalizedTime}`);
             const slots = await BookingService.getAvailableSlots(date);
             const allSlots = [...(slots.morning || []), ...(slots.afternoon || [])];
-            const slot = allSlots.find(s => s.time === time);
+            const slot = allSlots.find(s => {
+                const slotTime = normalizeTime(s.time || s.hour);
+                return slotTime === normalizedTime;
+            });
+            console.log(`Slot found for ${normalizedTime}:`, slot);
             return slot && slot.availableSlots >= requiredSlots;
         } catch (error) {
             console.error('Error checking slot availability:', error);
@@ -189,41 +460,151 @@ const BookingService = {
         }
     },
 
+    checkSlotAvailabilityFromState: async (date, time, requiredSlots, timeSlotsState, selectedSession) => {
+        try {
+            const normalizeTime = (timeStr) => {
+                if (!timeStr) return '';
+                const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
+                if (formattedTime.length === 4) {
+                    return `0${formattedTime}`;
+                }
+                return formattedTime;
+            };
+            const normalizedTime = normalizeTime(time);
+            console.log(`Checking availability from state for normalized time: ${normalizedTime}`);
+            const allSlots = [
+                ...(timeSlotsState.morning || []),
+                ...(timeSlotsState.afternoon || [])
+            ];
+            const slot = allSlots.find(s => {
+                const slotTime = normalizeTime(s.time || s.hour);
+                return slotTime === normalizedTime;
+            });
+            console.log(`Slot found from state for ${normalizedTime}:`, slot);
+            return slot && slot.availableSlots >= requiredSlots;
+        } catch (error) {
+            console.error('Error checking slot availability from state:', error);
+            return false;
+        }
+    },
+
     getConfirmedAppointmentsByDate: async (date) => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/appointments/confirmed`, {
-                params: { date },
-                timeout: 10000,
-            });
+            // Đảm bảo định dạng date là YYYY-MM-DD
+            const formattedDate = dayjs(date).format('YYYY-MM-DD');
+            console.log('Fetching confirmed appointments for date:', formattedDate);
+            const response = await retryRequest(() => 
+                axios.get(`${API_BASE_URL}/appointments/confirmed`, {
+                    params: { date: formattedDate },
+                    timeout: 10000,
+                })
+            );
             return response.data;
         } catch (error) {
             console.error('Error fetching confirmed appointments:', error);
-            throw new Error('Không thể tải danh sách lịch hẹn đã xác nhận');
+            let errorMessage = 'Không thể tải danh sách lịch hẹn đã xác nhận';
+            if (error.response && error.response.data) {
+                errorMessage = error.response.data.message || error.response.data || errorMessage;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            throw new Error(errorMessage);
         }
     },
 
     getConfirmedAppointmentsByDateAndTime: async (date, time) => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/appointments/confirmed-by-date-and-time`, {
-                params: { date, time },
-                timeout: 10000,
-            });
-            return response.data;
+            const normalizedTime = time.includes(':') ? time : `${time}:00`;
+            const formattedTime = normalizedTime.length === 4 ? `0${normalizedTime}` : normalizedTime;
+            console.log(`Fetching confirmed appointments for date: ${date}, time: ${formattedTime}`);
+            
+            // Log the exact API endpoint being called
+            const endpoint = `${API_BASE_URL}/appointments/confirmed-by-date-and-time`;
+            console.log(`Calling API endpoint: ${endpoint} with date=${date}, time=${formattedTime}`);
+            
+            // Validate input parameters
+            if (!date || !time) {
+                console.error('Missing required parameters:', { date, time });
+                throw new Error('Thiếu thông tin ngày hoặc giờ');
+            }
+            
+            // Use retry with more detailed logging
+            const response = await retryRequest(async () => {
+                try {
+                    return await axios.get(endpoint, {
+                        params: { date, time: formattedTime },
+                        timeout: 15000, // Increase timeout for more reliable requests
+                    });
+                } catch (error) {
+                    // Log detailed error information
+                    if (error.response) {
+                        console.error(`API responded with error status ${error.response.status}:`, 
+                            error.response.data || 'No response data');
+                    } else if (error.request) {
+                        console.error('No response received from API:', error.request);
+                    } else {
+                        console.error('Error setting up request:', error.message);
+                    }
+                    throw error; // Re-throw to let retryRequest handle it
+                }
+            }, 3, 1500); // Increase retries and delay
+            
+            console.log('Confirmed appointments by date and time response:', response.data);
+            return response.data || [];
         } catch (error) {
             console.error('Error fetching confirmed appointments by date and time:', error);
-            throw new Error('Không thể tải danh sách lịch hẹn đã xác nhận');
+            const errorMessage = error.response?.data?.message || 
+                             error.response?.data || 
+                             error.message || 
+                             'Không thể tải danh sách lịch hẹn đã xác nhận';
+            
+            // Log information that might help with debugging
+            console.error(`Failed to fetch confirmed appointments with date=${date}, time=${time}. Error: ${errorMessage}`);
+            throw new Error(errorMessage);
         }
     },
 
     getAppointmentById: async (appointmentId) => {
         try {
-            const response = await axios.get(`${API_BASE_URL}/appointments/${appointmentId}`, {
-                timeout: 10000,
-            });
-            return response.data;
+            console.log(`Fetching appointment details for ID ${appointmentId}`);
+            
+            // Sử dụng retryTransactionOperation để tự động thử lại
+            return await retryTransactionOperation(async () => {
+                const response = await axios.get(`${API_BASE_URL}/appointments/${appointmentId}`, {
+                    timeout: 10000,
+                });
+                
+                console.log(`Appointment data for ID ${appointmentId}:`, response.data);
+                
+                if (!response.data) {
+                    throw new Error(`Không tìm thấy thông tin cho lịch hẹn #${appointmentId}`);
+                }
+                
+                return response.data;
+            }, 2, 800); // 2 lần thử, độ trễ cơ bản 800ms
+            
         } catch (error) {
-            console.error('Error fetching appointment by ID:', error);
-            throw new Error('Không thể tải chi tiết lịch hẹn');
+            console.error(`Error in getAppointmentById for appointment ${appointmentId}:`, error);
+            
+            // Kiểm tra lỗi không có response từ server
+            if (!error.response) {
+                throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.');
+            }
+            
+            // Xử lý lỗi 404 - Not Found
+            if (error.response.status === 404) {
+                throw new Error(`Không tìm thấy lịch hẹn #${appointmentId}`);
+            }
+            
+            // Kiểm tra và xử lý lỗi từ server
+            const errorMsg = error.response?.data?.message || 
+                            error.response?.data || 
+                            error.message || 
+                            `Không thể tải thông tin cho lịch hẹn #${appointmentId}`;
+                            
+            // Log chi tiết lỗi để debug
+            console.error(`Server error in getAppointmentById: ${errorMsg}`, error.response?.data);
+            throw new Error(errorMsg);
         }
     },
 
@@ -237,13 +618,151 @@ const BookingService = {
         }
     },
 
+    cancelAppointments: async (payload) => {
+        try {
+            console.log('Canceling appointments with payload:', payload);
+            const userId = getCurrentUserId();
+            const requestPayload = {
+                appointmentIds: payload.appointmentIds,
+                reason: payload.reason,
+                userId: userId
+            };
+            console.log('Sending request payload to backend:', requestPayload);
+            
+            // Sử dụng retryTransactionOperation để tự động xử lý lỗi transaction
+            return await retryTransactionOperation(async () => {
+                const response = await axios.put(`${API_BASE_URL}/appointments/cancel`, requestPayload, {
+                    timeout: 15000, // Tăng timeout để xử lý các trường hợp server bận
+                });
+                console.log('Cancel appointments response:', response.data);
+                return response.data;
+            }, 3, 1200); // 3 lần thử, độ trễ cơ bản 1.2 giây
+        } catch (error) {
+            console.error('Error in cancelAppointments:', error);
+            
+            // Kiểm tra lỗi không có response từ server
+            if (!error.response) {
+                throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại');
+            }
+            
+            // Xử lý lỗi từ server
+            const errorMsg = error.response?.data?.message || 
+                          error.response?.data || 
+                          error.message || 
+                          'Không thể hủy lịch hẹn';
+            
+            // Log chi tiết lỗi để debug
+            console.error(`Server error in cancelAppointments: ${errorMsg}`, error.response?.data);
+            throw new Error(errorMsg);
+        }
+    },
+
+    // Phương thức hủy lịch hẹn cho trạng thái PAID (dùng trong BookingOnlineModal.jsx)
+    cancelPaidAppointments: async (payload) => {
+        try {
+            console.log('Canceling PAID appointments with payload:', payload);
+            const userId = getCurrentUserId();
+            const requestPayload = {
+                appointmentIds: payload.appointmentIds,
+                reason: payload.reason,
+                userId: userId
+            };
+            console.log('Sending request payload to backend:', requestPayload);
+            
+            return await retryTransactionOperation(async () => {
+                const response = await axios.put(`${API_BASE_URL}/appointments/cancel/paid`, requestPayload, {
+                    timeout: 15000,
+                });
+                console.log('Cancel PAID appointments response:', response.data);
+                return response.data;
+            }, 3, 1200);
+        } catch (error) {
+            console.error('Error in cancelPaidAppointments:', error);
+            
+            if (!error.response) {
+                throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại');
+            }
+            
+            const errorMsg = error.response?.data?.message || 
+                          error.response?.data || 
+                          error.message || 
+                          'Không thể hủy lịch hẹn';
+            
+            console.error(`Server error in cancelPaidAppointments: ${errorMsg}`, error.response?.data);
+            throw new Error(errorMsg);
+        }
+    },
+
+    // Phương thức hủy lịch hẹn cho trạng thái CONFIRMED (dùng trong Calendar.jsx)
+    cancelConfirmedAppointments: async (payload) => {
+        try {
+            console.log('Canceling CONFIRMED appointments with payload:', payload);
+            const userId = getCurrentUserId();
+            const requestPayload = {
+                appointmentIds: payload.appointmentIds,
+                reason: payload.reason,
+                userId: userId
+            };
+            console.log('Sending request payload to backend:', requestPayload);
+            
+            return await retryTransactionOperation(async () => {
+                const response = await axios.put(`${API_BASE_URL}/appointments/cancel/confirmed`, requestPayload, {
+                    timeout: 15000,
+                });
+                console.log('Cancel CONFIRMED appointments response:', response.data);
+                return response.data;
+            }, 3, 1200);
+        } catch (error) {
+            console.error('Error in cancelConfirmedAppointments:', error);
+            
+            if (!error.response) {
+                throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại');
+            }
+            
+            const errorMsg = error.response?.data?.message || 
+                          error.response?.data || 
+                          error.message || 
+                          'Không thể hủy lịch hẹn';
+            
+            console.error(`Server error in cancelConfirmedAppointments: ${errorMsg}`, error.response?.data);
+            throw new Error(errorMsg);
+        }
+    },
+
     removePetFromAppointment: async (appointmentId, petId) => {
         try {
-            const response = await axios.delete(`${API_BASE_URL}/appointments/${appointmentId}/pets/${petId}`);
-            return response.data;
+            console.log(`Removing pet ${petId} from appointment ${appointmentId}`);
+            const userId = getCurrentUserId();
+            const payload = { userId };
+            
+            console.log('Sending request payload to backend:', payload);
+            
+            // Sử dụng retryTransactionOperation để tự động xử lý lỗi transaction
+            return await retryTransactionOperation(async () => {
+                const response = await axios.delete(`${API_BASE_URL}/appointments/${appointmentId}/pets/${petId}`, {
+                    data: payload,
+                    timeout: 15000, // Tăng timeout để xử lý các trường hợp server bận
+                });
+                console.log('Remove pet response:', response.data);
+                return response.data;
+            }, 3, 1200); // 3 lần thử, độ trễ cơ bản 1.2 giây
         } catch (error) {
-            console.error('Error removing pet from appointment:', error);
-            throw new Error('Không thể xóa thú cưng khỏi lịch hẹn');
+            console.error(`Error in removePetFromAppointment:`, error);
+            
+            // Kiểm tra lỗi không có response từ server
+            if (!error.response) {
+                throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại');
+            }
+            
+            // Xử lý lỗi từ server
+            const errorMsg = error.response?.data?.message || 
+                          error.response?.data || 
+                          error.message || 
+                          'Không thể xóa thú cưng khỏi lịch hẹn';
+                          
+            // Log chi tiết lỗi để debug
+            console.error(`Server error in removePetFromAppointment: ${errorMsg}`, error.response?.data);
+            throw new Error(errorMsg);
         }
     },
 
@@ -259,13 +778,207 @@ const BookingService = {
 
     confirmAppointments: async (appointmentIds) => {
         try {
-            const response = await axios.post(`${API_BASE_URL}/appointments/confirm`, appointmentIds);
+            const userId = getCurrentUserId();
+            const payload = {
+                appointmentIds,
+                userId,
+            };
+            console.log('Confirming appointments with payload:', payload);
+            const response = await axios.post(`${API_BASE_URL}/appointments/confirm`, payload);
             return response.data;
         } catch (error) {
             console.error('Error confirming appointments:', error);
-            throw new Error(error.message || 'Không thể xác nhận lịch hẹn');
+            let errorMessage = 'Không thể xác nhận lịch hẹn';
+            if (error.response && error.response.data) {
+                errorMessage = error.response.data.message || error.response.data || errorMessage;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            throw new Error(errorMessage);
         }
     },
+
+    updateAppointment: async (payload) => {
+        try {
+            console.log('Updating appointment with payload:', payload);
+            let attempts = 0;
+            const maxAttempts = 3;
+            const formatTimeString = (timeStr) => {
+                if (!timeStr) return timeStr;
+                return timeStr.includes(':') ? timeStr : `${timeStr}:00`;
+            };
+            const userId = getCurrentUserId();
+            while (attempts < maxAttempts) {
+                try {
+                    const requestPayload = {
+                        date: payload.date,
+                        time: formatTimeString(payload.time),
+                        currentDate: payload.currentDate,
+                        currentTime: formatTimeString(payload.currentTime),
+                        note: payload.note,
+                        _requestId: payload._requestId || Math.random().toString(36).substring(2, 15) + Date.now(),
+                        userId,
+                    };
+                    console.log('Formatted update payload:', requestPayload);
+                    const response = await axios.put(`${API_BASE_URL}/appointments/${payload.appointmentId}`, requestPayload);
+                    console.log('Update appointment response:', response.data);
+                    return response.data;
+                } catch (error) {
+                    attempts++;
+                    console.error(`Error updating appointment (attempt ${attempts}/${maxAttempts}):`, error);
+                    if (!error.response?.data?.message?.includes('Duplicate entry') || attempts >= maxAttempts) {
+                        throw error;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            }
+        } catch (error) {
+            console.error('Error updating appointment after all retries:', error);
+            if (error.response && error.response.data) {
+                console.error('Server response:', error.response.data);
+                throw new Error(error.response.data.message || 'Không thể cập nhật lịch hẹn');
+            }
+            throw new Error(error.message || 'Không thể cập nhật lịch hẹn');
+        }
+    },
+
+    debugCheckSlotAvailability: async (date, time, numPets = 1) => {
+        try {
+            const normalizeTime = (timeStr) => {
+                if (!timeStr) return '';
+                const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
+                if (formattedTime.length === 4) {
+                    return `0${formattedTime}`;
+                }
+                return formattedTime;
+            };
+            const normalizedTime = normalizeTime(time);
+            console.log(`Debug checking slot availability for date: ${date}, time: ${normalizedTime}, pets: ${numPets}`);
+            try {
+                const infoResponse = await axios.get(`${API_BASE_URL}/debug/slot-info`, {
+                    params: { date, time: normalizedTime },
+                    timeout: 10000,
+                });
+                console.log('Slot info response:', infoResponse.data);
+                const resetResponse = await axios.post(`${API_BASE_URL}/debug/reset-slot`, null, {
+                    params: { date, time: normalizedTime },
+                    timeout: 10000,
+                });
+                console.log('Slot reset response:', resetResponse.data);
+                return resetResponse.data.availableSlots >= numPets;
+            } catch (error) {
+                console.error('Error with debug endpoint, falling back to regular check:', error);
+                return BookingService.checkSlotAvailability(date, normalizedTime, numPets);
+            }
+        } catch (error) {
+            console.error('Error in debug check slot availability:', error);
+            return false;
+        }
+    },
+
+    getPetWeights: async () => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/pet-weights`, {
+                timeout: 10000,
+            });
+            console.log('Pet weights fetched:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching pet weights:', error);
+            throw new Error('Không thể tải danh sách cân nặng');
+        }
+    },
+
+    getPetWeightsByType: async (petType) => {
+        try {
+            console.log(`Fetching weights for pet type: ${petType}`);
+            const response = await retryRequest(() => 
+                axios.get(`${API_BASE_URL}/pet-weights/by-type/${petType}`, {
+                    timeout: 10000,
+                })
+            );
+            console.log(`Pet weights for ${petType} fetched:`, response.data);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching pet weights for ${petType}:`, error);
+            try {
+                console.log(`Falling back to fetching all weights and filtering by type: ${petType}`);
+                const allWeightsResponse = await retryRequest(() => 
+                    axios.get(`${API_BASE_URL}/pet-weights`, {
+                        timeout: 10000,
+                    })
+                );
+                const filteredWeights = allWeightsResponse.data.filter(weight => 
+                    weight.petType === petType || 
+                    (petType === 'DOG' && weight.petType === 'dog') || 
+                    (petType === 'CAT' && weight.petType === 'cat')
+                );
+                console.log(`Filtered weights for ${petType}:`, filteredWeights);
+                return filteredWeights;
+            } catch (fallbackError) {
+                console.error('Error with fallback method:', fallbackError);
+                console.log(`Returning fallback data for ${petType}`);
+                if (petType === 'DOG' || petType === 'dog') {
+                    return [
+                        { id: 1, weightRange: '< 2kg', petType: 'DOG', active: true, priceMultiplier: 0.8 },
+                        { id: 2, weightRange: '2-5kg', petType: 'DOG', active: true, priceMultiplier: 1.0 },
+                        { id: 3, weightRange: '5-10kg', petType: 'DOG', active: true, priceMultiplier: 1.2 },
+                        { id: 4, weightRange: '10-20kg', petType: 'DOG', active: true, priceMultiplier: 1.5 }
+                    ];
+                } else if (petType === 'CAT' || petType === 'cat') {
+                    return [
+                        { id: 5, weightRange: '< 2kg', petType: 'CAT', active: true, priceMultiplier: 0.8 },
+                        { id: 6, weightRange: '2-5kg', petType: 'CAT', active: true, priceMultiplier: 1.0 },
+                        { id: 7, weightRange: '5-10kg', petType: 'CAT', active: true, priceMultiplier: 1.2 }
+                    ];
+                }
+                throw new Error('Không thể tải danh sách cân nặng');
+            }
+        }
+    },
+
+    getRefundedAppointments: async () => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/appointments/refunded`, {
+                timeout: 10000,
+            });
+            return { data: response.data };
+        } catch (error) {
+            console.error('Error fetching refunded appointments:', error);
+            throw new Error(error.message || 'Không thể tải danh sách lịch hẹn hoàn tiền');
+        }
+    },
+
+    getRefundedAppointmentsPendingCount: async () => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/appointments/refunded/pending-count`, {
+                timeout: 10000,
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching refunded appointments pending count:', error);
+            throw new Error(error.message || 'Không thể tải số lượng lịch hẹn hoàn tiền đang chờ');
+        }
+    },
+
+    updateRefundStatus: async (appointmentId, payload) => {
+        try {
+            const userId = getCurrentUserId();
+            const requestPayload = {
+                refundStatus: payload.refundStatus,
+                refundMethod: payload.refundMethod,
+                refundNote: payload.refundNote,
+                userId: userId
+            };
+            console.log('Updating refund status with payload:', requestPayload);
+            const response = await axios.put(`${API_BASE_URL}/appointments/${appointmentId}/refund`, requestPayload);
+            console.log('Update refund status response:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Error updating refund status:', error);
+            throw new Error(error.response?.data?.message || 'Không thể cập nhật trạng thái hoàn tiền');
+        }
+    }
 };
 
 export default BookingService;

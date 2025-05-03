@@ -10,6 +10,18 @@ const isValidUrl = (string) => {
     }
 };
 
+// Helper function to normalize time format
+const normalizeTime = (timeStr) => {
+    if (!timeStr) return '';
+    // Convert to HH:mm format
+    const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
+    // Ensure leading zeros for single-digit hours
+    if (formattedTime.length === 4) { // If format is like "8:00"
+        return `0${formattedTime}`;
+    }
+    return formattedTime;
+};
+
 // Get environment variable
 const envApiUrl = import.meta.env.VITE_API_BASE_URL;
 
@@ -49,10 +61,42 @@ const TimeSlotService = {
                 }
             });
             console.log('Time slots response:', response.data);
-            if (!response.data || (!response.data.morning && !response.data.afternoon)) {
-                throw new Error('Dữ liệu khung giờ không hợp lệ');
+            
+            // Normalize and validate the data
+            if (!response.data) {
+                throw new Error('Dữ liệu khung giờ trống');
             }
-            return response.data;
+            
+            const result = response.data;
+            
+            // Initialize arrays if missing
+            if (!result.morning || !Array.isArray(result.morning)) {
+                result.morning = [];
+            }
+            if (!result.afternoon || !Array.isArray(result.afternoon)) {
+                result.afternoon = [];
+            }
+            
+            // Normalize time formats in morning slots
+            result.morning = result.morning.map(slot => {
+                return {
+                    ...slot,
+                    hour: normalizeTime(slot.time || slot.hour || ''),
+                    time: normalizeTime(slot.time || slot.hour || '')
+                };
+            });
+            
+            // Normalize time formats in afternoon slots
+            result.afternoon = result.afternoon.map(slot => {
+                return {
+                    ...slot,
+                    hour: normalizeTime(slot.time || slot.hour || ''),
+                    time: normalizeTime(slot.time || slot.hour || '')
+                };
+            });
+            
+            console.log('Normalized time slots:', result);
+            return result;
         } catch (error) {
             let errorMessage = 'Unknown error';
             if (error.response) {

@@ -5,7 +5,7 @@ import Admin from "./page/Admin.jsx";
 import TopButton from "./elements/TopButton";
 import ChatBot from "./components/ChatBot";
 import PrivateRoute from "./context/PrivateRoute.jsx";
-import AdminSpa from "./components/spaGrooming/admin/AdminAppointment.jsx";
+import AdminSpa from "./page/AdminSpa.jsx";
 import ManageSpaPage from "./components/Manage/manageSpa/ManageSpaPage.jsx";
 import OrderOffline from "./components/orderOffline/OrderOffline.jsx";
 import StaffPage from "./page/StaffPage.jsx";
@@ -34,6 +34,9 @@ function App() {
                 <Route path="admin-spa" element={<AdminSpa />} />
                 <Route path="manage-slot" element={<ManageSlot />} />
               </Route>
+              
+              {/* Thêm route trực tiếp cho adminspa */}
+              <Route path="/adminspa" element={<AdminSpa />} />
             </Route>
           </Routes>
           <ChatBot />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { PawPrint, Plus, X } from "lucide-react";
+import { PawPrint, X, Edit } from "lucide-react";
 import {
   DatePicker,
   ConfigProvider,
@@ -17,43 +17,66 @@ import dayjs from "dayjs";
 import "dayjs/locale/vi";
 import locale from "antd/locale/vi_VN";
 import BookingService from "../../../service/spaService/BookingService";
+import UpdateWeight from "./UpdateWeight";
 import "./Calendar.css";
 
 dayjs.locale("vi");
 
-const Calendar = () => {
+const Calendar = ({ refreshSlotDate }) => {
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [timeSlots, setTimeSlots] = useState({});
   const [selectedTime, setSelectedTime] = useState(null);
   const [bookedSlots, setBookedSlots] = useState([]);
   const [slotDetails, setSlotDetails] = useState([]);
-  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
-  const [addServiceForm] = Form.useForm();
-  const [selectedPetType, setSelectedPetType] = useState(null);
+  const [isUpdateWeightModalVisible, setIsUpdateWeightModalVisible] = useState(false);
+  const [selectedPetForUpdate, setSelectedPetForUpdate] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [staffOptions, setStaffOptions] = useState([]);
+  const [weightOptions, setWeightOptions] = useState({});
   const [loadingStaff, setLoadingStaff] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   useEffect(() => {
-    const fetchStaff = async () => {
+    const fetchStaffAndWeights = async () => {
       try {
         setLoadingStaff(true);
         const employees = await BookingService.getEmployees();
         setStaffOptions(employees);
       } catch (error) {
-        console.error("Lỗi khi lấy danh sách nhân viên:", error);
-        message.error('Không thể tải danh sách nhân viên');
+        console.error("Lỗi khi lấy dữ liệu:", error);
+        message.error("Không thể tải danh sách nhân viên: " + (error.message || "Lỗi không xác định"));
         setStaffOptions([]);
       } finally {
         setLoadingStaff(false);
       }
     };
-    fetchStaff();
+    fetchStaffAndWeights();
   }, []);
+
+  const fetchPetWeightsByType = async (petType) => {
+    try {
+      const formattedType = petType.toUpperCase();
+      console.log(`Fetching weights for pet type: ${formattedType}`);
+
+      const weights = await BookingService.getPetWeightsByType(formattedType);
+      console.log(`Received weights for ${formattedType}:`, weights);
+
+      return weights.map((weight) => ({
+        value: weight.id,
+        label: weight.weightRange,
+        active: weight.active !== false,
+      }));
+    } catch (error) {
+      console.error(`Error fetching weights for pet type ${petType}:`, error);
+      message.error(`Không thể tải danh sách cân nặng cho ${petType === 'DOG' ? 'chó' : 'mèo'}`);
+      return [];
+    }
+  };
 
   const fetchSlotStatus = async (date) => {
     try {
-      const response = await BookingService.getAvailableSlots(
+      const response = await BookingService.getConfirmedSlots(
         date.format("YYYY-MM-DD")
       );
       const allSlots = [
@@ -68,36 +91,43 @@ const Calendar = () => {
       );
       setTimeSlots(slotMap);
     } catch (error) {
-      console.error("Error fetching slot status:", error);
+      console.error("Error fetching confirmed slot status:", error);
       setTimeSlots({});
+      message.error("Không thể tải trạng thái slot: " + (error.message || "Lỗi không xác định"));
     }
   };
 
   const fetchBookedSlots = async (date, time) => {
     try {
+      setLoading(true);
       let appointments = [];
       if (time) {
         const response = await BookingService.getConfirmedAppointmentsByDateAndTime(
-          date.format('YYYY-MM-DD'),
+          date.format("YYYY-MM-DD"),
           time
         );
         appointments = response;
       } else {
         const response = await BookingService.getConfirmedAppointmentsByDate(
-          date.format('YYYY-MM-DD')
+          date.format("YYYY-MM-DD")
         );
         appointments = response;
       }
-      setBookedSlots(appointments.map(appointment => ({
-        key: appointment.appointmentId,
-        customerName: appointment.customerName,
-        phone: appointment.phone,
-        quantity: appointment.petCount,
-        status: appointment.status.toLowerCase(),
-      })));
+      setBookedSlots(
+        appointments.map((appointment) => ({
+          key: appointment.appointmentId,
+          customerName: appointment.customerName,
+          phone: appointment.phone,
+          quantity: appointment.petCount,
+          status: "confirmed",
+        }))
+      );
     } catch (error) {
-      console.error('Error fetching booked slots:', error);
+      console.error("Error fetching booked slots:", error);
       setBookedSlots([]);
+      message.error("Không thể tải danh sách lịch hẹn: " + (error.message || "Lỗi không xác định"));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -105,6 +135,16 @@ const Calendar = () => {
     fetchSlotStatus(selectedDate);
     fetchBookedSlots(selectedDate, selectedTime);
   }, [selectedDate, selectedTime]);
+
+  useEffect(() => {
+    if (
+      refreshSlotDate &&
+      refreshSlotDate === selectedDate.format("YYYY-MM-DD")
+    ) {
+      fetchSlotStatus(selectedDate);
+      fetchBookedSlots(selectedDate, selectedTime);
+    }
+  }, [refreshSlotDate, selectedDate]);
 
   const getSlotStatusColor = (slot) => {
     const { total, booked } = slot;
@@ -122,21 +162,88 @@ const Calendar = () => {
   const handleSelectBookedSlot = async (record) => {
     setSelectedCustomer(record);
     try {
+      setLoadingDetails(true);
       const response = await BookingService.getPetsByAppointmentId(record.key);
-      setSlotDetails(
-        response.map((pet) => ({
+      console.log('Pet data for appointment ID', record.key, ':', response);
+      if (!response || response.length === 0) {
+        message.warning("Không tìm thấy thú cưng cho lịch hẹn này");
+        setSlotDetails([]);
+        return;
+      }
+
+      const petTypeWeightsMap = {};
+
+      const detailsPromises = response.map(async (pet) => {
+        console.log('Raw pet data:', pet);
+        
+        console.log('All properties of pet:', Object.keys(pet));
+
+        let petDisplayName;
+        if (typeof pet.namePet === 'string') {
+          petDisplayName = pet.namePet;
+        } else if (typeof pet.name === 'string') {
+          petDisplayName = pet.name;
+        } else if (pet.pet && pet.pet.name) {
+          petDisplayName = pet.pet.name;
+        } else {
+          petDisplayName = `Thú cưng ${pet.id}`;
+        }
+        
+        const rawPetType = pet.petType || pet.type || pet.pet_type || "Không xác định";
+        const petType = rawPetType === "DOG" ? "Chó" : rawPetType === "CAT" ? "Mèo" : rawPetType;
+
+        console.log('Pet name for pet ID', pet.id, ':', petDisplayName);
+        console.log('Pet type for pet ID', pet.id, ':', petType);
+
+        let weightId = pet.petWeightId || pet.weightId || pet.weight_id || null;
+        const weightRange = pet.weightRange || pet.weight_range || "Không xác định";
+
+        console.log('Weight info for pet ID', pet.id, ':', {
+          weightId: weightId,
+          weightRange: weightRange,
+        });
+
+        if (!petTypeWeightsMap[rawPetType]) {
+          const weights = await fetchPetWeightsByType(rawPetType);
+          petTypeWeightsMap[rawPetType] = weights;
+          console.log(`Weights for ${rawPetType}:`, weights);
+
+          if (!weightId && weightRange && weights.length > 0) {
+            const matchingOption = weights.find(
+              (option) => option.label === weightRange
+            );
+            if (matchingOption) {
+              weightId = matchingOption.value;
+            }
+          }
+        }
+
+        return {
           key: pet.id,
           petId: pet.id,
-          petType: pet.type,
-          petName: pet.name,
-          service: pet.service,
-          staffId: pet.employee?.employeeId,
-          price: pet.price,
-        }))
-      );
+          petServiceId: pet.petServiceId || null,
+          petType: petType,
+          rawPetType: rawPetType,
+          petName: petDisplayName,
+          service: pet.serviceName || "Không có dịch vụ",
+          staffId: null,
+          price: pet.price || 0,
+          weightRange: weightRange,
+          weightId: weightId,
+          appointmentId: record.key,
+        };
+      });
+
+      const petDetails = await Promise.all(detailsPromises);
+      console.log('Processed pet details:', petDetails);
+      setSlotDetails(petDetails);
+      setWeightOptions(petTypeWeightsMap);
     } catch (error) {
       console.error("Error fetching slot details:", error);
       setSlotDetails([]);
+      message.error("Không thể tải chi tiết thú cưng: " + (error.message || "Lỗi không xác định"));
+    } finally {
+      setLoadingDetails(false);
     }
   };
 
@@ -156,43 +263,44 @@ const Calendar = () => {
     );
   };
 
-  const handleCancelService = (record) => {
-    setBookedSlots((prev) =>
-      prev.map((slot) =>
-        slot.key === record.key ? { ...slot, status: "cancelled" } : slot
-      )
-    );
-  };
-
-  const handleAddService = () => {
-    setIsAddModalVisible(true);
-    addServiceForm.resetFields();
-  };
-
-  const handleAddModalOk = () => {
-    addServiceForm.validateFields().then((values) => {
-      const newService = {
-        key: Date.now().toString(),
-        petId: values.petId,
-        petType: values.petType,
-        petName: values.petName,
-        service: values.serviceId,
-        staffId: values.staffId,
-        price: 150000, // Giả lập giá
+  const handleCancelService = async (record) => {
+    try {
+      const payload = {
+        appointmentIds: [record.key],
+        reason: "Hủy bởi quản trị viên"
       };
-      setSlotDetails([...slotDetails, newService]);
-      setIsAddModalVisible(false);
-      addServiceForm.resetFields();
-    });
-  };
-
-  const handlePetSelectionChange = (value) => {
-    setSelectedPetType(value);
-    addServiceForm.setFieldsValue({ petType: value });
+      await BookingService.cancelConfirmedAppointments(payload);
+      setBookedSlots((prev) =>
+        prev.map((slot) =>
+          slot.key === record.key ? { ...slot, status: "cancelled" } : slot
+        )
+      );
+      message.success("Đã hủy lịch hẹn thành công");
+      fetchSlotStatus(selectedDate);
+      refreshSlotDate && refreshSlotDate(selectedDate.format("YYYY-MM-DD"));
+    } catch (error) {
+      console.error("Error canceling appointment:", error);
+      message.error(error.message || "Không thể hủy lịch hẹn");
+    }
   };
 
   const handleDeleteService = (key) => {
     setSlotDetails(slotDetails.filter((detail) => detail.key !== key));
+  };
+
+  const handleEditWeight = (record) => {
+    setSelectedPetForUpdate(record);
+    setIsUpdateWeightModalVisible(true);
+  };
+
+  const handleUpdateWeightCancel = () => {
+    setIsUpdateWeightModalVisible(false);
+    setSelectedPetForUpdate(null);
+  };
+
+  const handleUpdateSuccess = () => {
+    setIsUpdateWeightModalVisible(false);
+    setSelectedPetForUpdate(null);
   };
 
   const columns = [
@@ -204,11 +312,10 @@ const Calendar = () => {
       render: (text, record) => (
         <span
           className={`cursor-pointer hover:text-blue-600 ${
-            selectedCustomer?.key === record.key
-              ? "text-blue-600 font-bold"
-              : ""
+            selectedCustomer?.key === record.key ? "text-blue-600 font-bold" : ""
           }`}
-          onClick={() => handleSelectBookedSlot(record)}>
+          onClick={() => handleSelectBookedSlot(record)}
+        >
           {text}
         </span>
       ),
@@ -235,7 +342,8 @@ const Calendar = () => {
             disabled={
               record.status === "completed" || record.status === "cancelled"
             }
-            size="small">
+            size="small"
+          >
             Đang sử dụng
           </Button>
           <Button
@@ -245,9 +353,10 @@ const Calendar = () => {
             disabled={
               record.status === "completed" ||
               record.status === "cancelled" ||
-              record.status === "waiting"
+              record.status === "confirmed"
             }
-            size="small">
+            size="small"
+          >
             Thanh toán
           </Button>
           <Button
@@ -258,7 +367,8 @@ const Calendar = () => {
             disabled={
               record.status === "completed" || record.status === "cancelled"
             }
-            size="small">
+            size="small"
+          >
             Hủy
           </Button>
         </Space>
@@ -272,9 +382,25 @@ const Calendar = () => {
       dataIndex: "petName",
       key: "petName",
       width: 120,
-      render: (petName, record) => `${petName} (${record.petType})`,
+      render: (_, record) => {
+        console.log("Rendering pet details:", {
+          petName: record.petName,
+          petType: record.petType
+        });
+        return (
+          <div className="whitespace-nowrap overflow-hidden text-ellipsis">
+            {record.petName || "Không xác định"} ({record.petType || "Không xác định"})
+          </div>
+        );
+      },
     },
-    { title: "Dịch vụ", dataIndex: "service", key: "service", width: 150 },
+    {
+      title: "Dịch vụ",
+      dataIndex: "service",
+      key: "service",
+      width: 150,
+      render: (service) => service || "Không có dịch vụ",
+    },
     {
       title: "Nhân viên",
       dataIndex: "staffId",
@@ -289,8 +415,8 @@ const Calendar = () => {
           placeholder="Chọn nhân viên"
           loading={loadingStaff}
           onChange={(value) => {
-            setSlotDetails(prev =>
-              prev.map(detail =>
+            setSlotDetails((prev) =>
+              prev.map((detail) =>
                 detail.key === record.key ? { ...detail, staffId: value } : detail
               )
             );
@@ -299,23 +425,32 @@ const Calendar = () => {
       ),
     },
     {
+      title: "Cân nặng",
+      dataIndex: "weightRange",
+      key: "weightRange",
+      width: 120,
+      render: (weightRange, record) => (
+        <div className="flex items-center space-x-2">
+          <span>{weightRange || "Không xác định"}</span>
+          <Button
+            type="link"
+            size="small"
+            icon={<Edit className="w-4 h-4" />}
+            onClick={() => handleEditWeight(record)}
+          />
+        </div>
+      ),
+    },
+    {
       title: "Đơn giá",
       dataIndex: "price",
       key: "price",
       width: 100,
       align: "right",
-      render: (price) => price?.toLocaleString("vi-VN") + "đ",
+      render: (price) => (price || 0).toLocaleString("vi-VN") + "đ",
     },
     {
-      title: (
-        <Button
-          type="primary"
-          size="small"
-          className="bg-blue-500 hover:bg-blue-600"
-          icon={<Plus className="w-4 h-4" />}
-          onClick={handleAddService}
-        />
-      ),
+      title: "",
       key: "action",
       width: 50,
       align: "center",
@@ -381,20 +516,23 @@ const Calendar = () => {
                       selectedTime === time
                         ? "bg-blue-100 border border-blue-400 scale-102 shadow-sm"
                         : "bg-white hover:bg-blue-50 border border-transparent"
-                    }`}>
+                    }`}
+                >
                   <div className="flex items-center gap-1">
                     <Badge color={getSlotStatusColor(status)} />
                     <span
                       className={`font-medium text-xs ${
                         selectedTime === time ? "text-blue-700" : ""
-                      }`}>
+                      }`}
+                    >
                       {time}
                     </span>
                   </div>
                   <div className="text-xs">
                     <span
                       className="font-bold"
-                      style={{ color: getSlotStatusColor(status) }}>
+                      style={{ color: getSlotStatusColor(status) }}
+                    >
                       {status.total - status.booked}
                     </span>
                     <span className="text-gray-500">/{status.total}</span>
@@ -424,6 +562,8 @@ const Calendar = () => {
               size="small"
               scroll={{ y: "calc(100vh - 400px)" }}
               className="border border-blue-200 rounded-lg"
+              loading={loading}
+              locale={{ emptyText: "Không có lịch hẹn" }}
             />
           </div>
         </div>
@@ -456,16 +596,17 @@ const Calendar = () => {
                 <div className="mt-1 text-xs text-blue-600 italic">
                   <span
                     className={`px-1.5 py-0.5 rounded text-white ${
-                      selectedCustomer.status === "waiting"
-                        ? "bg-yellow-500"
+                      selectedCustomer.status === "confirmed"
+                        ? "bg-blue-500"
                         : selectedCustomer.status === "using"
                         ? "bg-blue-500"
                         : selectedCustomer.status === "completed"
                         ? "bg-green-500"
                         : "bg-red-500"
-                    }`}>
-                    {selectedCustomer.status === "waiting"
-                      ? "Đang chờ"
+                    }`}
+                  >
+                    {selectedCustomer.status === "confirmed"
+                      ? "Đã xác nhận"
                       : selectedCustomer.status === "using"
                       ? "Đang sử dụng"
                       : selectedCustomer.status === "completed"
@@ -488,71 +629,20 @@ const Calendar = () => {
               size="small"
               scroll={{ y: "calc(100vh - 400px)" }}
               className="border border-blue-200 rounded-lg"
+              loading={loadingDetails}
+              locale={{ emptyText: "Không có thú cưng" }}
             />
           </div>
         </div>
       </div>
 
-      <Modal
-        title="Thêm dịch vụ"
-        open={isAddModalVisible}
-        onOk={handleAddModalOk}
-        onCancel={() => setIsAddModalVisible(false)}
-        width={600}
-      >
-        <Form
-          form={addServiceForm}
-          layout="vertical"
-          initialValues={{ isNewPet: false }}
-        >
-          <Form.Item
-            name="petType"
-            label="Loại thú cưng"
-            rules={[{ required: true, message: "Vui lòng chọn loại thú cưng" }]}
-          >
-            <Select
-              placeholder="Chọn loại thú cưng"
-              onChange={handlePetSelectionChange}
-              options={[
-                { value: "Chó", label: "Chó" },
-                { value: "Mèo", label: "Mèo" },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item
-            name="petName"
-            label="Tên thú cưng"
-            rules={[{ required: true, message: "Vui lòng nhập tên thú cưng" }]}
-          >
-            <Input placeholder="Nhập tên thú cưng" />
-          </Form.Item>
-          <Form.Item
-            name="serviceId"
-            label="Dịch vụ"
-            rules={[{ required: true, message: "Vui lòng chọn dịch vụ" }]}
-          >
-            <Select
-              placeholder="Chọn dịch vụ"
-              options={[
-                { value: "Tắm + vệ sinh", label: "Tắm + vệ sinh" },
-                { value: "Cắt tỉa lông", label: "Cắt tỉa lông" },
-                { value: "Spa", label: "Spa" },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item
-            name="staffId"
-            label="Nhân viên"
-            rules={[{ required: true, message: "Vui lòng chọn nhân viên" }]}
-          >
-            <Select
-              placeholder="Chọn nhân viên"
-              options={staffOptions}
-              loading={loadingStaff}
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
+      <UpdateWeight
+        visible={isUpdateWeightModalVisible}
+        onCancel={handleUpdateWeightCancel}
+        pet={selectedPetForUpdate}
+        weightOptions={selectedPetForUpdate ? weightOptions[selectedPetForUpdate.rawPetType] || [] : []}
+        onUpdateSuccess={handleUpdateSuccess}
+      />
     </>
   );
 };
