@@ -1,9 +1,13 @@
 import axios from 'axios';
+import Cookies from "js-cookie"; // Import js-cookie để lấy token
 import API_BASE_URL from '../../config';
 
 export const deleteVaccine = async (id, retries = 2) => {
     try {
-        const response = await axios.delete(`${API_BASE_URL}/api/vaccines/deleteVaccine/${id}`);
+        const token = Cookies.get("accessToken"); // Lấy token từ cookie
+        const response = await axios.delete(`${API_BASE_URL}/api/vaccines/deleteVaccine/${id}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         const apiResponse = response.data;
 
         // Kiểm tra message để xác định thành công, thay vì chỉ dựa vào success
@@ -26,7 +30,13 @@ export const deleteVaccine = async (id, retries = 2) => {
 // Các hàm khác giữ nguyên như bạn đã cung cấp
 export const createVaccine = async (vaccineData) => {
     try {
-        const response = await axios.post(`${API_BASE_URL}/api/vaccines/create`, vaccineData);
+        const token = Cookies.get("accessToken"); // Lấy token từ cookie
+        const response = await axios.post(`${API_BASE_URL}/api/vaccines/create`, vaccineData, {
+            headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+        });
         const apiResponse = response.data;
         if (!apiResponse.success) {
             throw new Error(apiResponse.message);
@@ -39,7 +49,10 @@ export const createVaccine = async (vaccineData) => {
 
 export const getAllVaccines = async () => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/api/vaccines/getAllVaccines`);
+        const token = Cookies.get("accessToken"); // Lấy token từ cookie
+        const response = await axios.get(`${API_BASE_URL}/api/vaccines/getAllVaccines`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         const apiResponse = response.data;
         if (!apiResponse.success) {
             throw new Error(apiResponse.message);
@@ -52,7 +65,10 @@ export const getAllVaccines = async () => {
 
 export const getVaccineById = async (id) => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/api/vaccines/getVaccine/${id}`);
+        const token = Cookies.get("accessToken"); // Lấy token từ cookie
+        const response = await axios.get(`${API_BASE_URL}/api/vaccines/getVaccine/${id}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         const apiResponse = response.data;
         if (!apiResponse.success) {
             throw new Error(apiResponse.message);
@@ -65,7 +81,13 @@ export const getVaccineById = async (id) => {
 
 export const updateVaccine = async (id, vaccineData) => {
     try {
-        const response = await axios.put(`${API_BASE_URL}/api/vaccines/updateVaccine/${id}`, vaccineData);
+        const token = Cookies.get("accessToken"); // Lấy token từ cookie
+        const response = await axios.put(`${API_BASE_URL}/api/vaccines/updateVaccine/${id}`, vaccineData, {
+            headers: {
+                "Content-Type": "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+        });
         const apiResponse = response.data;
         if (!apiResponse.success) {
             throw new Error(apiResponse.message);

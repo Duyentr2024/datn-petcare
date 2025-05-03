@@ -2,7 +2,6 @@ import axios from "axios";
 import Cookies from "js-cookie"; // Import js-cookie để lấy token
 import API_BASE_URL from "../../config";
 
-
 const api = axios.create({
     baseURL: API_BASE_URL,
 });

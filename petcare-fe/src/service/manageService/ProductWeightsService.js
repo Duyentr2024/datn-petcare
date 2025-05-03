@@ -1,72 +1,105 @@
 import axios from "axios";
+import Cookies from "js-cookie"; // Import js-cookie để lấy token
+import API_BASE_URL from "../../config";
 
-const API_URL = "http://localhost:8080/api/product-weights"; // Adjust URL as needed
+const API_URL = `${API_BASE_URL}/api/product-weights`; // Sử dụng API_BASE_URL từ config
+
+// Tạo instance của Axios
+const api = axios.create({
+  baseURL: API_URL,
+});
+
+// Thêm interceptor để tự động thêm token vào header
+api.interceptors.request.use(
+  (config) => {
+    const token = Cookies.get("accessToken"); // Lấy token từ cookie với tên "accessToken"
+    if (token) {
+      config.headers["Authorization"] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 const ProductWeightService = {
-    // Get list of all product weights
-    getAllProductWeights: async () => {
-        try {
-            const response = await axios.get(`${API_URL}`);
-            return response.data;
-        } catch (error) {
-            console.error("Error fetching product weights:", error);
-            throw error;
-        }
-    },
+  // Lấy danh sách tất cả trọng lượng sản phẩm
+  getAllProductWeights: async () => {
+    try {
+      const response = await api.get("");
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi lấy danh sách trọng lượng sản phẩm:", error);
+      throw error;
+    }
+  },
 
-    // Get list of active product weights
-    getActiveWeights: async () => {
-        try {
-            const response = await axios.get(`${API_URL}/activeProductWeights`);
-            return response.data;
-        } catch (error) {
-            console.error("Error fetching active product weights:", error);
-            throw error;
-        }
-    },
+  // Lấy danh sách trọng lượng sản phẩm đang hoạt động
+  getActiveWeights: async () => {
+    try {
+      const response = await api.get("/activeProductWeights");
+      return response.data;
+    } catch (error) {
+      console.error(
+        "Lỗi khi lấy danh sách trọng lượng sản phẩm đang hoạt động:",
+        error
+      );
+      throw error;
+    }
+  },
 
-    // Get a product weight by its ID
-    getProductWeightById: async (weightId) => {
-        try {
-            const response = await axios.get(`${API_URL}/getProductWeight/${weightId}`);
-            return response.data;
-        } catch (error) {
-            console.error(`Error fetching product weight by ID ${weightId}:`, error);
-            throw error;
-        }
-    },
+  // Lấy trọng lượng sản phẩm theo ID
+  getProductWeightById: async (weightId) => {
+    try {
+      const response = await api.get(`/getProductWeight/${weightId}`);
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Lỗi khi lấy trọng lượng sản phẩm theo ID ${weightId}:`,
+        error
+      );
+      throw error;
+    }
+  },
 
-    // Create a new product weight
-    createProductWeight: async (productWeight) => {
-        try {
-            const response = await axios.post(`${API_URL}/createProductWeight`, productWeight);
-            return response.data;
-        } catch (error) {
-            console.error("Error creating product weight:", error);
-            throw error;
-        }
-    },
+  // Tạo trọng lượng sản phẩm mới
+  createProductWeight: async (productWeight) => {
+    try {
+      const response = await api.post("/createProductWeight", productWeight);
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi tạo trọng lượng sản phẩm:", error);
+      throw error;
+    }
+  },
 
-    // Update a product weight by its ID
-    updateProductWeight: async (weightId, productWeightDetails) => {
-        try {
-            const response = await axios.put(`${API_URL}/updateProductWeight/${weightId}`, productWeightDetails);
-            return response.data;
-        } catch (error) {
-            console.error(`Error updating product weight ID ${weightId}:`, error);
-            throw error;
-        }
-    },
+  // Cập nhật trọng lượng sản phẩm theo ID
+  updateProductWeight: async (weightId, productWeightDetails) => {
+    try {
+      const response = await api.put(
+        `/updateProductWeight/${weightId}`,
+        productWeightDetails
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Lỗi khi cập nhật trọng lượng sản phẩm ID ${weightId}:`,
+        error
+      );
+      throw error;
+    }
+  },
 
-    // Delete a product weight by its ID
-    deleteProductWeight: async (weightId) => {
-        try {
-            await axios.delete(`${API_URL}/deleteProductWeight/${weightId}`);
-        } catch (error) {
-            console.error(`Error deleting product weight ID ${weightId}:`, error);
-            throw error;
-        }
-    },
+  // Xóa trọng lượng sản phẩm theo ID
+  deleteProductWeight: async (weightId) => {
+    try {
+      await api.delete(`/deleteProductWeight/${weightId}`);
+    } catch (error) {
+      console.error(`Lỗi khi xóa trọng lượng sản phẩm ID ${weightId}:`, error);
+      throw error;
+    }
+  },
 };
 
 export default ProductWeightService;

@@ -1,11 +1,19 @@
 import axios from 'axios';
+import Cookies from "js-cookie"; // Import js-cookie để lấy token
+import API_BASE_URL from "../../config";
 
-const API_URL = 'http://localhost:8080/api';
+const API_URL = `${API_BASE_URL}/api`;
 
 export const MedicalRecordService = {
     createMedicalRecord: async (medicalRecordData) => {
         try {
-            const response = await axios.post("http://localhost:8080/api/medical-records", medicalRecordData);
+            const token = Cookies.get("accessToken"); // Lấy token từ cookie
+            const response = await axios.post(`${API_BASE_URL}/api/medical-records`, medicalRecordData, {
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+            });
             return response.data;
         } catch (error) {
             throw new Error(error.response?.data || 'Error creating medical record');
@@ -14,7 +22,10 @@ export const MedicalRecordService = {
 
     getAllMedicalRecords: async () => {
         try {
-            const response = await axios.get(`${API_URL}/medical-records`);
+            const token = Cookies.get("accessToken"); // Lấy token từ cookie
+            const response = await axios.get(`${API_URL}/medical-records`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
             return response.data;
         } catch (error) {
             throw new Error(error.response?.data || 'Error fetching medical records');
@@ -23,7 +34,10 @@ export const MedicalRecordService = {
 
     getMedicalRecordsByPetId: async (petId) => {
         try {
-            const response = await axios.get(`${API_URL}/medical-records/pet/${petId}`);
+            const token = Cookies.get("accessToken"); // Lấy token từ cookie
+            const response = await axios.get(`${API_URL}/medical-records/pet/${petId}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
             return response.data;
         } catch (error) {
             throw new Error(error.response?.data || 'Error fetching medical records for pet');
@@ -32,7 +46,10 @@ export const MedicalRecordService = {
 
     getMedicalRecordById: async (id) => {
         try {
-            const response = await axios.get(`${API_URL}/medical-records/${id}`);
+            const token = Cookies.get("accessToken"); // Lấy token từ cookie
+            const response = await axios.get(`${API_URL}/medical-records/${id}`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+            });
             return response.data;
         } catch (error) {
             throw new Error(error.response?.data || 'Error fetching medical record');
@@ -41,7 +58,13 @@ export const MedicalRecordService = {
 
     updateMedicalRecord: async (id, medicalRecordData) => {
         try {
-            const response = await axios.put(`${API_URL}/medical-records/${id}`, medicalRecordData);
+            const token = Cookies.get("accessToken"); // Lấy token từ cookie
+            const response = await axios.put(`${API_URL}/medical-records/${id}`, medicalRecordData, {
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+            });
             return response.data;
         } catch (error) {
             throw new Error(error.response?.data || 'Error updating medical record');

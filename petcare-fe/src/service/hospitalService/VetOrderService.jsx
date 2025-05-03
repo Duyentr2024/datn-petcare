@@ -1,15 +1,26 @@
 import axios from 'axios';
-
-// Base URL của backend API
-const API_BASE_URL = 'http://localhost:8080/api/vet-orders';
+import Cookies from "js-cookie"; // Import js-cookie để lấy token
+import API_BASE_URL from '../../config';
 
 // Tạo instance của axios với base URL
 const apiClient = axios.create({
-    baseURL: API_BASE_URL,
+    baseURL: `${API_BASE_URL}/api/vet-orders`,
     headers: {
         'Content-Type': 'application/json',
     },
 });
+
+// Thêm interceptor để tự động thêm header Authorization vào mỗi yêu cầu
+apiClient.interceptors.request.use(
+    (config) => {
+        const token = Cookies.get("accessToken"); // Lấy token từ cookie
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
 
 // Dịch vụ VetOrderService để gọi các API
 const VetOrderService = {
