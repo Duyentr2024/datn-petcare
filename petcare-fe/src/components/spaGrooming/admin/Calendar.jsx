@@ -78,22 +78,47 @@ const Calendar = ({ refreshSlotDate }) => {
 
   const fetchSlotStatus = async (date) => {
     try {
-      const response = await BookingService.getConfirmedSlots(
-        date.format("YYYY-MM-DD")
-      );
-      const allSlots = [
-        ...(response.morning || []),
-        ...(response.afternoon || []),
+      const [confirmedResponse, inProgressResponse, completedResponse] = await Promise.all([
+        BookingService.getConfirmedSlots(date.format("YYYY-MM-DD")),
+        BookingService.getInProgressSlots(date.format("YYYY-MM-DD")),
+        BookingService.getCompletedSlots(date.format("YYYY-MM-DD"))
+      ]);
+
+      const allSlotsConfirmed = [
+        ...(confirmedResponse.morning || []),
+        ...(confirmedResponse.afternoon || []),
       ];
-      const slotMap = Object.fromEntries(
-        allSlots.map((slot) => [
-          slot.hour,
-          { total: slot.totalSlots, booked: slot.bookedSlots },
-        ])
-      );
+      const allSlotsInProgress = [
+        ...(inProgressResponse.morning || []),
+        ...(inProgressResponse.afternoon || []),
+      ];
+      const allSlotsCompleted = [
+        ...(completedResponse.morning || []),
+        ...(completedResponse.afternoon || []),
+      ];
+
+      const slotMap = {};
+      const allTimes = [...new Set([
+        ...allSlotsConfirmed.map(slot => slot.hour),
+        ...allSlotsInProgress.map(slot => slot.hour),
+        ...allSlotsCompleted.map(slot => slot.hour)
+      ])];
+
+      allTimes.forEach(time => {
+        const confirmedSlot = allSlotsConfirmed.find(slot => slot.hour === time) || { totalSlots: 4, bookedSlots: 0 };
+        const inProgressSlot = allSlotsInProgress.find(slot => slot.hour === time) || { totalSlots: 4, bookedSlots: 0 };
+        const completedSlot = allSlotsCompleted.find(slot => slot.hour === time) || { totalSlots: 4, bookedSlots: 0 };
+
+        const totalBookedSlots = confirmedSlot.bookedSlots + inProgressSlot.bookedSlots + completedSlot.bookedSlots;
+        slotMap[time] = {
+          total: confirmedSlot.totalSlots,
+          booked: totalBookedSlots
+        };
+      });
+
       setTimeSlots(slotMap);
     } catch (error) {
-      console.error("Error fetching confirmed slot status:", error);
+      console.error("Error fetching slot status:", error);
       setTimeSlots({});
       message.error("Không thể tải trạng thái slot: " + (error.message || "Lỗi không xác định"));
     }
@@ -104,19 +129,13 @@ const Calendar = ({ refreshSlotDate }) => {
       setLoading(true);
       let appointments = [];
       if (time) {
-        const response = await BookingService.getConfirmedAppointmentsByDateAndTime(
+        const response = await BookingService.getActiveAppointmentsByDateAndTime(
           date.format("YYYY-MM-DD"),
           time
         );
-        appointments = response;
+        appointments = response.filter(appointment => appointment.time === time);
       } else {
-        const response = await BookingService.getConfirmedAppointmentsByDate(
-          date.format("YYYY-MM-DD")
-        );
-        appointments = response.filter(appointment => {
-          const appointmentTime = appointment.time;
-          return Object.keys(timeSlots).includes(appointmentTime);
-        });
+        appointments = [];
       }
       setBookedSlots(
         appointments.map((appointment) => ({
@@ -124,7 +143,7 @@ const Calendar = ({ refreshSlotDate }) => {
           customerName: appointment.customerName,
           phone: appointment.phone,
           quantity: appointment.petCount,
-          status: appointment.status ? appointment.status.toLowerCase() : "unknown", // Thêm kiểm tra null
+          status: appointment.status ? appointment.status.toLowerCase() : "unknown",
         }))
       );
     } catch (error) {
@@ -138,7 +157,11 @@ const Calendar = ({ refreshSlotDate }) => {
 
   useEffect(() => {
     fetchSlotStatus(selectedDate);
-    fetchBookedSlots(selectedDate, selectedTime);
+    if (selectedTime) {
+      fetchBookedSlots(selectedDate, selectedTime);
+    } else {
+      setBookedSlots([]);
+    }
   }, [selectedDate, selectedTime]);
 
   useEffect(() => {
@@ -147,7 +170,11 @@ const Calendar = ({ refreshSlotDate }) => {
       refreshSlotDate === selectedDate.format("YYYY-MM-DD")
     ) {
       fetchSlotStatus(selectedDate);
-      fetchBookedSlots(selectedDate, selectedTime);
+      if (selectedTime) {
+        fetchBookedSlots(selectedDate, selectedTime);
+      } else {
+        setBookedSlots([]);
+      }
     }
   }, [refreshSlotDate, selectedDate]);
 
@@ -162,6 +189,7 @@ const Calendar = ({ refreshSlotDate }) => {
     setSelectedTime(time);
     setSelectedCustomer(null);
     setSlotDetails([]);
+    fetchBookedSlots(selectedDate, time);
   };
 
   const handleSelectBookedSlot = async (record) => {
@@ -222,6 +250,9 @@ const Calendar = ({ refreshSlotDate }) => {
           }
         }
 
+        const employeeId = pet.employee?.id || pet.employeeId || null;
+        const employeeName = pet.employee?.full_name || "Không tìm thấy thông tin nhân viên";
+
         return {
           key: pet.id,
           petId: pet.id,
@@ -230,7 +261,8 @@ const Calendar = ({ refreshSlotDate }) => {
           rawPetType: rawPetType,
           petName: petDisplayName,
           service: pet.serviceName || "Không có dịch vụ",
-          staffId: null,
+          staffId: employeeId,
+          staffName: employeeName,
           price: pet.price || 0,
           weightRange: weightRange,
           weightId: weightId,
@@ -460,6 +492,19 @@ const Calendar = ({ refreshSlotDate }) => {
       width: 150,
       render: (staffId, record) => {
         const isUsing = bookedSlots.find(slot => slot.key === record.appointmentId)?.status === "in_progress";
+        const isCompleted = bookedSlots.find(slot => slot.key === record.appointmentId)?.status === "completed";
+
+        if (staffId) {
+          // Tìm tên nhân viên từ staffOptions nếu staffName không có giá trị
+          const staff = staffOptions.find(option => option.value === staffId);
+          const displayName = staff ? staff.label : record.staffName || "Không tìm thấy thông tin nhân viên";
+          return (
+            <span className="text-blue-600 font-medium">
+              {displayName}
+            </span>
+          );
+        }
+
         return (
           <Select
             className="w-full"
@@ -468,11 +513,14 @@ const Calendar = ({ refreshSlotDate }) => {
             options={staffOptions}
             placeholder="Chọn nhân viên"
             loading={loadingStaff}
-            disabled={isUsing}
+            disabled={isUsing || isCompleted}
             onChange={(value) => {
+              // Tìm tên nhân viên từ staffOptions dựa trên value (employee_id)
+              const selectedStaff = staffOptions.find(option => option.value === value);
+              const selectedStaffName = selectedStaff ? selectedStaff.label : "Không tìm thấy thông tin nhân viên";
               setSlotDetails((prev) =>
                 prev.map((detail) =>
-                  detail.key === record.key ? { ...detail, staffId: value } : detail
+                  detail.key === record.key ? { ...detail, staffId: value, staffName: selectedStaffName } : detail
                 )
               );
             }}
@@ -628,7 +676,7 @@ const Calendar = ({ refreshSlotDate }) => {
               scroll={{ y: "calc(100vh - 400px)" }}
               className="border border-blue-200 rounded-lg"
               loading={loading}
-              locale={{ emptyText: "Không có lịch hẹn" }}
+              locale={{ emptyText: "Chưa chọn khung giờ hoặc không có lịch hẹn" }}
             />
           </div>
         </div>

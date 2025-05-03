@@ -92,6 +92,17 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
       }
     });
 
+    const unsubscribeConfirm = webSocketService.onAppointmentConfirmed((data) => {
+      console.log('Appointment confirmed via WebSocket:', data);
+      if (data.appointmentId) {
+        setLocalBookings(prevBookings => 
+          prevBookings.filter(booking => booking.appointmentId !== data.appointmentId)
+        );
+        message.success(`Lịch hẹn #${data.appointmentId} đã được xác nhận`);
+        setRefreshSlotDate(data.date);
+      }
+    });
+
     const unsubscribePetRemoved = webSocketService.onPetRemoved((data) => {
       console.log('Pet removed via WebSocket:', data);
       if (data.appointmentId) {
@@ -101,11 +112,9 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
         if (data.petsRemaining === 0) {
           setLocalBookings(prev => prev.filter(b => b.appointmentId !== data.appointmentId));
         } else {
-          // Lấy thông tin lịch hẹn mới nhất từ backend
           BookingService.getAppointmentById(data.appointmentId)
             .then(updatedAppointment => {
               console.log('Updated appointment after pet removal:', updatedAppointment);
-              // Lấy danh sách thú cưng mới nhất để tính petCount
               BookingService.getPetsByAppointmentId(data.appointmentId)
                 .then(pets => {
                   setLocalBookings(prev => prev.map(b => 
@@ -130,6 +139,7 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
       unsubscribeNew();
       unsubscribeUpdate();
       unsubscribeCancel();
+      unsubscribeConfirm();
       unsubscribePetRemoved();
     };
   }, [refreshBookings, setRefreshSlotDate, selectedAppointmentId]);

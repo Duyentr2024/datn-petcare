@@ -244,6 +244,154 @@ const BookingService = {
         }
     },
 
+    getInProgressSlots: async (date) => {
+        try {
+            console.log('Fetching in-progress slots for date:', date);
+            const normalizeTime = (timeStr) => {
+                if (!timeStr) return '';
+                const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
+                if (formattedTime.length === 4) {
+                    return `0${formattedTime}`;
+                }
+                return formattedTime;
+            };
+            
+            const endpoint = `${API_BASE_URL}/time-slots/in-progress`;
+            console.log(`Calling API endpoint: ${endpoint} with date=${date}`);
+            
+            const response = await retryRequest(async () => {
+                try {
+                    return await axios.get(endpoint, {
+                        params: { date },
+                        timeout: 15000,
+                    });
+                } catch (error) {
+                    if (error.response) {
+                        console.error(`API responded with error status ${error.response.status}:`, 
+                            error.response.data || 'No response data');
+                    } else if (error.request) {
+                        console.error('No response received from API:', error.request);
+                    } else {
+                        console.error('Error setting up request:', error.message);
+                    }
+                    throw error;
+                }
+            }, 3, 1500);
+            
+            console.log('In-progress slots response:', response.data);
+            const result = response.data || { morning: [], afternoon: [] };
+            if (!Array.isArray(result.morning)) {
+                console.warn('Response morning slots is not an array, using empty array instead');
+                result.morning = [];
+            }
+            if (!Array.isArray(result.afternoon)) {
+                console.warn('Response afternoon slots is not an array, using empty array instead');
+                result.afternoon = [];
+            }
+            result.morning = result.morning.map(slot => {
+                if (slot.time || slot.hour) {
+                    const normalizedTime = normalizeTime(slot.time || slot.hour);
+                    slot.hour = normalizedTime;
+                    slot.time = normalizedTime;
+                }
+                return slot;
+            });
+            result.afternoon = result.afternoon.map(slot => {
+                if (slot.time || slot.hour) {
+                    const normalizedTime = normalizeTime(slot.time || slot.hour);
+                    slot.hour = normalizedTime;
+                    slot.time = normalizedTime;
+                }
+                return slot;
+            });
+            console.log('Processed in-progress slots result with normalized times:', result);
+            return result;
+        } catch (error) {
+            console.error('Error fetching in-progress slots:', error);
+            const errorMessage = error.response?.data?.message || 
+                             error.response?.data || 
+                             error.message || 
+                             'Không thể tải danh sách khung giờ đang thực hiện';
+            
+            console.error(`Failed to fetch in-progress slots with date=${date}. Error: ${errorMessage}`);
+            throw new Error(errorMessage);
+        }
+    },
+
+    getCompletedSlots: async (date) => {
+        try {
+            console.log('Fetching completed slots for date:', date);
+            const normalizeTime = (timeStr) => {
+                if (!timeStr) return '';
+                const formattedTime = timeStr.includes(':') ? timeStr : `${timeStr}:00`;
+                if (formattedTime.length === 4) {
+                    return `0${formattedTime}`;
+                }
+                return formattedTime;
+            };
+            
+            const endpoint = `${API_BASE_URL}/time-slots/completed`;
+            console.log(`Calling API endpoint: ${endpoint} with date=${date}`);
+            
+            const response = await retryRequest(async () => {
+                try {
+                    return await axios.get(endpoint, {
+                        params: { date },
+                        timeout: 15000,
+                    });
+                } catch (error) {
+                    if (error.response) {
+                        console.error(`API responded with error status ${error.response.status}:`, 
+                            error.response.data || 'No response data');
+                    } else if (error.request) {
+                        console.error('No response received from API:', error.request);
+                    } else {
+                        console.error('Error setting up request:', error.message);
+                    }
+                    throw error;
+                }
+            }, 3, 1500);
+            
+            console.log('Completed slots response:', response.data);
+            const result = response.data || { morning: [], afternoon: [] };
+            if (!Array.isArray(result.morning)) {
+                console.warn('Response morning slots is not an array, using empty array instead');
+                result.morning = [];
+            }
+            if (!Array.isArray(result.afternoon)) {
+                console.warn('Response afternoon slots is not an array, using empty array instead');
+                result.afternoon = [];
+            }
+            result.morning = result.morning.map(slot => {
+                if (slot.time || slot.hour) {
+                    const normalizedTime = normalizeTime(slot.time || slot.hour);
+                    slot.hour = normalizedTime;
+                    slot.time = normalizedTime;
+                }
+                return slot;
+            });
+            result.afternoon = result.afternoon.map(slot => {
+                if (slot.time || slot.hour) {
+                    const normalizedTime = normalizeTime(slot.time || slot.hour);
+                    slot.hour = normalizedTime;
+                    slot.time = normalizedTime;
+                }
+                return slot;
+            });
+            console.log('Processed completed slots result with normalized times:', result);
+            return result;
+        } catch (error) {
+            console.error('Error fetching completed slots:', error);
+            const errorMessage = error.response?.data?.message || 
+                             error.response?.data || 
+                             error.message || 
+                             'Không thể tải danh sách khung giờ đã hoàn thành';
+            
+            console.error(`Failed to fetch completed slots with date=${date}. Error: ${errorMessage}`);
+            throw new Error(errorMessage);
+        }
+    },
+
     getPendingAppointments: async () => {
         try {
             const response = await axios.get(`${API_BASE_URL}/appointments/pending`, {
@@ -521,6 +669,76 @@ const BookingService = {
                              'Không thể tải danh sách lịch hẹn đã xác nhận';
             
             console.error(`Failed to fetch confirmed appointments with date=${date}, time=${time}. Error: ${errorMessage}`);
+            throw new Error(errorMessage);
+        }
+    },
+
+    getActiveAppointmentsByDate: async (date) => {
+        try {
+            const formattedDate = dayjs(date).format('YYYY-MM-DD');
+            console.log('Fetching active appointments for date:', formattedDate);
+            const response = await retryRequest(() => 
+                axios.get(`${API_BASE_URL}/appointments/active`, {
+                    params: { date: formattedDate },
+                    timeout: 10000,
+                })
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching active appointments:', error);
+            let errorMessage = 'Không thể tải danh sách lịch hẹn hoạt động';
+            if (error.response && error.response.data) {
+                errorMessage = error.response.data.message || error.response.data || errorMessage;
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            throw new Error(errorMessage);
+        }
+    },
+
+    getActiveAppointmentsByDateAndTime: async (date, time) => {
+        try {
+            const normalizedTime = time.includes(':') ? time : `${time}:00`;
+            const formattedTime = normalizedTime.length === 4 ? `0${normalizedTime}` : normalizedTime;
+            console.log(`Fetching active appointments for date: ${date}, time: ${formattedTime}`);
+            
+            const endpoint = `${API_BASE_URL}/appointments/active-by-date-and-time`;
+            console.log(`Calling API endpoint: ${endpoint} with date=${date}, time=${formattedTime}`);
+            
+            if (!date || !time) {
+                console.error('Missing required parameters:', { date, time });
+                throw new Error('Thiếu thông tin ngày hoặc giờ');
+            }
+            
+            const response = await retryRequest(async () => {
+                try {
+                    return await axios.get(endpoint, {
+                        params: { date, time: formattedTime },
+                        timeout: 15000,
+                    });
+                } catch (error) {
+                    if (error.response) {
+                        console.error(`API responded with error status ${error.response.status}:`, 
+                            error.response.data || 'No response data');
+                    } else if (error.request) {
+                        console.error('No response received from API:', error.request);
+                    } else {
+                        console.error('Error setting up request:', error.message);
+                    }
+                    throw error;
+                }
+            }, 3, 1500);
+            
+            console.log('Active appointments by date and time response:', response.data);
+            return response.data || [];
+        } catch (error) {
+            console.error('Error fetching active appointments by date and time:', error);
+            const errorMessage = error.response?.data?.message || 
+                             error.response?.data || 
+                             error.message || 
+                             'Không thể tải danh sách lịch hẹn hoạt động';
+            
+            console.error(`Failed to fetch active appointments with date=${date}, time=${time}. Error: ${errorMessage}`);
             throw new Error(errorMessage);
         }
     },
