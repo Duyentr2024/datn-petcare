@@ -8,7 +8,7 @@ import Swal from "sweetalert2";
 import { FaArrowLeft, FaTimes, FaStar } from "react-icons/fa";
 import { useLocation } from "react-router-dom";
 
-const TABS = ["Chờ xác nhận", "Đang vận chuyển", "Chờ giao hàng", "Hoàn thành", "Đã hủy", "Trả hàng"];
+const TABS = ["Chờ xác nhận", "Đang vận chuyển", "Chờ giao hàng", "Hoàn thành", "Đã hủy",];
 const ITEMS_PER_PAGE = 5;
 
 const OrderHistory = () => {

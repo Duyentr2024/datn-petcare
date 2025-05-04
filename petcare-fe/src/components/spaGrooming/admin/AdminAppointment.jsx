@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Select, Input, DatePicker, Button, Radio, Badge, message, notification, Tabs } from 'antd';
-import { PlusOutlined, SearchOutlined, LeftOutlined, RightOutlined, BellOutlined, HistoryOutlined, CalendarOutlined } from '@ant-design/icons';
+import { PlusOutlined, SearchOutlined, LeftOutlined, RightOutlined, BellOutlined, HistoryOutlined, CalendarOutlined, WalletOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import './AdminAppointment.css';
 import BookingService from "../../../service/spaService/BookingService";
-import webSocketService from "../../../service/WebSocketService";
 import AddAppointmentModal from './AddAppointmentModal';
 import OnlineBookingModal from './OnlineBookingModal';
 import Calendar from './Calendar';
 import AppointmentHistory from './AppointmentHistory';
+import RefundedAppointments from './RefundedAppointments';
+import webSocketService from "../../../service/WebSocketService";
 
 const { TabPane } = Tabs;
 
@@ -25,6 +26,8 @@ const AdminAppointment = () => {
   const [onlineBookings, setOnlineBookings] = useState([]);
   const [notificationCount, setNotificationCount] = useState(0);
   const [activeTab, setActiveTab] = useState("1");
+  const [refreshSlotDate, setRefreshSlotDate] = useState(null);
+  const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
 
   const fetchOnlineBookings = async () => {
     try {
@@ -35,6 +38,7 @@ const AdminAppointment = () => {
       if (response && Array.isArray(response.data)) {
         setOnlineBookings(response.data);
         setNotificationCount(response.data.length);
+        console.log('Updated onlineBookings:', response.data);
       } else {
         console.warn('Invalid response format:', response);
         message.warning('Không có lịch hẹn nào chờ xác nhận hoặc dữ liệu không hợp lệ.');
@@ -59,12 +63,33 @@ const AdminAppointment = () => {
 
   useEffect(() => {
     fetchOnlineBookings();
-    
+
+    const intervalId = setInterval(fetchOnlineBookings, 3000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!webSocketService.connected) {
       webSocketService.connect();
     }
 
-    const unsubscribeNew = webSocketService.onNewAppointment((appointment) => {
+    const unsubscribeConnect = webSocketService.onConnect(() => {
+      console.log('WebSocket connected via WebSocketService');
+      setIsWebSocketConnected(true);
+    });
+
+    const unsubscribeDisconnect = webSocketService.onDisconnect(() => {
+      console.log('WebSocket disconnected via WebSocketService');
+      setIsWebSocketConnected(false);
+      message.warning('WebSocket đã ngắt kết nối, chuyển sang chế độ polling mỗi 3 giây.');
+    });
+
+    const unsubscribeNew = webSocketService.onNewAppointment((data) => {
+      console.log('New appointment received via WebSocketService:', data);
+      const appointment = data.appointment;
       notification.info({
         message: 'Lịch hẹn mới cần xác nhận',
         description: (
@@ -82,22 +107,36 @@ const AdminAppointment = () => {
       });
       setNotificationCount(prev => prev + 1);
       fetchOnlineBookings();
-      clearInterval(intervalId);
-      intervalId = setInterval(fetchOnlineBookings, 300000);
     });
 
-    const unsubscribeDisconnect = webSocketService.onDisconnect(() => {
-      console.log('WebSocket disconnected, switching to 30s polling');
-      clearInterval(intervalId);
-      intervalId = setInterval(fetchOnlineBookings, 30000);
+    const unsubscribeCancel = webSocketService.onAppointmentCancelled((data) => {
+      console.log('Appointment cancelled via WebSocket:', data);
+      notification.info({
+        message: 'Lịch hẹn đã bị hủy',
+        description: (
+          <div>
+            <p>Lịch hẹn #{data.appointmentId} đã bị hủy</p>
+            <p>Ngày: {data.date ? dayjs(data.date).format('DD/MM/YYYY') : '-'}</p>
+            <p>Giờ: {data.time || '-'}</p>
+            <p>Hoàn tiền: {data.refundAmount.toLocaleString('vi-VN')}đ</p>
+            {data.nonRefundedDeposit > 0 && (
+              <p>Cọc không hoàn: {data.nonRefundedDeposit.toLocaleString('vi-VN')}đ</p>
+            )}
+          </div>
+        ),
+        placement: 'topRight',
+        duration: 5,
+      });
+      setRefreshSlotDate(data.date);
+      fetchOnlineBookings();
     });
-
-    let intervalId = setInterval(fetchOnlineBookings, 300000);
 
     return () => {
-      unsubscribeNew();
+      unsubscribeConnect();
       unsubscribeDisconnect();
-      clearInterval(intervalId);
+      unsubscribeNew();
+      unsubscribeCancel();
+      webSocketService.disconnect();
     };
   }, []);
 
@@ -210,7 +249,7 @@ const AdminAppointment = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow">
-        <Calendar />
+        <Calendar refreshSlotDate={refreshSlotDate} />
       </div>
 
       <AddAppointmentModal 
@@ -229,6 +268,7 @@ const AdminAppointment = () => {
         onlineBookings={onlineBookings}
         onConfirm={handleConfirmBookings}
         refreshBookings={fetchOnlineBookings}
+        setRefreshSlotDate={setRefreshSlotDate}
       />
     </div>
   );
@@ -272,6 +312,19 @@ const AdminAppointment = () => {
         >
           <div className="tab-content-container">
             <AppointmentHistory />
+          </div>
+        </TabPane>
+        <TabPane 
+          tab={
+            <span className="tab-label flex items-center">
+              <WalletOutlined className="mr-2" />
+              <span>Quản lý hoàn tiền</span>
+            </span>
+          } 
+          key="3"
+        >
+          <div className="tab-content-container">
+            <RefundedAppointments />
           </div>
         </TabPane>
       </Tabs>

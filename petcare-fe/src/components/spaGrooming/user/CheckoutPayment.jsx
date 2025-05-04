@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { FaClock, FaQrcode, FaInfoCircle, FaHome, FaCheckCircle } from 'react-icons/fa';
+import { FaClock, FaQrcode, FaInfoCircle, FaHome } from 'react-icons/fa';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import BookingService from '../../../service/spaService/BookingService';
 import MomoLogo from '../../../assets/images/payment/momo.png';
 import VnpayLogo from '../../../assets/images/payment/vnpay.png';
+import SuccessModal from './SuccessModal'; // Import SuccessModal
 
 const CheckoutPayment = () => {
     const [selectedPayment, setSelectedPayment] = useState('vnpay');
@@ -11,6 +12,7 @@ const CheckoutPayment = () => {
     const [loading, setLoading] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
+    const [appointmentDetails, setAppointmentDetails] = useState(null); // Lưu thông tin lịch hẹn
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -45,41 +47,69 @@ const CheckoutPayment = () => {
 
     const handlePayment = async () => {
         try {
-            setLoading(true);
-
-            const payload = {
-                date: bookingData.date,
-                time: bookingData.time,
-                customerName: bookingData.customerName,
-                phone: bookingData.phone,
-                paymentType: bookingData.paymentType,
-                depositAmount: bookingData.depositAmount || 0,
-                totalAmount: bookingData.totalAmount || 0,
-                pets: bookingData.pets,
-                appointmentSlots: bookingData.appointmentSlots,
-                paymentStatus: 'PENDING',
-                paymentMethod: selectedPayment.toUpperCase(),
-            };
-
-            const savedAppointment = await BookingService.bookAppointment(payload);
-
-            if (savedAppointment.success) {
-                setSuccessMessage("Thanh toán thành công! Lịch hẹn đã được xác nhận.");
-                setShowSuccessModal(true);
-
-                setTimeout(() => {
-                    setShowSuccessModal(false);
-                    navigate(`/appointment?date=${bookingData.date}&source=payment&t=${new Date().getTime()}`);
-                }, 3000);
-            } else {
-                throw new Error(savedAppointment.message || "Không thể đặt lịch.");
+          setLoading(true);
+      
+          const totalAmount = bookingData.totalAmount || 0;
+          const depositAmount = bookingData.depositAmount || 0;
+          const paidAmount = bookingData.paymentType === 'full' ? totalAmount : depositAmount;
+      
+          // Đảm bảo dữ liệu pets được định dạng đúng cho backend
+          const formattedPets = bookingData.pets.map(pet => {
+            const petServiceId = parseInt(pet.petService?.id || pet.petServiceId || pet.service, 10);
+            const petWeightId = parseInt(pet.petWeight?.petWeightId || pet.petWeightId || pet.weight, 10);
+      
+            if (!petServiceId || !petWeightId) {
+              throw new Error("Dữ liệu dịch vụ hoặc cân nặng không hợp lệ");
             }
+      
+            return {
+              name: pet.name || `Thú cưng ${bookingData.pets.indexOf(pet) + 1}`,
+              petType: pet.petType.toUpperCase(),
+              petServiceId: petServiceId, // Sử dụng petServiceId thay vì petService
+              petWeightId: petWeightId,   // Sử dụng petWeightId thay vì petWeight
+              note: pet.note || "",
+              price: pet.price || 0
+            };
+          });
+      
+          const payload = {
+            date: bookingData.date,
+            time: bookingData.time,
+            customerName: bookingData.customerName,
+            phone: bookingData.phone,
+            paymentType: bookingData.paymentType,
+            depositAmount: depositAmount,
+            totalAmount: totalAmount,
+            paidAmount: paidAmount,
+            pets: formattedPets,
+            appointmentSlots: bookingData.appointmentSlots,
+            paymentStatus: 'PENDING',
+            paymentMethod: 'ONLINE',
+            paymentChannel: selectedPayment.toUpperCase(),
+          };
+      
+          console.log("Sending booking payload:", payload);
+          const savedAppointment = await BookingService.bookAppointment(payload);
+      
+          if (savedAppointment.success) {
+            setSuccessMessage("Thanh toán thành công! Lịch hẹn đã được xác nhận.");
+            setAppointmentDetails(payload);
+            setShowSuccessModal(true);
+          } else {
+            throw new Error(savedAppointment.message || "Không thể đặt lịch.");
+          }
         } catch (error) {
-            console.error("Payment error:", error);
-            alert(`Lỗi thanh toán: ${error.message || "Đã xảy ra lỗi"}`);
+          console.error("Payment error:", error);
+          alert(`Lỗi thanh toán: ${error.message || "Đã xảy ra lỗi"}`);
         } finally {
-            setLoading(false);
+          setLoading(false);
         }
+      };
+
+    const handleConfirm = () => {
+        setShowSuccessModal(false);
+        // Chuyển hướng về /appointment mà không có query parameters, truyền ngày qua state
+        navigate('/appointment', { state: { selectedDate: bookingData.date } });
     };
 
     const handleGoBack = async () => {
@@ -126,25 +156,6 @@ const CheckoutPayment = () => {
         );
     };
 
-    const SuccessModal = ({ show, message }) => {
-        if (!show) return null;
-        
-        return (
-            <div className="fixed inset-0 flex items-center justify-center z-50">
-                <div className="absolute inset-0 bg-black opacity-50"></div>
-                <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4 z-10 transform transition-all">
-                    <div className="flex flex-col items-center text-center">
-                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                            <FaCheckCircle className="text-green-500 text-4xl" />
-                        </div>
-                        <h3 className="text-xl font-semibold mb-2">Thành công!</h3>
-                        <p className="text-gray-600 mb-4">{message}</p>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
     return (
         <div className="min-h-screen bg-gray-50 py-10">
             <div className="max-w-7xl mx-auto px-4">
@@ -160,7 +171,12 @@ const CheckoutPayment = () => {
                     <span className="text-[#fbb321] font-medium">Thanh toán</span>
                 </nav>
 
-                <SuccessModal show={showSuccessModal} message={successMessage} />
+                <SuccessModal
+                    show={showSuccessModal}
+                    message={successMessage}
+                    appointmentDetails={appointmentDetails}
+                    onConfirm={handleConfirm}
+                />
 
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                     <div className="md:col-span-4">

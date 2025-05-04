@@ -1,7 +1,7 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
-
-const BASE_URL = 'http://localhost:8080/api/offline';
+import API_BASE_URL from "../../config";
+const BASE_URL = `${API_BASE_URL}/api/offline`;
 
 export const getAllProductDetails = async () => {
   try {

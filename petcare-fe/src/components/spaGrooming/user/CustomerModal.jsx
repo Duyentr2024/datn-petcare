@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 const CustomerModal = ({
     isCustomerModalOpen,
@@ -16,12 +16,20 @@ const CustomerModal = ({
 }) => {
     const validatePhone = (phone) => /^0\d{9}$/.test(phone);
 
+    useEffect(() => {
+        if (isCustomerModalOpen && !customerInfo.paymentType) {
+            setCustomerInfo(prev => ({ ...prev, paymentType: 'deposit' }));
+        }
+    }, [isCustomerModalOpen]);
+
     const handleSubmit = (e) => {
         e.preventDefault();
+        
+        console.log("Submitting customer info:", customerInfo);
 
         const newErrors = {
-            fullName: !customerInfo.fullName.trim() ? 'Vui lòng nhập họ tên' : '',
-            phone: !customerInfo.phone.trim()
+            fullName: !customerInfo.fullName?.trim() ? 'Vui lòng nhập họ tên' : '',
+            phone: !customerInfo.phone?.trim()
                 ? 'Vui lòng nhập số điện thoại'
                 : !validatePhone(customerInfo.phone)
                 ? 'Số điện thoại không hợp lệ'
@@ -30,8 +38,22 @@ const CustomerModal = ({
 
         setErrors(newErrors);
 
-        if (!newErrors.fullName && !newErrors.phone && customerInfo.acceptTerms) {
+        const isValid = !newErrors.fullName && 
+                         !newErrors.phone && 
+                         customerInfo.acceptTerms && 
+                         customerInfo.paymentType;
+                         
+        console.log("Form validation result:", {
+            isValid,
+            errors: newErrors,
+            acceptTerms: customerInfo.acceptTerms,
+            paymentType: customerInfo.paymentType
+        });
+        
+        if (isValid) {
             handleApiBooking();
+        } else if (!customerInfo.acceptTerms) {
+            alert("Vui lòng đồng ý với điều khoản và chính sách");
         }
     };
 

@@ -1,26 +1,141 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Input, Checkbox, message, Tooltip, Dropdown, Space, Badge, Drawer, Tag, Popconfirm, Avatar } from 'antd';
+import { Modal, Button, Input, Checkbox, message, Tooltip, Dropdown, Space, Badge, Drawer, Tag, Popconfirm, Avatar, Form } from 'antd';
 import { SearchOutlined, CheckOutlined, EditOutlined, DeleteOutlined, CaretDownOutlined, MoreOutlined, UserOutlined, ExclamationCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import UpdatePetServiceModal from './UpdatePetServiceModal';
-import BookingService from '../../../service/spaService/BookingService';
+import ChangeDateAppointment from './ChangeDateAppointment';
+import BookingService from "../../../service/spaService/BookingService";
+import webSocketService from "../../../service/WebSocketService";
 import dayjs from 'dayjs';
 
 const formatDate = (dateString) => (dateString ? dayjs(dateString).format('DD/MM/YYYY') : '-');
 const formatTime = (timeString) => (timeString || '-');
 
-const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, refreshBookings }) => {
+// Hàm chuẩn hóa tên thú cưng
+const getPetName = (pet) => {
+  return pet.name || pet['name-pet'] || pet.namePet || pet.pet_name || 'Không có tên';
+};
+
+// Hàm chuẩn hóa loại thú cưng
+const formatPetType = (type) => {
+  if (!type) return 'Không xác định';
+  
+  const typeLower = type.toLowerCase();
+  if (typeLower === 'dog') return 'Chó';
+  if (typeLower === 'cat') return 'Mèo';
+  return type;
+};
+
+// Hàm helper để update dữ liệu cục bộ
+const updateLocalBookings = (bookings, updatedBooking, action) => {
+  if (action === 'REMOVE') {
+    return bookings.filter(booking => booking.appointmentId !== updatedBooking.appointmentId);
+  } else if (action === 'UPDATE') {
+    return bookings.map(booking => 
+      booking.appointmentId === updatedBooking.appointmentId ? updatedBooking : booking
+    );
+  } else if (action === 'ADD') {
+    const exists = bookings.some(booking => booking.appointmentId === updatedBooking.appointmentId);
+    return exists ? bookings : [...bookings, updatedBooking];
+  }
+  return bookings;
+};
+
+const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookings, setRefreshSlotDate }) => {
   const [isUpdateModalVisible, setIsUpdateModalVisible] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [searchValue, setSearchValue] = useState('');
   const [selectedBookings, setSelectedBookings] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [petDrawerVisible, setPetDrawerVisible] = useState(false);
   const [selectedAppointmentPets, setSelectedAppointmentPets] = useState([]);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState(null);
+  const [localBookings, setLocalBookings] = useState([]);
+  const [form] = Form.useForm();
 
-  // Sắp xếp danh sách lịch hẹn theo thời gian (tương lai trước)
-  const sortedBookings = onlineBookings?.length 
-    ? [...onlineBookings].sort((a, b) => {
+  useEffect(() => {
+    if (onlineBookings?.length) {
+      setLocalBookings(onlineBookings);
+    }
+  }, [onlineBookings]);
+
+  useEffect(() => {
+    const unsubscribeNew = webSocketService.onNewAppointment((data) => {
+      console.log('New appointment via WebSocket:', data);
+      if (data.appointment) {
+        setLocalBookings(prevBookings => updateLocalBookings(prevBookings, data.appointment, 'ADD'));
+      } else {
+        refreshBookings();
+      }
+    });
+
+    const unsubscribeUpdate = webSocketService.onAppointmentUpdated((data) => {
+      console.log('Appointment updated via WebSocket:', data);
+      if (data.appointment) {
+        setLocalBookings(prevBookings => updateLocalBookings(prevBookings, data.appointment, 'UPDATE'));
+        message.info(`Lịch hẹn #${data.appointmentId} đã được cập nhật thời gian`);
+        setRefreshSlotDate(data.date);
+      } else {
+        refreshBookings();
+      }
+    });
+
+    const unsubscribeCancel = webSocketService.onAppointmentCancelled((data) => {
+      console.log('Appointment cancelled via WebSocket:', data);
+      if (data.appointmentId) {
+        setLocalBookings(prevBookings => 
+          prevBookings.filter(booking => booking.appointmentId !== data.appointmentId)
+        );
+        message.info(`Lịch hẹn #${data.appointmentId} đã bị hủy. Hoàn tiền: ${data.refundAmount.toLocaleString('vi-VN')}đ`);
+        setRefreshSlotDate(data.date);
+      } else {
+        refreshBookings();
+      }
+    });
+
+    const unsubscribePetRemoved = webSocketService.onPetRemoved((data) => {
+      console.log('Pet removed via WebSocket:', data);
+      if (data.appointmentId) {
+        if (selectedAppointmentId === data.appointmentId) {
+          setSelectedAppointmentPets(prev => prev.filter(pet => pet.id !== data.petId));
+        }
+        if (data.petsRemaining === 0) {
+          setLocalBookings(prev => prev.filter(b => b.appointmentId !== data.appointmentId));
+        } else {
+          // Lấy thông tin lịch hẹn mới nhất từ backend
+          BookingService.getAppointmentById(data.appointmentId)
+            .then(updatedAppointment => {
+              console.log('Updated appointment after pet removal:', updatedAppointment);
+              // Lấy danh sách thú cưng mới nhất để tính petCount
+              BookingService.getPetsByAppointmentId(data.appointmentId)
+                .then(pets => {
+                  setLocalBookings(prev => prev.map(b => 
+                    b.appointmentId === data.appointmentId 
+                      ? { ...b, ...updatedAppointment, petCount: pets.length } 
+                      : b
+                  ));
+                })
+                .catch(error => {
+                  console.error('Error fetching pets after pet removal:', error);
+                });
+            })
+            .catch(error => {
+              console.error('Error fetching updated appointment after pet removal:', error);
+              message.error('Không thể cập nhật thông tin lịch hẹn sau khi xóa thú cưng');
+            });
+        }
+      }
+    });
+
+    return () => {
+      unsubscribeNew();
+      unsubscribeUpdate();
+      unsubscribeCancel();
+      unsubscribePetRemoved();
+    };
+  }, [refreshBookings, setRefreshSlotDate, selectedAppointmentId]);
+
+  const sortedBookings = localBookings?.length 
+    ? [...localBookings].sort((a, b) => {
         const dateTimeA = dayjs(`${a.date} ${a.time}`, 'YYYY-MM-DD HH:mm');
         const dateTimeB = dayjs(`${b.date} ${b.time}`, 'YYYY-MM-DD HH:mm');
         return dateTimeA - dateTimeB;
@@ -39,8 +154,11 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
     : [];
 
   useEffect(() => {
-    setSelectedBookings([]);
-  }, [isVisible, onlineBookings]);
+    if (isVisible) {
+      setSelectedBookings([]);
+      form.resetFields();
+    }
+  }, [isVisible, form]);
 
   const handleEditClick = (booking) => {
     setSelectedBooking(booking);
@@ -57,7 +175,7 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
 
   const toggleSelectAll = () => {
     setSelectedBookings(
-      selectedBookings.length === filteredBookings.length 
+      selectedBookings.length === filteredBookings.length && filteredBookings.length > 0 
         ? [] 
         : filteredBookings.map(booking => booking.appointmentId)
     );
@@ -73,6 +191,12 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
       await BookingService.confirmAppointments(selectedBookings);
       setSelectedBookings([]);
       message.success('Đã xác nhận lịch hẹn thành công');
+      
+      const firstBooking = filteredBookings.find(booking => selectedBookings.includes(booking.appointmentId));
+      if (firstBooking && firstBooking.date) {
+        setRefreshSlotDate(firstBooking.date);
+      }
+      
       refreshBookings();
     } catch (error) {
       console.error('Error confirming appointments:', error);
@@ -82,55 +206,295 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
     }
   };
 
+  const handleDeleteSelection = () => {
+    if (selectedBookings.length === 0) {
+      message.warning('Vui lòng chọn ít nhất một lịch hẹn để hủy');
+      return;
+    }
+
+    Modal.confirm({
+      title: 'Xác nhận hủy lịch hẹn',
+      icon: <ExclamationCircleOutlined />,
+      content: (
+        <div>
+          Bạn có chắc chắn muốn hủy {selectedBookings.length} lịch hẹn đã chọn không?
+          <ul className="mt-2">
+            {selectedBookings.map(id => {
+              const booking = filteredBookings.find(b => b.appointmentId === id);
+              const dateTime = dayjs(`${booking.date} ${booking.time}`, 'YYYY-MM-DD HH:mm');
+              const hoursUntil = dayjs().diff(dateTime, 'hour', true);
+              const isWithin12Hours = hoursUntil > -12 && hoursUntil <= 0;
+              const refundAmount = isWithin12Hours ? (booking.paidAmount - booking.depositAmount) : booking.paidAmount;
+              const nonRefundedDeposit = isWithin12Hours ? booking.depositAmount : 0;
+              return (
+                <li key={id}>
+                  #{id}: Hoàn tiền: {refundAmount.toLocaleString('vi-VN')}đ
+                  {nonRefundedDeposit > 0 && `, Cọc không hoàn: ${nonRefundedDeposit.toLocaleString('vi-VN')}đ`}
+                </li>
+              );
+            })}
+          </ul>
+          <Form form={form} style={{ marginTop: '10px' }}>
+            <Form.Item
+              name="reason"
+              rules={[{ required: true, message: 'Vui lòng nhập lý do hủy' }]}
+            >
+              <Input placeholder="Nhập lý do hủy" />
+            </Form.Item>
+          </Form>
+        </div>
+      ),
+      okText: 'Hủy lịch',
+      okButtonProps: { danger: true },
+      cancelText: 'Đóng',
+      onOk: async () => {
+        try {
+          const values = await form.validateFields();
+          const reason = values.reason;
+          if (!reason.trim()) {
+            message.warning('Vui lòng nhập lý do hủy');
+            return Promise.reject();
+          }
+          setDeleteLoading(true);
+          message.loading({ content: 'Đang hủy lịch hẹn...', key: 'bulkCancelLoading', duration: 0 });
+          
+          const payload = {
+            appointmentIds: selectedBookings,
+            reason: reason
+          };
+          console.log('Sending cancel payload (multiple bookings):', payload);
+          
+          const response = await BookingService.cancelPaidAppointments(payload);
+          console.log('Cancel response:', response);
+          
+          setLocalBookings(prev => prev.filter(b => !selectedBookings.includes(b.appointmentId)));
+          setSelectedBookings([]);
+          form.resetFields();
+          
+          message.success({ 
+            content: `Đã hủy ${selectedBookings.length} lịch hẹn thành công`,
+            key: 'bulkCancelLoading'
+          });
+          
+          if (response.length > 0) {
+            setRefreshSlotDate(response[0].date);
+          }
+        } catch (error) {
+          console.error('Error in bulk cancel:', error);
+          message.error({ 
+            content: `Không thể hủy lịch hẹn: ${error.message || 'Lỗi không xác định'}`,
+            key: 'bulkCancelLoading',
+            duration: 4
+          });
+          return Promise.reject();
+        } finally {
+          setDeleteLoading(false);
+        }
+      },
+      onCancel: () => {
+        form.resetFields();
+      }
+    });
+  };
+
   const handleCancelAppointment = async (appointmentId) => {
     try {
-      await BookingService.cancelAppointment(appointmentId, 'Huỷ bởi quản trị viên');
-      message.success('Đã huỷ lịch hẹn thành công');
-      refreshBookings();
+      const booking = filteredBookings.find(b => b.appointmentId === appointmentId);
+      if (!booking) {
+        message.error('Không tìm thấy thông tin lịch hẹn');
+        return;
+      }
+      
+      const dateTime = dayjs(`${booking.date} ${booking.time}`, 'YYYY-MM-DD HH:mm');
+      const hoursUntil = dayjs().diff(dateTime, 'hour', true);
+      const isWithin12Hours = hoursUntil > -12 && hoursUntil <= 0;
+      const refundAmount = isWithin12Hours ? (booking.paidAmount - booking.depositAmount) : booking.paidAmount;
+      const nonRefundedDeposit = isWithin12Hours ? booking.depositAmount : 0;
+
+      console.log('Thời gian hiện tại:', dayjs().format('DD/MM/YYYY HH:mm'));
+      console.log('Thời gian lịch hẹn:', dateTime.format('DD/MM/YYYY HH:mm'));
+      console.log('Hours until:', hoursUntil);
+      console.log('Is within 12 hours:', isWithin12Hours);
+      console.log('Refund amount:', refundAmount);
+      console.log('Non-refunded deposit:', nonRefundedDeposit);
+
+      Modal.confirm({
+        title: 'Xác nhận hủy lịch hẹn',
+        icon: <ExclamationCircleOutlined />,
+        content: (
+          <div>
+            Bạn có chắc chắn muốn hủy lịch hẹn #{appointmentId} của khách hàng {booking.customerName}?
+            <p>- Số tiền hoàn: {refundAmount.toLocaleString('vi-VN')}đ</p>
+            {nonRefundedDeposit > 0 && <p>- Tiền cọc không hoàn: {nonRefundedDeposit.toLocaleString('vi-VN')}đ</p>}
+            <Form form={form} style={{ marginTop: '10px' }}>
+              <Form.Item
+                name="reason"
+                rules={[{ required: true, message: 'Vui lòng nhập lý do hủy' }]}
+              >
+                <Input placeholder="Nhập lý do hủy" />
+              </Form.Item>
+            </Form>
+          </div>
+        ),
+        okText: 'Hủy lịch',
+        okButtonProps: { danger: true },
+        cancelText: 'Đóng',
+        onOk: async () => {
+          try {
+            const values = await form.validateFields();
+            const reason = values.reason;
+            if (!reason.trim()) {
+              message.warning('Vui lòng nhập lý do hủy');
+              return Promise.reject();
+            }
+            message.loading({ content: 'Đang xử lý yêu cầu hủy lịch...', key: 'cancelLoading', duration: 0 });
+            
+            const payload = {
+              appointmentIds: [appointmentId],
+              reason: reason
+            };
+            console.log('Sending cancel payload (single booking):', payload);
+            
+            const response = await BookingService.cancelPaidAppointments(payload);
+            console.log('Cancel response:', response);
+            
+            setLocalBookings(prev => prev.filter(b => b.appointmentId !== appointmentId));
+            form.resetFields();
+            
+            message.success({ 
+              content: 'Đã hủy lịch hẹn thành công', 
+              key: 'cancelLoading', 
+              duration: 2 
+            });
+            
+            if (booking.date) {
+              setRefreshSlotDate(booking.date);
+            }
+          } catch (error) {
+            console.error('Error canceling appointment:', error);
+            message.error({ 
+              content: `Không thể hủy lịch hẹn: ${error.message || 'Đã xảy ra lỗi khi xử lý. Vui lòng thử lại sau.'}`, 
+              key: 'cancelLoading', 
+              duration: 5 
+            });
+            return Promise.reject();
+          }
+        },
+        onCancel: () => {
+          form.resetFields();
+        }
+      });
     } catch (error) {
-      console.error('Error canceling appointment:', error);
-      message.error('Không thể huỷ lịch hẹn');
+      console.error('Error in handleCancelAppointment:', error);
+      message.error(`Lỗi xử lý: ${error.message || 'Đã xảy ra lỗi không xác định'}`);
     }
   };
 
   const showPetDetails = async (appointmentId) => {
     try {
-      const pets = await BookingService.getPetsByAppointmentId(appointmentId);
-      setSelectedAppointmentPets(pets);
-      setSelectedAppointmentId(appointmentId);
-      setPetDrawerVisible(true);
+      message.loading({ content: 'Đang tải thông tin thú cưng...', key: 'petDetailsLoading', duration: 0 });
+      
+      try {
+        const pets = await BookingService.getPetsByAppointmentId(appointmentId);
+        console.log(`Pets fetched for appointment #${appointmentId}:`, pets);
+        
+        if (!pets || pets.length === 0) {
+          message.info({ 
+            content: 'Không có thú cưng nào trong lịch hẹn này', 
+            key: 'petDetailsLoading',
+            duration: 2
+          });
+        } else {
+          message.success({ 
+            content: `Đã tải thông tin ${pets.length} thú cưng`, 
+            key: 'petDetailsLoading',
+            duration: 1
+          });
+        }
+        
+        setSelectedAppointmentPets(pets);
+        setSelectedAppointmentId(appointmentId);
+        setPetDrawerVisible(true);
+      } catch (petsError) {
+        console.error('Error fetching pet details:', petsError);
+        message.error({ 
+          content: 'Không thể tải thông tin thú cưng: ' + (petsError.message || 'Lỗi không xác định'),
+          key: 'petDetailsLoading',
+          duration: 3
+        });
+        setSelectedAppointmentPets([]);
+        setSelectedAppointmentId(appointmentId);
+        setPetDrawerVisible(true);
+      }
     } catch (error) {
-      console.error('Error fetching pet details:', error);
-      message.error('Không thể tải thông tin thú cưng');
+      console.error('Error in showPetDetails:', error);
+      message.error({ 
+        content: `Lỗi hệ thống: ${error.message || 'Đã xảy ra lỗi không xác định'}`,
+        key: 'petDetailsLoading',
+        duration: 4
+      });
     }
   };
 
   const handleDeletePet = async (appointmentId, petId) => {
     try {
-      setLoading(true);
-      await BookingService.removePetFromAppointment(appointmentId, petId);
-      message.success(`Đã xóa thú cưng khỏi lịch hẹn #${appointmentId}`);
+      message.loading({ content: 'Đang xử lý...', key: 'deletePetLoading', duration: 0 });
+      
+      const pets = await BookingService.getPetsByAppointmentId(appointmentId);
+      if (pets.length <= 1) {
+        message.warning({ 
+          content: 'Lịch hẹn chỉ có 1 thú cưng. Hủy toàn bộ lịch hẹn thay vì xóa thú cưng', 
+          key: 'deletePetLoading' 
+        });
+        setTimeout(() => {
+          message.destroy('deletePetLoading');
+          handleCancelAppointment(appointmentId);
+        }, 1000);
+        return;
+      }
+  
+      console.log(`Deleting pet ${petId} from appointment ${appointmentId}`);
+      const response = await BookingService.removePetFromAppointment(appointmentId, petId);
+      console.log('Delete pet response:', response);
+      
+      message.success({ 
+        content: `Đã xóa thú cưng khỏi lịch hẹn #${appointmentId}`, 
+        key: 'deletePetLoading', 
+        duration: 2 
+      });
+
       setSelectedAppointmentPets(prev => prev.filter(pet => pet.id !== petId));
-      refreshBookings();
+      
+      // Lấy thông tin lịch hẹn và danh sách thú cưng mới nhất từ backend
+      const updatedAppointment = await BookingService.getAppointmentById(appointmentId);
+      const updatedPets = await BookingService.getPetsByAppointmentId(appointmentId);
+      console.log('Updated appointment after deletion:', updatedAppointment);
+      console.log('Updated pets after deletion:', updatedPets);
+      
+      setLocalBookings(prev => prev.map(b => 
+        b.appointmentId === appointmentId 
+          ? { ...b, ...updatedAppointment, petCount: updatedPets.length } 
+          : b
+      ));
+      
+      const booking = filteredBookings.find(b => b.appointmentId === appointmentId);
+      if (booking && booking.date) {
+        setRefreshSlotDate(booking.date);
+      }
     } catch (error) {
-      console.error('Error removing pet from appointment:', error);
-      message.error('Không thể xóa thú cưng khỏi lịch hẹn');
-    } finally {
-      setLoading(false);
+      console.error('Error in pet deletion process:', error);
+      message.error({ 
+        content: `Không thể xóa thú cưng: ${error.message || 'Đã xảy ra lỗi không xác định'}`, 
+        key: 'deletePetLoading', 
+        duration: 4 
+      });
     }
   };
 
-  const handlePetNameChange = async (petId, name) => {
-    try {
-      await BookingService.updatePetName(petId, name);
-      message.success('Đã cập nhật tên thú cưng');
-      setSelectedAppointmentPets(prev => 
-        prev.map(pet => pet.id === petId ? {...pet, name} : pet)
-      );
-    } catch (error) {
-      console.error('Error updating pet name:', error);
-      message.error('Không thể cập nhật tên thú cưng');
-    }
+  const handleCloseDrawer = () => {
+    setPetDrawerVisible(false);
+    setSelectedAppointmentPets([]); // Reset danh sách thú cưng khi đóng drawer
+    setSelectedAppointmentId(null);
   };
 
   console.log('Online bookings displayed in OnlineBookingModal.jsx:', filteredBookings);
@@ -143,6 +507,17 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
         onCancel={onCancel}
         footer={[
           <Button key="cancel" onClick={onCancel}>Đóng</Button>,
+          <Button 
+            key="delete" 
+            type="primary" 
+            danger
+            className="bg-red-500 hover:bg-red-600"
+            loading={deleteLoading}
+            disabled={selectedBookings.length === 0}
+            onClick={handleDeleteSelection}
+          >
+            Xóa
+          </Button>,
           <Button 
             key="submit" 
             type="primary" 
@@ -221,8 +596,8 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
                           ) : (
                             <Tag color="default" className="rounded-full px-2">Chưa thanh toán</Tag>
                           )}
-                          {booking.totalAmount && (
-                            <div className="text-xs text-gray-500 mt-1">Tổng: {booking.totalAmount.toLocaleString('vi-VN')}đ</div>
+                          {booking.paidAmount && (
+                            <div className="text-xs text-gray-500 mt-1">Tổng: {booking.paidAmount.toLocaleString('vi-VN')}đ</div>
                           )}
                         </div>
                       </td>
@@ -250,10 +625,11 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
                                 try {
                                   await BookingService.confirmAppointments([booking.appointmentId]);
                                   message.success('Đã xác nhận lịch hẹn thành công');
+                                  setRefreshSlotDate(booking.date);
                                   refreshBookings();
                                 } catch (error) {
                                   console.error('Error confirming appointment:', error);
-                                  message.error('Không thể xác nhận lịch hẹn');
+                                  message.error(error.message || 'Không thể xác nhận lịch hẹn');
                                 }
                               }}
                             />
@@ -275,17 +651,7 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
                                     label: 'Xóa toàn bộ lịch hẹn',
                                     icon: <DeleteOutlined />,
                                     danger: true,
-                                    onClick: () => {
-                                      Modal.confirm({
-                                        title: 'Xác nhận hủy lịch hẹn',
-                                        icon: <ExclamationCircleOutlined />,
-                                        content: `Bạn có chắc chắn muốn hủy toàn bộ lịch hẹn #${booking.appointmentId} của khách hàng ${booking.customerName}?`,
-                                        okText: 'Hủy lịch',
-                                        cancelText: 'Đóng',
-                                        okButtonProps: { danger: true },
-                                        onOk: () => handleCancelAppointment(booking.appointmentId)
-                                      });
-                                    }
+                                    onClick: () => handleCancelAppointment(booking.appointmentId)
                                   },
                                   {
                                     key: '2',
@@ -308,7 +674,19 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
                           ) : (
                             <Popconfirm
                               title="Xác nhận hủy lịch hẹn"
-                              description={`Bạn có chắc chắn muốn hủy lịch hẹn #${booking.appointmentId}?`}
+                              description={
+                                <div>
+                                  Bạn có chắc chắn muốn hủy lịch hẹn #{booking.appointmentId}?
+                                  <Form form={form} style={{ marginTop: '10px' }}>
+                                    <Form.Item
+                                      name="reason"
+                                      rules={[{ required: true, message: 'Vui lòng nhập lý do hủy' }]}
+                                    >
+                                      <Input placeholder="Nhập lý do hủy" />
+                                    </Form.Item>
+                                  </Form>
+                                </div>
+                              }
                               onConfirm={() => handleCancelAppointment(booking.appointmentId)}
                               okText="Hủy lịch"
                               cancelText="Đóng"
@@ -338,7 +716,7 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
       </Modal>
 
       {selectedBooking && (
-        <UpdatePetServiceModal
+        <ChangeDateAppointment
           isVisible={isUpdateModalVisible}
           onCancel={() => setIsUpdateModalVisible(false)}
           bookingData={selectedBooking}
@@ -356,101 +734,84 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, onConfirm, re
         </div>}
         placement="right"
         width={500}
-        onClose={() => setPetDrawerVisible(false)}
+        onClose={handleCloseDrawer}
         open={petDrawerVisible}
       >
-        {selectedAppointmentPets.map((pet, index) => (
-          <div key={pet.id} className="mb-6 bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-            <div className="flex justify-between items-start mb-3">
-              <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3 text-blue-600 font-medium">
-                  {pet.name ? pet.name.charAt(0) : 'P'}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={pet.name || ''}
-                      placeholder="Nhập tên thú cưng"
-                      size="small"
-                      className="font-medium text-base mb-1 max-w-[150px]"
-                      onChange={(e) => {
-                        const newName = e.target.value;
-                        setSelectedAppointmentPets(prev => 
-                          prev.map(p => p.id === pet.id ? {...p, name: newName} : p)
-                        );
-                      }}
-                      onBlur={(e) => {
-                        if (pet.name && pet.name.trim() !== '') {
-                          handlePetNameChange(pet.id, pet.name);
-                        }
-                      }}
-                      onPressEnter={(e) => {
-                        e.target.blur();
-                      }}
-                    />
-                    <Tooltip title="Tên thú cưng sẽ tự động lưu khi bạn nhấn Enter hoặc click ra ngoài">
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<InfoCircleOutlined />}
-                        className="text-gray-400"
-                      />
-                    </Tooltip>
+        {selectedAppointmentPets.length > 0 ? (
+          selectedAppointmentPets.map((pet, index) => (
+            <div key={pet.id} className="mb-6 bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3 text-blue-600 font-medium">
+                    {getPetName(pet).charAt(0).toUpperCase()}
                   </div>
-                  <p className="text-gray-500 text-sm">{pet.type}</p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium text-base mb-1">
+                        {getPetName(pet)}
+                      </div>
+                    </div>
+                    <p className="text-gray-500 text-sm">{formatPetType(pet.petType || pet.type)}</p>
+                  </div>
                 </div>
-              </div>
-              {selectedAppointmentPets.length > 1 && (
-                <Popconfirm
-                  title="Xóa thú cưng khỏi lịch hẹn"
-                  description={`Bạn có chắc chắn muốn xóa ${pet.name || 'thú cưng này'} khỏi lịch hẹn?`}
-                  onConfirm={() => handleDeletePet(selectedAppointmentId, pet.id)}
-                  okText="Xóa"
-                  cancelText="Hủy"
-                  okButtonProps={{ danger: true }}
-                >
-                  <Button 
-                    size="small" 
-                    type="text" 
-                    danger
-                    icon={<DeleteOutlined />}
-                  />
-                </Popconfirm>
-              )}
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              <div className="bg-gray-50 p-2 rounded">
-                <span className="text-gray-500 text-xs">Tuổi:</span>
-                <span className="block font-medium">{pet.age ? `${pet.age} tuổi` : 'Không có thông tin'}</span>
-              </div>
-              <div className="bg-gray-50 p-2 rounded">
-                <span className="text-gray-500 text-xs">Cân nặng:</span>
-                <span className="block font-medium">{pet.weight ? `${pet.weight} kg` : 'Không có thông tin'}</span>
-              </div>
-            </div>
-            
-            <div className="mb-3">
-              <span className="text-gray-500 text-xs block mb-1">Dịch vụ đã đặt:</span>
-              <div className="flex flex-wrap gap-2">
-                {pet.service ? (
-                  <Tag color="blue">{pet.service}</Tag>
-                ) : (
-                  <Tag color="default">Không có dịch vụ</Tag>
+                {selectedAppointmentPets.length > 1 && (
+                  <Popconfirm
+                    title="Xóa thú cưng khỏi lịch hẹn"
+                    description={`Bạn có chắc chắn muốn xóa ${getPetName(pet)} khỏi lịch hẹn?`}
+                    onConfirm={() => handleDeletePet(selectedAppointmentId, pet.id)}
+                    okText="Xóa"
+                    cancelText="Hủy"
+                    okButtonProps={{ danger: true }}
+                  >
+                    <Button 
+                      size="small" 
+                      type="text" 
+                      danger
+                      icon={<DeleteOutlined />}
+                    />
+                  </Popconfirm>
                 )}
               </div>
-            </div>
-            
-            <div className="bg-orange-50 p-3 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-700">Thành tiền:</span>
-                <span className="font-bold text-orange-500">{pet.price ? pet.price.toLocaleString('vi-VN') : '0'}đ</span>
+              
+              <div className="bg-gray-50 p-2 rounded mb-3">
+                <span className="text-gray-500 text-xs">Cân nặng:</span>
+                <span className="block font-medium">{pet.weightRange || 'Không có thông tin'}</span>
               </div>
+              
+              <div className="mb-3">
+                <span className="text-gray-500 text-xs block mb-1">Dịch vụ đã đặt:</span>
+                <div className="flex flex-wrap gap-2">
+                  {pet.service ? (
+                    <Tag color="blue">{pet.service}</Tag>
+                  ) : (
+                    <Tag color="default">Không có dịch vụ</Tag>
+                  )}
+                </div>
+              </div>
+              
+              <div className="bg-orange-50 p-3 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-700">Thành tiền:</span>
+                  <span className="font-bold text-orange-500">{pet.price ? pet.price.toLocaleString('vi-VN') : '0'}đ</span>
+                </div>
+              </div>
+              
+              {pet.note && (
+                <div className="mt-3 bg-blue-50 p-3 rounded-lg">
+                  <span className="text-gray-700 text-xs block mb-1">Ghi chú:</span>
+                  <span className="text-gray-700">{pet.note}</span>
+                </div>
+              )}
+              
+              {index < selectedAppointmentPets.length - 1 && <div className="border-b my-6"></div>}
             </div>
-            
-            {index < selectedAppointmentPets.length - 1 && <div className="border-b my-6"></div>}
+          ))
+        ) : (
+          <div className="text-center p-4 text-gray-500">
+            <InfoCircleOutlined className="text-blue-500 text-2xl mb-2" />
+            <p>Không có thông tin thú cưng</p>
           </div>
-        ))}
+        )}
       </Drawer>
     </>
   );

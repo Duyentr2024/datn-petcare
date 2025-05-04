@@ -12,14 +12,17 @@ class WebSocketService {
       onAppointmentConfirmed: [],
       onSlotsUpdated: [],
       onConnect: [],
-      onDisconnect: []
+      onDisconnect: [],
+      onAppointmentCancelled: [],
+      onRefundStatusUpdated: [],
+      onPetRemoved: [],
+      onBookingStatusUpdated: [], // Added callback for booking status
     };
     
-    // Reconnection settings
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5;
+    this.maxReconnectAttempts = 10;
     this.reconnectTimeout = null;
-    this.reconnectDelay = 2000; // Start with 2 seconds
+    this.reconnectDelay = 3000;
   }
 
   connect() {
@@ -28,17 +31,16 @@ class WebSocketService {
     }
     
     try {
-      // Extract the host from API URL
       const apiUrl = new URL(API_BASE_URL);
       const baseUrl = `${apiUrl.protocol}//${apiUrl.host}`;
       const wsUrl = `${baseUrl}/ws`;
       
-      console.log(`Connecting to WebSocket at ${wsUrl}`);
+      console.log(`Attempting to connect to WebSocket at ${wsUrl}`);
       
       this.stompClient = new Client({
         webSocketFactory: () => new SockJS(wsUrl),
         debug: function (str) {
-          // console.log(str);
+          console.log('WebSocket debug:', str);
         },
         reconnectDelay: 5000,
         heartbeatIncoming: 4000,
@@ -47,6 +49,12 @@ class WebSocketService {
       
       this.stompClient.onConnect = this.handleConnect.bind(this);
       this.stompClient.onStompError = this.handleError.bind(this);
+      this.stompClient.onWebSocketError = (error) => {
+        console.error('WebSocket error:', error);
+      };
+      this.stompClient.onWebSocketClose = (event) => {
+        console.log('WebSocket closed:', event);
+      };
       
       this.stompClient.activate();
     } catch (error) {
@@ -69,14 +77,16 @@ class WebSocketService {
   }
   
   handleConnect(frame) {
-    console.log('WebSocket connection established');
+    console.log('WebSocket connection established:', frame);
     this.connected = true;
     this.reconnectAttempts = 0;
     
-    // Subscribe to topic channels only if connected
     if (this.connected) {
-      this.stompClient.subscribe('/topic/appointments', this.handleAppointmentMessage.bind(this));
+      this.stompClient.subscribe('/topic/new-appointment', this.handleAppointmentMessage.bind(this));
       this.stompClient.subscribe('/topic/slots', this.handleSlotsMessage.bind(this));
+      this.stompClient.subscribe('/topic/appointments', this.handleAppointmentMessage.bind(this));
+      this.stompClient.subscribe('/topic/booking-status', this.handleBookingStatusMessage.bind(this)); // Added subscription
+      console.log('Subscribed to WebSocket topics');
     }
     
     this.callbacks.onConnect.forEach(callback => callback());
@@ -87,15 +97,21 @@ class WebSocketService {
       const data = JSON.parse(message.body);
       console.log('WebSocket message received on /topic/appointments:', data);
       
-      if (data.type === 'NEW_APPOINTMENT') {
-        this.callbacks.onNewAppointment.forEach(callback => callback(data.appointment));
-      } else if (data.type === 'APPOINTMENT_UPDATED') {
-        this.callbacks.onAppointmentUpdated.forEach(callback => callback(data.appointment));
+      if (data.type === 'APPOINTMENT_UPDATED') {
+        this.callbacks.onAppointmentUpdated.forEach(callback => callback(data));
+      } else if (data.type === 'NEW_APPOINTMENT') {
+        this.callbacks.onNewAppointment.forEach(callback => callback(data));
+      } else if (data.type === 'APPOINTMENT_CANCELLED') {
+        this.callbacks.onAppointmentCancelled.forEach(callback => callback(data));
       } else if (data.type === 'APPOINTMENT_CONFIRMED') {
         this.callbacks.onAppointmentConfirmed.forEach(callback => callback(data));
+      } else if (data.type === 'REFUND_STATUS_UPDATED') {
+        this.callbacks.onRefundStatusUpdated.forEach(callback => callback(data));
+      } else if (data.type === 'PET_REMOVED') {
+        this.callbacks.onPetRemoved.forEach(callback => callback(data));
       }
     } catch (error) {
-      console.error('Error processing WebSocket message:', error);
+      console.error('Error processing WebSocket appointment message:', error);
     }
   }
   
@@ -106,6 +122,16 @@ class WebSocketService {
       this.callbacks.onSlotsUpdated.forEach(callback => callback(data));
     } catch (error) {
       console.error('Error processing WebSocket slots message:', error);
+    }
+  }
+  
+  handleBookingStatusMessage(message) {
+    try {
+      const data = JSON.parse(message.body);
+      console.log('WebSocket message received on /topic/booking-status:', data);
+      this.callbacks.onBookingStatusUpdated.forEach(callback => callback(data));
+    } catch (error) {
+      console.error('Error processing WebSocket booking status message:', error);
     }
   }
   
@@ -144,6 +170,28 @@ class WebSocketService {
       });
     } else {
       console.error('Cannot notify: WebSocket is not connected');
+    }
+  }
+
+  notifyRefundStatusUpdated(appointmentId) {
+    if (this.stompClient && this.connected) {
+      this.stompClient.publish({
+        destination: '/topic/appointments',
+        body: JSON.stringify({ type: 'REFUND_STATUS_UPDATED', appointmentId })
+      });
+    } else {
+      console.error('Cannot notify refund status update: WebSocket is not connected');
+    }
+  }
+
+  notifyBookingStatusUpdated(status) {
+    if (this.stompClient && this.connected) {
+      this.stompClient.publish({
+        destination: '/topic/booking-status',
+        body: JSON.stringify({ type: 'BOOKING_STATUS_UPDATED', status })
+      });
+    } else {
+      console.error('Cannot notify booking status update: WebSocket is not connected');
     }
   }
 
@@ -186,6 +234,34 @@ class WebSocketService {
     this.callbacks.onDisconnect.push(callback);
     return () => {
       this.callbacks.onDisconnect = this.callbacks.onDisconnect.filter(cb => cb !== callback);
+    };
+  }
+
+  onAppointmentCancelled(callback) {
+    this.callbacks.onAppointmentCancelled.push(callback);
+    return () => {
+      this.callbacks.onAppointmentCancelled = this.callbacks.onAppointmentCancelled.filter(cb => cb !== callback);
+    };
+  }
+
+  onRefundStatusUpdated(callback) {
+    this.callbacks.onRefundStatusUpdated.push(callback);
+    return () => {
+      this.callbacks.onRefundStatusUpdated = this.callbacks.onRefundStatusUpdated.filter(cb => cb !== callback);
+    };
+  }
+
+  onPetRemoved(callback) {
+    this.callbacks.onPetRemoved.push(callback);
+    return () => {
+      this.callbacks.onPetRemoved = this.callbacks.onPetRemoved.filter(cb => cb !== callback);
+    };
+  }
+
+  onBookingStatusUpdated(callback) {
+    this.callbacks.onBookingStatusUpdated.push(callback);
+    return () => {
+      this.callbacks.onBookingStatusUpdated = this.callbacks.onBookingStatusUpdated.filter(cb => cb !== callback);
     };
   }
 }
