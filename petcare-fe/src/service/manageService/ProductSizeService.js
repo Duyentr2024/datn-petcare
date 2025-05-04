@@ -1,69 +1,90 @@
 import axios from "axios";
+import Cookies from "js-cookie"; // Import js-cookie để lấy token
+import API_BASE_URL from "../../config";
 
-const API_URL = "http://localhost:8080/api/product-sizes"; // Adjust URL as needed
+const API_URL = `${API_BASE_URL}/api/product-sizes`; // Sử dụng API_BASE_URL từ config
+
+// Tạo instance của Axios
+const api = axios.create({
+    baseURL: API_URL,
+});
+
+// Thêm interceptor để tự động thêm token vào header
+api.interceptors.request.use(
+    (config) => {
+        const token = Cookies.get("accessToken"); // Lấy token từ cookie với tên "accessToken"
+        if (token) {
+            config.headers["Authorization"] = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
 
 const ProductSizeService = {
-    // Get list of all product sizes
+    // Lấy danh sách tất cả kích thước sản phẩm
     getAllProductSizes: async () => {
         try {
-            const response = await axios.get(`${API_URL}`);
+            const response = await api.get("");
             return response.data;
         } catch (error) {
-            console.error("Error fetching product sizes:", error);
+            console.error("Lỗi khi lấy danh sách kích thước sản phẩm:", error);
             throw error;
         }
     },
 
-    // Get list of active product sizes
+    // Lấy danh sách kích thước sản phẩm đang hoạt động
     getActiveSizes: async () => {
         try {
-            const response = await axios.get(`${API_URL}/activeProductSizes`);
+            const response = await api.get("/activeProductSizes");
             return response.data;
         } catch (error) {
-            console.error("Error fetching active product sizes:", error);
+            console.error("Lỗi khi lấy danh sách kích thước sản phẩm đang hoạt động:", error);
             throw error;
         }
     },
 
-    // Get a product size by its ID
+    // Lấy kích thước sản phẩm theo ID
     getProductSizeById: async (productSizeId) => {
         try {
-            const response = await axios.get(`${API_URL}/getProductSize/${productSizeId}`);
+            const response = await api.get(`/getProductSize/${productSizeId}`);
             return response.data;
         } catch (error) {
-            console.error(`Error fetching product size by ID ${productSizeId}:`, error);
+            console.error(`Lỗi khi lấy kích thước sản phẩm theo ID ${productSizeId}:`, error);
             throw error;
         }
     },
 
-    // Create a new product size
+    // Tạo kích thước sản phẩm mới
     createProductSize: async (productSize) => {
         try {
-            const response = await axios.post(`${API_URL}/createProductSize`, productSize);
+            const response = await api.post("/createProductSize", productSize);
             return response.data;
         } catch (error) {
-            console.error("Error creating product size:", error);
+            console.error("Lỗi khi tạo kích thước sản phẩm:", error);
             throw error;
         }
     },
 
-    // Update a product size by its ID
+    // Cập nhật kích thước sản phẩm theo ID
     updateProductSize: async (productSizeId, productSizeDetails) => {
         try {
-            const response = await axios.put(`${API_URL}/updateProductSize/${productSizeId}`, productSizeDetails);
+            const response = await api.put(`/updateProductSize/${productSizeId}`, productSizeDetails);
             return response.data;
         } catch (error) {
-            console.error(`Error updating product size ID ${productSizeId}:`, error);
+            console.error(`Lỗi khi cập nhật kích thước sản phẩm ID ${productSizeId}:`, error);
             throw error;
         }
     },
 
-    // Delete a product size by its ID
+    // Xóa kích thước sản phẩm theo ID
     deleteProductSize: async (productSizeId) => {
         try {
-            await axios.delete(`${API_URL}/deleteProductSize/${productSizeId}`);
+            await api.delete(`/deleteProductSize/${productSizeId}`);
         } catch (error) {
-            console.error(`Error deleting product size ID ${productSizeId}:`, error);
+            console.error(`Lỗi khi xóa kích thước sản phẩm ID ${productSizeId}:`, error);
             throw error;
         }
     },
