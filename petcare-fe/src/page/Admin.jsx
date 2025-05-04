@@ -23,7 +23,7 @@ import ManageOnline from "../components/Manage/ManageOnline.jsx";
 
 import ManageClient from "../components/Manage/ManageClient";
 import ManageHospital from "../components/Manage/ManageHospital.jsx";
-
+import ManageStatisticsSpa from "../components/Manage/ManagaStatisticsSpa.tsx";
 function Admin() {
   return (
     <div className="flex flex-col h-screen bg-gray-100 font-sans">
@@ -38,6 +38,7 @@ function Admin() {
           <Routes>
             
             <Route path="/sales-statistics" element={<ManageStatistics/>} />
+            <Route path="/spa-statistics" element={<ManageStatisticsSpa/>} />
             <Route path="/warehouse" element={<StockPage />} />
             <Route path="/invoice-management" element={<Invoice />} />
             <Route path="/invoice-online" element={<ManageOnline />} />
