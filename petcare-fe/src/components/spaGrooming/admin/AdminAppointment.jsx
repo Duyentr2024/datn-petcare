@@ -41,21 +41,11 @@ const AdminAppointment = () => {
         console.log('Updated onlineBookings:', response.data);
       } else {
         console.warn('Invalid response format:', response);
-        message.warning('Không có lịch hẹn nào chờ xác nhận hoặc dữ liệu không hợp lệ.');
         setOnlineBookings([]);
         setNotificationCount(0);
       }
     } catch (error) {
       console.error('Error fetching online bookings:', error);
-      let errorMessage = 'Không thể tải danh sách lịch hẹn. Vui lòng kiểm tra kết nối hoặc thử lại sau.';
-      if (error.response) {
-        if (error.response.status === 500) {
-          errorMessage = 'Lỗi server: Không thể lấy danh sách lịch hẹn. Vui lòng kiểm tra backend.';
-        } else if (error.response.status === 404) {
-          errorMessage = 'Không tìm thấy endpoint lấy lịch hẹn. Vui lòng kiểm tra backend.';
-        }
-      }
-      message.error(errorMessage);
       setOnlineBookings([]);
       setNotificationCount(0);
     }
@@ -84,7 +74,6 @@ const AdminAppointment = () => {
     const unsubscribeDisconnect = webSocketService.onDisconnect(() => {
       console.log('WebSocket disconnected via WebSocketService');
       setIsWebSocketConnected(false);
-      message.warning('WebSocket đã ngắt kết nối, chuyển sang chế độ polling mỗi 3 giây.');
     });
 
     const unsubscribeNew = webSocketService.onNewAppointment((data) => {
@@ -225,7 +214,7 @@ const AdminAppointment = () => {
               onClick={handleAddAppointment}
               className="bg-green-500 hover:bg-green-600"
             >
-              Thêm lịch
+              Tạo hóa đơn
             </Button>
           </div>
         </div>

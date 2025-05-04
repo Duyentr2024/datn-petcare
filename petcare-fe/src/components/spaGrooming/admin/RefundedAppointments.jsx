@@ -1,32 +1,20 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Input, DatePicker, Select, Table, Tag, Button, Modal, message, Tooltip, Space, Skeleton, Empty } from 'antd';
 import { SearchOutlined, CheckOutlined, FileExcelOutlined, InfoCircleOutlined, BankOutlined, WalletOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
-import BookingService from "../../../service/spaService/BookingService";
 import webSocketService from "../../../service/WebSocketService";
+import BookingService from "../../../service/spaService/BookingService";
 import './AdminAppointment.css';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
 
-const updateRefundedData = (currentData, newData) => {
-  if (!newData || !Array.isArray(newData)) return currentData;
-  
-  const dataMap = new Map(currentData.map(item => [item.appointmentId, item]));
-  
-  newData.forEach(item => {
-    dataMap.set(item.appointmentId, item);
-  });
-  
-  return Array.from(dataMap.values());
-};
-
 const RefundedAppointments = () => {
   const [searchText, setSearchText] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('pending');
   const [dateRange, setDateRange] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [refundedData, setRefundedData] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
@@ -36,107 +24,82 @@ const RefundedAppointments = () => {
   const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
   
   const [localRefundedData, setLocalRefundedData] = useState([]);
-  const lastFetchRef = useRef(0);
-  const currentFetchPromise = useRef(null);
-  const webSocketInitialized = useRef(false); // Track WebSocket initialization
-
-  const fetchRefundedData = useCallback(async (showLoading = true, force = false) => {
-    const now = Date.now();
-    if (!force && now - lastFetchRef.current < 2000) {
-      console.log('Skipping refunded data fetch, too soon since last fetch');
-      return;
-    }
-    
-    if (currentFetchPromise.current) {
-      try {
-        await currentFetchPromise.current;
-      } catch (error) {
-        console.error('Previous refunded data fetch failed:', error);
-      }
-    }
-    
-    try {
-      if (showLoading) setLoading(true);
-      
-      const fetchPromise = BookingService.getRefundedAppointments();
-      currentFetchPromise.current = fetchPromise;
-      lastFetchRef.current = now;
-      
-      const response = await fetchPromise;
-      
-      currentFetchPromise.current = null;
-      
-      const newData = response.data;
-      
-      if (force || localRefundedData.length === 0) {
-        setLocalRefundedData(newData);
-        setRefundedData(newData);
-      } else {
-        const updatedData = updateRefundedData(localRefundedData, newData);
-        setLocalRefundedData(updatedData);
-        setRefundedData(updatedData);
-      }
-    } catch (error) {
-      console.error('Error fetching refunded appointments:', error);
-      message.error('Không thể tải danh sách lịch hẹn hoàn tiền');
-      if (localRefundedData.length === 0) {
-        setRefundedData([]);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [localRefundedData]);
+  const webSocketInitialized = useRef(false);
 
   useEffect(() => {
-    // Load data only once on component mount
-    fetchRefundedData(true, true);
+    const fetchRefundedAppointments = async () => {
+      try {
+        setLoading(true);
+        const response = await BookingService.getRefundedAppointments();
+        console.log('API Response:', response);
 
-    // Prevent re-initializing WebSocket if already set up
+        if (response.data && Array.isArray(response.data)) {
+          const formattedData = response.data.map(item => ({
+            ...item,
+            date: item.date || '',
+            time: item.time ? item.time.substring(0, 5) : '',
+            refundStatus: item.refundStatus || 'PENDING',
+            refundAmount: item.refundAmount || 0,
+            nonRefundedDeposit: item.nonRefundedDeposit || 0,
+            refundMethod: item.refundMethod || null,
+            refundNote: item.refundNote || null,
+            cancelReason: item.cancelReason || 'Không có'
+          }));
+          setLocalRefundedData(formattedData);
+          setRefundedData(formattedData);
+          console.log('Updated refundedData:', formattedData);
+        } else {
+          console.warn('No valid data returned from API, using empty array');
+          setLocalRefundedData([]);
+          setRefundedData([]);
+        }
+      } catch (error) {
+        console.error('Error fetching refunded appointments:', error);
+        message.error('Không thể tải danh sách lịch hẹn hoàn tiền');
+        setLocalRefundedData([]);
+        setRefundedData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRefundedAppointments();
+
     if (webSocketInitialized.current) return;
 
-    // Setup WebSocket connection if not already connected
     if (!webSocketService.connected) {
       webSocketService.connect();
     }
 
     const unsubscribeConnect = webSocketService.onConnect(() => {
-      console.log('RefundedAppointments: WebSocket connected');
+      console.log('RefundedAppointments: WebSocket đã kết nối');
       setIsWebSocketConnected(true);
     });
 
     const unsubscribeDisconnect = webSocketService.onDisconnect(() => {
-      console.log('RefundedAppointments: WebSocket disconnected');
+      console.log('RefundedAppointments: WebSocket đã ngắt kết nối');
       setIsWebSocketConnected(false);
     });
 
     const handleRefundUpdate = (data) => {
-      console.log('RefundedAppointments: Refund update via WebSocket', data);
-      
+      console.log('RefundedAppointments: Cập nhật trạng thái hoàn tiền qua WebSocket', data);
       if (data.appointmentId && data.refundStatus) {
         message.info(`Trạng thái hoàn tiền cho lịch hẹn #${data.appointmentId} đã được cập nhật`);
-        setLocalRefundedData(prev => {
-          const updatedData = prev.map(item => {
-            if (item.appointmentId === data.appointmentId) {
-              return { ...item, refundStatus: data.refundStatus, refundMethod: data.refundMethod, refundNote: data.refundNote };
-            }
-            return item;
-          });
-          return updatedData;
-        });
+        fetchRefundedAppointments();
       }
     };
 
     const unsubscribeRefundUpdated = webSocketService.onRefundStatusUpdated(handleRefundUpdate);
 
-    webSocketInitialized.current = true; // Mark WebSocket as initialized
+    webSocketInitialized.current = true;
 
     return () => {
       unsubscribeConnect();
       unsubscribeDisconnect();
       unsubscribeRefundUpdated();
-      webSocketInitialized.current = false; // Reset on unmount
+      webSocketInitialized.current = false;
     };
-  }, [fetchRefundedData]); // Dependency is stable, won't cause re-runs
+  }, []);
 
   useEffect(() => {
     setRefundedData(localRefundedData);
@@ -183,24 +146,8 @@ const RefundedAppointments = () => {
         return;
       }
 
-      const response = await BookingService.updateRefundStatus(selectedAppointment.appointmentId, {
-        refundStatus: 'COMPLETED',
-        refundMethod: refundMethod,
-        refundNote: refundNote || null
-      });
-
       setLocalRefundedData(prev => {
-        const updatedData = prev.map(item => {
-          if (item.appointmentId === selectedAppointment.appointmentId) {
-            return { 
-              ...item, 
-              refundStatus: 'COMPLETED', 
-              refundMethod: refundMethod,
-              refundNote: refundNote || null
-            };
-          }
-          return item;
-        });
+        const updatedData = prev.filter(item => item.appointmentId !== selectedAppointment.appointmentId);
         return updatedData;
       });
       
@@ -209,7 +156,7 @@ const RefundedAppointments = () => {
       
       webSocketService.notifyRefundStatusUpdated(selectedAppointment.appointmentId);
     } catch (error) {
-      console.error('Error updating refund status:', error);
+      console.error('Lỗi khi cập nhật trạng thái hoàn tiền:', error);
       message.error('Không thể cập nhật trạng thái hoàn tiền');
     } finally {
       setIsSubmitting(false);
@@ -253,8 +200,8 @@ const RefundedAppointments = () => {
       width: 150,
       render: (date, record) => (
         <div>
-          <div>{dayjs(date).format('DD/MM/YYYY')}</div>
-          <div className="text-sm text-gray-500">{record.time || ''}</div>
+          <div>{date ? dayjs(date).format('DD/MM/YYYY') : '-'}</div>
+          <div className="text-sm text-gray-500">{record.time || '-'}</div>
         </div>
       ),
       sorter: (a, b) => new Date(a.date) - new Date(b.date),
@@ -391,11 +338,13 @@ const RefundedAppointments = () => {
       (statusFilter === 'pending' ? item.refundStatus === 'PENDING' : item.refundStatus === 'COMPLETED');
     
     const matchDate = dateRange && dateRange[0] && dateRange[1] ? 
-      (dayjs(item.cancelDate || item.date).isAfter(dateRange[0]) && 
-       dayjs(item.cancelDate || item.date).isBefore(dateRange[1])) : true;
+      (dayjs(item.date).isAfter(dateRange[0]) && 
+       dayjs(item.date).isBefore(dateRange[1])) : true;
     
     return matchSearch && matchStatus && matchDate;
   });
+
+  console.log('Filtered Data:', filteredData);
 
   const handleExportExcel = () => {
     message.info('Chức năng xuất Excel đang được phát triển');
@@ -433,7 +382,7 @@ const RefundedAppointments = () => {
           <RangePicker 
             format="DD/MM/YYYY"
             onChange={handleDateRangeChange}
-            placeholder={['Từ ngày hủy', 'Đến ngày hủy']}
+            placeholder={['Từ ngày đặt lịch', 'Đến ngày đặt lịch']}
           />
           <Button 
             icon={<FileExcelOutlined />}
@@ -465,7 +414,7 @@ const RefundedAppointments = () => {
         <div className="bg-gray-50 rounded-lg p-8 text-center">
           <Empty
             image="https://cdn-icons-png.flaticon.com/512/6195/6195678.png"
-            imageStyle={{ height: 96, opacity: 0.5 }}
+            styles={{ image: { height: 96, opacity: 0.5 } }}
             description={
               <Space direction="vertical" size="small">
                 <h3 className="text-lg font-medium text-gray-600 mt-2">Không tìm thấy dữ liệu hoàn tiền</h3>
@@ -476,7 +425,7 @@ const RefundedAppointments = () => {
             <Button 
               type="primary" 
               icon={<SearchOutlined />} 
-              onClick={() => {setSearchText(''); setDateRange(null); setStatusFilter('all');}}
+              onClick={() => {setSearchText(''); setDateRange(null); setStatusFilter('pending');}}
               className="bg-[#fbb321] hover:bg-[#e59e14] border-none mt-4"
             >
               Xóa bộ lọc
@@ -551,26 +500,6 @@ const RefundedAppointments = () => {
           </div>
         )}
       </Modal>
-
-      <style jsx global>{`
-        .refund-table-container .ant-table-thead > tr > th {
-          background-color: #f9fafb;
-          color: #111827;
-          font-weight: 600;
-        }
-        
-        .refund-table-container .ant-table-tbody > tr:hover > td {
-          background-color: rgba(251, 179, 33, 0.05);
-        }
-        
-        .refund-table-container .ant-table-row {
-          transition: all 0.3s;
-        }
-        
-        .ant-tooltip-inner {
-          max-width: 300px;
-        }
-      `}</style>
     </div>
   );
 };

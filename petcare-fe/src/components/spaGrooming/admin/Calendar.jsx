@@ -18,6 +18,7 @@ import "dayjs/locale/vi";
 import locale from "antd/locale/vi_VN";
 import BookingService from "../../../service/spaService/BookingService";
 import UpdateWeight from "./UpdateWeight";
+import PaymentSpa from "./PaymentSpa";
 import "./Calendar.css";
 
 dayjs.locale("vi");
@@ -36,6 +37,8 @@ const Calendar = ({ refreshSlotDate }) => {
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
+  const [selectedAppointmentForPayment, setSelectedAppointmentForPayment] = useState(null);
 
   useEffect(() => {
     const fetchStaffAndWeights = async () => {
@@ -56,16 +59,18 @@ const Calendar = ({ refreshSlotDate }) => {
 
   const fetchPetWeightsByType = async (petType) => {
     try {
-      const formattedType = petType.toUpperCase();
-      console.log(`Fetching weights for pet type: ${formattedType}`);
+      const normalizedPetType = petType.toUpperCase() === "CHÓ" || petType.toUpperCase() === "CHO" ? "DOG" : 
+                               petType.toUpperCase() === "MÈO" || petType.toUpperCase() === "MEO" ? "CAT" : 
+                               petType.toUpperCase();
+      console.log(`Fetching weights for pet type: ${normalizedPetType}`);
 
-      const weights = await BookingService.getPetWeightsByType(formattedType);
-      console.log(`Received weights for ${formattedType}:`, weights);
+      const weights = await BookingService.getPetWeightsByType(normalizedPetType);
+      console.log(`Received weights for ${normalizedPetType}:`, weights);
 
       return weights.map((weight) => ({
-        value: weight.id,
+        value: weight.petWeightId,
         label: weight.weightRange,
-        active: weight.active !== false,
+        active: weight.statusType === "ACTIVE",
       }));
     } catch (error) {
       console.error(`Error fetching weights for pet type ${petType}:`, error);
@@ -76,22 +81,47 @@ const Calendar = ({ refreshSlotDate }) => {
 
   const fetchSlotStatus = async (date) => {
     try {
-      const response = await BookingService.getConfirmedSlots(
-        date.format("YYYY-MM-DD")
-      );
-      const allSlots = [
-        ...(response.morning || []),
-        ...(response.afternoon || []),
+      const [confirmedResponse, inProgressResponse, completedResponse] = await Promise.all([
+        BookingService.getConfirmedSlots(date.format("YYYY-MM-DD")),
+        BookingService.getInProgressSlots(date.format("YYYY-MM-DD")),
+        BookingService.getCompletedSlots(date.format("YYYY-MM-DD"))
+      ]);
+
+      const allSlotsConfirmed = [
+        ...(confirmedResponse.morning || []),
+        ...(confirmedResponse.afternoon || []),
       ];
-      const slotMap = Object.fromEntries(
-        allSlots.map((slot) => [
-          slot.hour,
-          { total: slot.totalSlots, booked: slot.bookedSlots },
-        ])
-      );
+      const allSlotsInProgress = [
+        ...(inProgressResponse.morning || []),
+        ...(inProgressResponse.afternoon || []),
+      ];
+      const allSlotsCompleted = [
+        ...(completedResponse.morning || []),
+        ...(completedResponse.afternoon || []),
+      ];
+
+      const slotMap = {};
+      const allTimes = [...new Set([
+        ...allSlotsConfirmed.map(slot => slot.hour),
+        ...allSlotsInProgress.map(slot => slot.hour),
+        ...allSlotsCompleted.map(slot => slot.hour)
+      ])];
+
+      allTimes.forEach(time => {
+        const confirmedSlot = allSlotsConfirmed.find(slot => slot.hour === time) || { totalSlots: 4, bookedSlots: 0 };
+        const inProgressSlot = allSlotsInProgress.find(slot => slot.hour === time) || { totalSlots: 4, bookedSlots: 0 };
+        const completedSlot = allSlotsCompleted.find(slot => slot.hour === time) || { totalSlots: 4, bookedSlots: 0 };
+
+        const totalBookedSlots = confirmedSlot.bookedSlots + inProgressSlot.bookedSlots + completedSlot.bookedSlots;
+        slotMap[time] = {
+          total: confirmedSlot.totalSlots,
+          booked: totalBookedSlots
+        };
+      });
+
       setTimeSlots(slotMap);
     } catch (error) {
-      console.error("Error fetching confirmed slot status:", error);
+      console.error("Error fetching slot status:", error);
       setTimeSlots({});
       message.error("Không thể tải trạng thái slot: " + (error.message || "Lỗi không xác định"));
     }
@@ -102,16 +132,13 @@ const Calendar = ({ refreshSlotDate }) => {
       setLoading(true);
       let appointments = [];
       if (time) {
-        const response = await BookingService.getConfirmedAppointmentsByDateAndTime(
+        const response = await BookingService.getActiveAppointmentsByDateAndTime(
           date.format("YYYY-MM-DD"),
           time
         );
-        appointments = response;
+        appointments = response.filter(appointment => appointment.time === time);
       } else {
-        const response = await BookingService.getConfirmedAppointmentsByDate(
-          date.format("YYYY-MM-DD")
-        );
-        appointments = response;
+        appointments = [];
       }
       setBookedSlots(
         appointments.map((appointment) => ({
@@ -119,7 +146,7 @@ const Calendar = ({ refreshSlotDate }) => {
           customerName: appointment.customerName,
           phone: appointment.phone,
           quantity: appointment.petCount,
-          status: "confirmed",
+          status: appointment.status ? appointment.status.toLowerCase() : "unknown",
         }))
       );
     } catch (error) {
@@ -133,7 +160,11 @@ const Calendar = ({ refreshSlotDate }) => {
 
   useEffect(() => {
     fetchSlotStatus(selectedDate);
-    fetchBookedSlots(selectedDate, selectedTime);
+    if (selectedTime) {
+      fetchBookedSlots(selectedDate, selectedTime);
+    } else {
+      setBookedSlots([]);
+    }
   }, [selectedDate, selectedTime]);
 
   useEffect(() => {
@@ -142,7 +173,11 @@ const Calendar = ({ refreshSlotDate }) => {
       refreshSlotDate === selectedDate.format("YYYY-MM-DD")
     ) {
       fetchSlotStatus(selectedDate);
-      fetchBookedSlots(selectedDate, selectedTime);
+      if (selectedTime) {
+        fetchBookedSlots(selectedDate, selectedTime);
+      } else {
+        setBookedSlots([]);
+      }
     }
   }, [refreshSlotDate, selectedDate]);
 
@@ -157,6 +192,7 @@ const Calendar = ({ refreshSlotDate }) => {
     setSelectedTime(time);
     setSelectedCustomer(null);
     setSlotDetails([]);
+    fetchBookedSlots(selectedDate, time);
   };
 
   const handleSelectBookedSlot = async (record) => {
@@ -175,7 +211,6 @@ const Calendar = ({ refreshSlotDate }) => {
 
       const detailsPromises = response.map(async (pet) => {
         console.log('Raw pet data:', pet);
-        
         console.log('All properties of pet:', Object.keys(pet));
 
         let petDisplayName;
@@ -188,7 +223,7 @@ const Calendar = ({ refreshSlotDate }) => {
         } else {
           petDisplayName = `Thú cưng ${pet.id}`;
         }
-        
+
         const rawPetType = pet.petType || pet.type || pet.pet_type || "Không xác định";
         const petType = rawPetType === "DOG" ? "Chó" : rawPetType === "CAT" ? "Mèo" : rawPetType;
 
@@ -218,6 +253,9 @@ const Calendar = ({ refreshSlotDate }) => {
           }
         }
 
+        const employeeId = pet.employeeId || null;
+        const employeeName = pet.employeeName || "Không tìm thấy thông tin nhân viên";
+
         return {
           key: pet.id,
           petId: pet.id,
@@ -226,11 +264,13 @@ const Calendar = ({ refreshSlotDate }) => {
           rawPetType: rawPetType,
           petName: petDisplayName,
           service: pet.serviceName || "Không có dịch vụ",
-          staffId: null,
+          staffId: employeeId,
+          staffName: employeeName,
           price: pet.price || 0,
           weightRange: weightRange,
           weightId: weightId,
           appointmentId: record.key,
+          weightUpdateCount: pet.weightUpdateCount || 0,
         };
       });
 
@@ -247,20 +287,69 @@ const Calendar = ({ refreshSlotDate }) => {
     }
   };
 
-  const handleStartService = (record) => {
-    setBookedSlots((prev) =>
-      prev.map((slot) =>
-        slot.key === record.key ? { ...slot, status: "using" } : slot
-      )
-    );
+  const handleStartService = async (record) => {
+    if (selectedCustomer && selectedCustomer.key === record.key) {
+      const unassignedPets = slotDetails.filter((detail) => !detail.staffId);
+      if (unassignedPets.length > 0) {
+        message.error("Vui lòng gán nhân viên cho tất cả thú cưng trước khi bắt đầu sử dụng!");
+        return;
+      }
+
+      const petAssignments = {};
+      slotDetails.forEach((detail) => {
+        petAssignments[detail.petId] = detail.staffId;
+      });
+
+      try {
+        await BookingService.startService(record.key, petAssignments);
+        setBookedSlots((prev) =>
+          prev.map((slot) =>
+            slot.key === record.key ? { ...slot, status: "in_progress" } : slot
+          )
+        );
+
+        setSelectedCustomer((prev) => ({
+          ...prev,
+          status: "in_progress",
+        }));
+
+        message.success("Bắt đầu dịch vụ thành công!");
+      } catch (error) {
+        console.error("Error starting service:", error);
+        message.error("Không thể bắt đầu dịch vụ: " + (error.message || "Lỗi không xác định"));
+      }
+    } else {
+      message.error("Vui lòng chọn lịch hẹn để xem chi tiết trước khi bắt đầu sử dụng!");
+    }
   };
 
-  const handleCompleteService = (record) => {
-    setBookedSlots((prev) =>
-      prev.map((slot) =>
-        slot.key === record.key ? { ...slot, status: "completed" } : slot
-      )
-    );
+  const handleCompleteService = async (record) => {
+    await handleSelectBookedSlot(record);
+    setSelectedAppointmentForPayment(record);
+    setIsPaymentModalVisible(true);
+  };
+
+  const handlePaymentModalClose = (paymentSuccess) => {
+    setIsPaymentModalVisible(false);
+    setSelectedAppointmentForPayment(null);
+    
+    if (paymentSuccess) {
+      setBookedSlots((prev) =>
+        prev.map((slot) =>
+          slot.key === selectedCustomer.key ? { ...slot, status: "completed" } : slot
+        )
+      );
+
+      if (selectedCustomer) {
+        setSelectedCustomer((prev) => ({
+          ...prev,
+          status: "completed",
+        }));
+      }
+      
+      fetchSlotStatus(selectedDate);
+      message.success("Thanh toán và hoàn thành dịch vụ thành công!");
+    }
   };
 
   const handleCancelService = async (record) => {
@@ -278,6 +367,13 @@ const Calendar = ({ refreshSlotDate }) => {
       message.success("Đã hủy lịch hẹn thành công");
       fetchSlotStatus(selectedDate);
       refreshSlotDate && refreshSlotDate(selectedDate.format("YYYY-MM-DD"));
+
+      if (selectedCustomer && selectedCustomer.key === record.key) {
+        setSelectedCustomer((prev) => ({
+          ...prev,
+          status: "cancelled",
+        }));
+      }
     } catch (error) {
       console.error("Error canceling appointment:", error);
       message.error(error.message || "Không thể hủy lịch hẹn");
@@ -301,6 +397,9 @@ const Calendar = ({ refreshSlotDate }) => {
   const handleUpdateSuccess = () => {
     setIsUpdateWeightModalVisible(false);
     setSelectedPetForUpdate(null);
+    if (selectedCustomer) {
+      handleSelectBookedSlot(selectedCustomer);
+    }
   };
 
   const columns = [
@@ -335,42 +434,36 @@ const Calendar = ({ refreshSlotDate }) => {
       align: "center",
       render: (_, record) => (
         <Space size="small">
-          <Button
-            type={record.status === "using" ? "primary" : "default"}
-            className={record.status === "using" ? "bg-blue-500" : ""}
-            onClick={() => handleStartService(record)}
-            disabled={
-              record.status === "completed" || record.status === "cancelled"
-            }
-            size="small"
-          >
-            Đang sử dụng
-          </Button>
-          <Button
-            type="primary"
-            className="bg-green-500 hover:bg-green-600"
-            onClick={() => handleCompleteService(record)}
-            disabled={
-              record.status === "completed" ||
-              record.status === "cancelled" ||
-              record.status === "confirmed"
-            }
-            size="small"
-          >
-            Thanh toán
-          </Button>
-          <Button
-            type="primary"
-            danger
-            className="bg-red-500 hover:bg-red-600"
-            onClick={() => handleCancelService(record)}
-            disabled={
-              record.status === "completed" || record.status === "cancelled"
-            }
-            size="small"
-          >
-            Hủy
-          </Button>
+          {record.status === "confirmed" && (
+            <Button
+              type="default"
+              onClick={() => handleStartService(record)}
+              size="small"
+            >
+              Đang sử dụng
+            </Button>
+          )}
+          {(record.status === "in_progress" || record.status === "confirmed") && (
+            <Button
+              type="primary"
+              className="bg-green-500 hover:bg-green-600"
+              onClick={() => handleCompleteService(record)}
+              size="small"
+            >
+              Thanh toán
+            </Button>
+          )}
+          {record.status === "confirmed" && (
+            <Button
+              type="primary"
+              danger
+              className="bg-red-500 hover:bg-red-600"
+              onClick={() => handleCancelService(record)}
+              size="small"
+            >
+              Hủy
+            </Button>
+          )}
         </Space>
       ),
     },
@@ -406,40 +499,65 @@ const Calendar = ({ refreshSlotDate }) => {
       dataIndex: "staffId",
       key: "staffId",
       width: 150,
-      render: (staffId, record) => (
-        <Select
-          className="w-full"
-          size="small"
-          value={staffId}
-          options={staffOptions}
-          placeholder="Chọn nhân viên"
-          loading={loadingStaff}
-          onChange={(value) => {
-            setSlotDetails((prev) =>
-              prev.map((detail) =>
-                detail.key === record.key ? { ...detail, staffId: value } : detail
-              )
-            );
-          }}
-        />
-      ),
+      render: (staffId, record) => {
+        const isUsing = bookedSlots.find(slot => slot.key === record.appointmentId)?.status === "in_progress";
+        const isCompleted = bookedSlots.find(slot => slot.key === record.appointmentId)?.status === "completed";
+
+        if (isUsing || isCompleted) {
+          const staff = staffOptions.find(option => option.value === staffId);
+          const displayName = staff ? staff.label : record.staffName || "Không tìm thấy thông tin nhân viên";
+          return (
+            <span className="text-blue-600 font-medium">
+              {displayName}
+            </span>
+          );
+        }
+
+        return (
+          <Select
+            className="w-full"
+            size="small"
+            value={staffId}
+            options={staffOptions}
+            placeholder="Chọn nhân viên"
+            loading={loadingStaff}
+            disabled={isUsing || isCompleted}
+            onChange={(value) => {
+              const selectedStaff = staffOptions.find(option => option.value === value);
+              const selectedStaffName = selectedStaff ? selectedStaff.label : "Không tìm thấy thông tin nhân viên";
+              setSlotDetails((prev) =>
+                prev.map((detail) =>
+                  detail.key === record.key ? { ...detail, staffId: value, staffName: selectedStaffName } : detail
+                )
+              );
+            }}
+            notFoundContent={staffOptions.length === 0 ? "Không có nhân viên khả dụng" : null}
+          />
+        );
+      },
     },
     {
       title: "Cân nặng",
       dataIndex: "weightRange",
       key: "weightRange",
       width: 120,
-      render: (weightRange, record) => (
-        <div className="flex items-center space-x-2">
-          <span>{weightRange || "Không xác định"}</span>
-          <Button
-            type="link"
-            size="small"
-            icon={<Edit className="w-4 h-4" />}
-            onClick={() => handleEditWeight(record)}
-          />
-        </div>
-      ),
+      render: (weightRange, record) => {
+        const isUsing = bookedSlots.find(slot => slot.key === record.appointmentId)?.status === "in_progress";
+        const isCompleted = bookedSlots.find(slot => slot.key === record.appointmentId)?.status === "completed";
+        return (
+          <div className="flex items-center space-x-2">
+            <span>{weightRange || "Không xác định"}</span>
+            {record.weightUpdateCount === 0 && !isUsing && !isCompleted && (
+              <Button
+                type="link"
+                size="small"
+                icon={<Edit className="w-4 h-4" />}
+                onClick={() => handleEditWeight(record)}
+              />
+            )}
+          </div>
+        );
+      },
     },
     {
       title: "Đơn giá",
@@ -454,16 +572,23 @@ const Calendar = ({ refreshSlotDate }) => {
       key: "action",
       width: 50,
       align: "center",
-      render: (_, record) => (
-        <Button
-          type="primary"
-          danger
-          size="small"
-          className="bg-red-500 hover:bg-red-600"
-          icon={<X className="w-4 h-4" />}
-          onClick={() => handleDeleteService(record.key)}
-        />
-      ),
+      render: (_, record) => {
+        const isUsing = bookedSlots.find(slot => slot.key === record.appointmentId)?.status === "in_progress";
+        const isCompleted = bookedSlots.find(slot => slot.key === record.appointmentId)?.status === "completed";
+        return (
+          !isCompleted && (
+            <Button
+              type="primary"
+              danger
+              size="small"
+              className="bg-red-500 hover:bg-red-600"
+              icon={<X className="w-4 h-4" />}
+              onClick={() => handleDeleteService(record.key)}
+              disabled={isUsing}
+            />
+          )
+        );
+      },
     },
   ];
 
@@ -563,7 +688,7 @@ const Calendar = ({ refreshSlotDate }) => {
               scroll={{ y: "calc(100vh - 400px)" }}
               className="border border-blue-200 rounded-lg"
               loading={loading}
-              locale={{ emptyText: "Không có lịch hẹn" }}
+              locale={{ emptyText: "Chưa chọn khung giờ hoặc không có lịch hẹn" }}
             />
           </div>
         </div>
@@ -598,7 +723,7 @@ const Calendar = ({ refreshSlotDate }) => {
                     className={`px-1.5 py-0.5 rounded text-white ${
                       selectedCustomer.status === "confirmed"
                         ? "bg-blue-500"
-                        : selectedCustomer.status === "using"
+                        : selectedCustomer.status === "in_progress"
                         ? "bg-blue-500"
                         : selectedCustomer.status === "completed"
                         ? "bg-green-500"
@@ -607,7 +732,7 @@ const Calendar = ({ refreshSlotDate }) => {
                   >
                     {selectedCustomer.status === "confirmed"
                       ? "Đã xác nhận"
-                      : selectedCustomer.status === "using"
+                      : selectedCustomer.status === "in_progress"
                       ? "Đang sử dụng"
                       : selectedCustomer.status === "completed"
                       ? "Đã hoàn thành"
@@ -642,6 +767,13 @@ const Calendar = ({ refreshSlotDate }) => {
         pet={selectedPetForUpdate}
         weightOptions={selectedPetForUpdate ? weightOptions[selectedPetForUpdate.rawPetType] || [] : []}
         onUpdateSuccess={handleUpdateSuccess}
+      />
+
+      <PaymentSpa
+        visible={isPaymentModalVisible}
+        onCancel={handlePaymentModalClose}
+        appointment={selectedAppointmentForPayment}
+        petDetails={slotDetails}
       />
     </>
   );
