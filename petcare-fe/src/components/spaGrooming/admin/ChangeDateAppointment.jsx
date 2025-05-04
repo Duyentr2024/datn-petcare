@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, DatePicker, Select, Button, message, Input } from 'antd';
 import { CalendarOutlined } from '@ant-design/icons';
+import axios from 'axios';
 import dayjs from 'dayjs';
-import BookingService from "../../../service/spaService/BookingService";
 
 const { TextArea } = Input;
+
+const VITE_API_BASE_URL = 'http://api.petcarect.store';
 
 const ChangeDateAppointment = ({ isVisible, onCancel, bookingData, onSuccess }) => {
   const [loading, setLoading] = useState(false);
@@ -13,6 +15,54 @@ const ChangeDateAppointment = ({ isVisible, onCancel, bookingData, onSuccess }) 
   const [note, setNote] = useState('');
   const [isSlotAvailable, setIsSlotAvailable] = useState(true);
   const [availableSlots, setAvailableSlots] = useState([]);
+
+  const getAvailableSlots = async (dateStr) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Fetching available slots for date: ${dateStr}`);
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/time-slots`, {
+        params: { date: dateStr },
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Available slots response:', response.data);
+      }
+      return response.data || { morning: [], afternoon: [] };
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error fetching available slots:', error);
+      }
+      return { morning: [], afternoon: [] };
+    }
+  };
+
+  const updateAppointment = async (updateData) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log('Updating appointment with data:', updateData);
+      }
+      const response = await axios.put(`${VITE_API_BASE_URL}/api/appointments/update`, updateData, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Update appointment response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error updating appointment:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể cập nhật lịch hẹn');
+    }
+  };
 
   // Load booking data when it changes
   useEffect(() => {
@@ -61,11 +111,15 @@ const ChangeDateAppointment = ({ isVisible, onCancel, bookingData, onSuccess }) 
       if (appointmentDate && appointmentTime) {
         try {
           const dateStr = appointmentDate.format('YYYY-MM-DD');
-          const slots = await BookingService.getAvailableSlots(dateStr);
-          console.log('Retrieved slots for date', dateStr, ':', slots);
+          const slots = await getAvailableSlots(dateStr);
+          if (import.meta.env.DEV) {
+            console.log('Retrieved slots for date', dateStr, ':', slots);
+          }
           
           const allSlots = [...(slots.morning || []), ...(slots.afternoon || [])];
-          console.log('All slots:', allSlots);
+          if (import.meta.env.DEV) {
+            console.log('All slots:', allSlots);
+          }
           
           // Check time in multiple formats (9:00, 09:00)
           const formattedTime = appointmentTime.includes(':') ? appointmentTime : `${appointmentTime}:00`;
@@ -81,7 +135,9 @@ const ChangeDateAppointment = ({ isVisible, onCancel, bookingData, onSuccess }) 
             s.hour === time24h
           );
           
-          console.log('Matching slot for time', appointmentTime, ':', slot);
+          if (import.meta.env.DEV) {
+            console.log('Matching slot for time', appointmentTime, ':', slot);
+          }
           
           const requiredSlots = bookingData?.petCount || 1;
           // If this is an existing appointment with the same date and time, we don't need to check
@@ -93,7 +149,9 @@ const ChangeDateAppointment = ({ isVisible, onCancel, bookingData, onSuccess }) 
             setIsSlotAvailable(slot && slot.availableSlots >= requiredSlots);
           }
           
-          console.log('Slot availability:', isSlotAvailable);
+          if (import.meta.env.DEV) {
+            console.log('Slot availability:', isSlotAvailable);
+          }
         } catch (error) {
           console.error('Error checking slot availability:', error);
           setIsSlotAvailable(false);
@@ -108,7 +166,7 @@ const ChangeDateAppointment = ({ isVisible, onCancel, bookingData, onSuccess }) 
       if (appointmentDate) {
         try {
           const dateStr = appointmentDate.format('YYYY-MM-DD');
-          const slots = await BookingService.getAvailableSlots(dateStr);
+          const slots = await getAvailableSlots(dateStr);
           const allSlots = [...(slots.morning || []), ...(slots.afternoon || [])];
           setAvailableSlots(allSlots);
         } catch (error) {
@@ -173,10 +231,7 @@ const ChangeDateAppointment = ({ isVisible, onCancel, bookingData, onSuccess }) 
         _requestId: Math.random().toString(36).substring(2, 15)
       };
 
-      console.log('Cập nhật lịch hẹn với dữ liệu:', updateData);
-
-      // Call API to update appointment
-      await BookingService.updateAppointment(updateData);
+      await updateAppointment(updateData);
 
       message.success('Cập nhật lịch hẹn thành công');
       onSuccess?.();

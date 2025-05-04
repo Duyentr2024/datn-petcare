@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Input, Checkbox, message, Tooltip, Dropdown, Space, Badge, Drawer, Tag, Popconfirm, Avatar, Form } from 'antd';
 import { SearchOutlined, CheckOutlined, EditOutlined, DeleteOutlined, CaretDownOutlined, MoreOutlined, UserOutlined, ExclamationCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import axios from 'axios';
 import ChangeDateAppointment from './ChangeDateAppointment';
-import BookingService from "../../../service/spaService/BookingService";
 import webSocketService from "../../../service/WebSocketService";
 import dayjs from 'dayjs';
+
+const VITE_API_BASE_URL = 'http://api.petcarect.store';
 
 const formatDate = (dateString) => (dateString ? dayjs(dateString).format('DD/MM/YYYY') : '-');
 const formatTime = (timeString) => (timeString || '-');
@@ -39,6 +41,125 @@ const updateLocalBookings = (bookings, updatedBooking, action) => {
   return bookings;
 };
 
+const confirmAppointments = async (appointmentIds) => {
+  try {
+    if (import.meta.env.DEV) {
+      console.log('Confirming appointments:', appointmentIds);
+    }
+    const response = await axios.post(`${VITE_API_BASE_URL}/api/appointments/confirm`, {
+      appointmentIds
+    }, {
+      timeout: 10000,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+    if (import.meta.env.DEV) {
+      console.log('Confirm appointments response:', response.data);
+    }
+    return response.data;
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error confirming appointments:', error);
+    }
+    throw new Error(error.response?.data?.message || 'Không thể xác nhận lịch hẹn');
+  }
+};
+
+const cancelPaidAppointments = async (payload) => {
+  try {
+    if (import.meta.env.DEV) {
+      console.log('Canceling appointments with payload:', payload);
+    }
+    const response = await axios.post(`${VITE_API_BASE_URL}/api/appointments/cancel`, payload, {
+      timeout: 10000,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    });
+    if (import.meta.env.DEV) {
+      console.log('Cancel appointments response:', response.data);
+    }
+    return response.data;
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error canceling appointments:', error);
+    }
+    throw new Error(error.response?.data?.message || 'Không thể hủy lịch hẹn');
+  }
+};
+
+const getPetsByAppointmentId = async (appointmentId) => {
+  try {
+    if (import.meta.env.DEV) {
+      console.log(`Fetching pets for appointment ID: ${appointmentId}`);
+    }
+    const response = await axios.get(`${VITE_API_BASE_URL}/api/appointments/${appointmentId}/pets`, {
+      timeout: 10000,
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    if (import.meta.env.DEV) {
+      console.log('Pets response:', response.data);
+    }
+    return response.data || [];
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error fetching pets by appointment ID:', error);
+    }
+    return [];
+  }
+};
+
+const getAppointmentById = async (appointmentId) => {
+  try {
+    if (import.meta.env.DEV) {
+      console.log(`Fetching appointment ID: ${appointmentId}`);
+    }
+    const response = await axios.get(`${VITE_API_BASE_URL}/api/appointments/${appointmentId}`, {
+      timeout: 10000,
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    if (import.meta.env.DEV) {
+      console.log('Appointment response:', response.data);
+    }
+    return response.data;
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error fetching appointment by ID:', error);
+    }
+    throw new Error(error.response?.data?.message || 'Không thể lấy thông tin lịch hẹn');
+  }
+};
+
+const removePetFromAppointment = async (appointmentId, petId) => {
+  try {
+    if (import.meta.env.DEV) {
+      console.log(`Removing pet ${petId} from appointment ${appointmentId}`);
+    }
+    const response = await axios.delete(`${VITE_API_BASE_URL}/api/appointments/${appointmentId}/pets/${petId}`, {
+      timeout: 10000,
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    if (import.meta.env.DEV) {
+      console.log('Remove pet response:', response.data);
+    }
+    return response.data;
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('Error removing pet from appointment:', error);
+    }
+    throw new Error(error.response?.data?.message || 'Không thể xóa thú cưng khỏi lịch hẹn');
+  }
+};
+
 const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookings, setRefreshSlotDate }) => {
   const [isUpdateModalVisible, setIsUpdateModalVisible] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -60,7 +181,9 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
 
   useEffect(() => {
     const unsubscribeNew = webSocketService.onNewAppointment((data) => {
-      console.log('New appointment via WebSocket:', data);
+      if (import.meta.env.DEV) {
+        console.log('New appointment via WebSocket:', data);
+      }
       if (data.appointment) {
         setLocalBookings(prevBookings => updateLocalBookings(prevBookings, data.appointment, 'ADD'));
       } else {
@@ -69,7 +192,9 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
     });
 
     const unsubscribeUpdate = webSocketService.onAppointmentUpdated((data) => {
-      console.log('Appointment updated via WebSocket:', data);
+      if (import.meta.env.DEV) {
+        console.log('Appointment updated via WebSocket:', data);
+      }
       if (data.appointment) {
         setLocalBookings(prevBookings => updateLocalBookings(prevBookings, data.appointment, 'UPDATE'));
         message.info(`Lịch hẹn #${data.appointmentId} đã được cập nhật thời gian`);
@@ -80,7 +205,9 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
     });
 
     const unsubscribeCancel = webSocketService.onAppointmentCancelled((data) => {
-      console.log('Appointment cancelled via WebSocket:', data);
+      if (import.meta.env.DEV) {
+        console.log('Appointment cancelled via WebSocket:', data);
+      }
       if (data.appointmentId) {
         setLocalBookings(prevBookings => 
           prevBookings.filter(booking => booking.appointmentId !== data.appointmentId)
@@ -93,7 +220,9 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
     });
 
     const unsubscribeConfirm = webSocketService.onAppointmentConfirmed((data) => {
-      console.log('Appointment confirmed via WebSocket:', data);
+      if (import.meta.env.DEV) {
+        console.log('Appointment confirmed via WebSocket:', data);
+      }
       if (data.appointmentId) {
         setLocalBookings(prevBookings => 
           prevBookings.filter(booking => booking.appointmentId !== data.appointmentId)
@@ -104,7 +233,9 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
     });
 
     const unsubscribePetRemoved = webSocketService.onPetRemoved((data) => {
-      console.log('Pet removed via WebSocket:', data);
+      if (import.meta.env.DEV) {
+        console.log('Pet removed via WebSocket:', data);
+      }
       if (data.appointmentId) {
         if (selectedAppointmentId === data.appointmentId) {
           setSelectedAppointmentPets(prev => prev.filter(pet => pet.id !== data.petId));
@@ -112,10 +243,12 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
         if (data.petsRemaining === 0) {
           setLocalBookings(prev => prev.filter(b => b.appointmentId !== data.appointmentId));
         } else {
-          BookingService.getAppointmentById(data.appointmentId)
+          getAppointmentById(data.appointmentId)
             .then(updatedAppointment => {
-              console.log('Updated appointment after pet removal:', updatedAppointment);
-              BookingService.getPetsByAppointmentId(data.appointmentId)
+              if (import.meta.env.DEV) {
+                console.log('Updated appointment after pet removal:', updatedAppointment);
+              }
+              getPetsByAppointmentId(data.appointmentId)
                 .then(pets => {
                   setLocalBookings(prev => prev.map(b => 
                     b.appointmentId === data.appointmentId 
@@ -124,11 +257,15 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
                   ));
                 })
                 .catch(error => {
-                  console.error('Error fetching pets after pet removal:', error);
+                  if (import.meta.env.DEV) {
+                    console.error('Error fetching pets after pet removal:', error);
+                  }
                 });
             })
             .catch(error => {
-              console.error('Error fetching updated appointment after pet removal:', error);
+              if (import.meta.env.DEV) {
+                console.error('Error fetching updated appointment after pet removal:', error);
+              }
               message.error('Không thể cập nhật thông tin lịch hẹn sau khi xóa thú cưng');
             });
         }
@@ -198,7 +335,7 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
         message.warning('Vui lòng chọn ít nhất một lịch hẹn');
         return;
       }
-      await BookingService.confirmAppointments(selectedBookings);
+      await confirmAppointments(selectedBookings);
       setSelectedBookings([]);
       message.success('Đã xác nhận lịch hẹn thành công');
       
@@ -272,10 +409,8 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
             appointmentIds: selectedBookings,
             reason: reason
           };
-          console.log('Sending cancel payload (multiple bookings):', payload);
           
-          const response = await BookingService.cancelPaidAppointments(payload);
-          console.log('Cancel response:', response);
+          const response = await cancelPaidAppointments(payload);
           
           setLocalBookings(prev => prev.filter(b => !selectedBookings.includes(b.appointmentId)));
           setSelectedBookings([]);
@@ -321,12 +456,14 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
       const refundAmount = isWithin12Hours ? (booking.paidAmount - booking.depositAmount) : booking.paidAmount;
       const nonRefundedDeposit = isWithin12Hours ? booking.depositAmount : 0;
 
-      console.log('Thời gian hiện tại:', dayjs().format('DD/MM/YYYY HH:mm'));
-      console.log('Thời gian lịch hẹn:', dateTime.format('DD/MM/YYYY HH:mm'));
-      console.log('Hours until:', hoursUntil);
-      console.log('Is within 12 hours:', isWithin12Hours);
-      console.log('Refund amount:', refundAmount);
-      console.log('Non-refunded deposit:', nonRefundedDeposit);
+      if (import.meta.env.DEV) {
+        console.log('Thời gian hiện tại:', dayjs().format('DD/MM/YYYY HH:mm'));
+        console.log('Thời gian lịch hẹn:', dateTime.format('DD/MM/YYYY HH:mm'));
+        console.log('Hours until:', hoursUntil);
+        console.log('Is within 12 hours:', isWithin12Hours);
+        console.log('Refund amount:', refundAmount);
+        console.log('Non-refunded deposit:', nonRefundedDeposit);
+      }
 
       Modal.confirm({
         title: 'Xác nhận hủy lịch hẹn',
@@ -363,10 +500,14 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
               appointmentIds: [appointmentId],
               reason: reason
             };
-            console.log('Sending cancel payload (single booking):', payload);
+            if (import.meta.env.DEV) {
+              console.log('Sending cancel payload (single booking):', payload);
+            }
             
-            const response = await BookingService.cancelPaidAppointments(payload);
-            console.log('Cancel response:', response);
+            const response = await cancelPaidAppointments(payload);
+            if (import.meta.env.DEV) {
+              console.log('Cancel response:', response);
+            }
             
             setLocalBookings(prev => prev.filter(b => b.appointmentId !== appointmentId));
             form.resetFields();
@@ -405,8 +546,10 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
       message.loading({ content: 'Đang tải thông tin thú cưng...', key: 'petDetailsLoading', duration: 0 });
       
       try {
-        const pets = await BookingService.getPetsByAppointmentId(appointmentId);
-        console.log(`Pets fetched for appointment #${appointmentId}:`, pets);
+        const pets = await getPetsByAppointmentId(appointmentId);
+        if (import.meta.env.DEV) {
+          console.log(`Pets fetched for appointment #${appointmentId}:`, pets);
+        }
         
         if (!pets || pets.length === 0) {
           message.info({ 
@@ -450,7 +593,7 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
     try {
       message.loading({ content: 'Đang xử lý...', key: 'deletePetLoading', duration: 0 });
       
-      const pets = await BookingService.getPetsByAppointmentId(appointmentId);
+      const pets = await getPetsByAppointmentId(appointmentId);
       if (pets.length <= 1) {
         message.warning({ 
           content: 'Lịch hẹn chỉ có 1 thú cưng. Hủy toàn bộ lịch hẹn thay vì xóa thú cưng', 
@@ -463,9 +606,7 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
         return;
       }
   
-      console.log(`Deleting pet ${petId} from appointment ${appointmentId}`);
-      const response = await BookingService.removePetFromAppointment(appointmentId, petId);
-      console.log('Delete pet response:', response);
+      await removePetFromAppointment(appointmentId, petId);
       
       message.success({ 
         content: `Đã xóa thú cưng khỏi lịch hẹn #${appointmentId}`, 
@@ -476,10 +617,12 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
       setSelectedAppointmentPets(prev => prev.filter(pet => pet.id !== petId));
       
       // Lấy thông tin lịch hẹn và danh sách thú cưng mới nhất từ backend
-      const updatedAppointment = await BookingService.getAppointmentById(appointmentId);
-      const updatedPets = await BookingService.getPetsByAppointmentId(appointmentId);
-      console.log('Updated appointment after deletion:', updatedAppointment);
-      console.log('Updated pets after deletion:', updatedPets);
+      const updatedAppointment = await getAppointmentById(appointmentId);
+      const updatedPets = await getPetsByAppointmentId(appointmentId);
+      if (import.meta.env.DEV) {
+        console.log('Updated appointment after deletion:', updatedAppointment);
+        console.log('Updated pets after deletion:', updatedPets);
+      }
       
       setLocalBookings(prev => prev.map(b => 
         b.appointmentId === appointmentId 
@@ -507,7 +650,9 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
     setSelectedAppointmentId(null);
   };
 
-  console.log('Online bookings displayed in OnlineBookingModal.jsx:', filteredBookings);
+  if (import.meta.env.DEV) {
+    console.log('Online bookings displayed in OnlineBookingModal.jsx:', filteredBookings);
+  }
 
   return (
     <>
@@ -633,7 +778,7 @@ const OnlineBookingModal = ({ isVisible, onCancel, onlineBookings, refreshBookin
                               className="bg-green-500 hover:bg-green-600" 
                               onClick={async () => {
                                 try {
-                                  await BookingService.confirmAppointments([booking.appointmentId]);
+                                  await confirmAppointments([booking.appointmentId]);
                                   message.success('Đã xác nhận lịch hẹn thành công');
                                   setRefreshSlotDate(booking.date);
                                   refreshBookings();

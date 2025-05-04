@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Select, message } from "antd";
-import BookingService from "../../../service/spaService/BookingService";
+import axios from 'axios';
 import { jwtDecode } from "jwt-decode";
 import Cookies from "js-cookie";
+
+const VITE_API_BASE_URL = 'http://api.petcarect.store';
 
 const UpdateWeight = ({
   visible,
@@ -18,13 +20,87 @@ const UpdateWeight = ({
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState(null);
 
+  const getServicePrice = async (petServiceId, petWeightId) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Fetching service price for petServiceId: ${petServiceId}, petWeightId: ${petWeightId}`);
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/pet-services/${petServiceId}/price`, {
+        params: { petWeightId },
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Service price response:', response.data);
+      }
+      return response.data || {};
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error fetching service price:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể lấy giá dịch vụ');
+    }
+  };
+
+  const updatePetWeight = async (petId, payload) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Updating pet weight for petId: ${petId}`, payload);
+      }
+      const response = await axios.put(`${VITE_API_BASE_URL}/api/pets/${petId}/weight`, payload, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Update pet weight response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error updating pet weight:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể cập nhật cân nặng');
+    }
+  };
+
+  const createAdditionalFee = async (payload) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log('Creating additional fee:', payload);
+      }
+      const response = await axios.post(`${VITE_API_BASE_URL}/api/transactions/additional-fee`, payload, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Create additional fee response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error creating additional fee:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể tạo giao dịch phụ thu/hoàn tiền');
+    }
+  };
+
   // Lấy userId từ token khi component được mount
   useEffect(() => {
     const token = Cookies.get("accessToken");
     if (token) {
       try {
         const decoded = jwtDecode(token);
-        console.log("Decoded token in UpdateWeight:", decoded);
+        if (import.meta.env.DEV) {
+          console.log("Decoded token in UpdateWeight:", decoded);
+        }
         const id = decoded.userId || decoded.sub || decoded.id;
         if (!id) {
           throw new Error("Token không chứa userId, sub, hoặc id.");
@@ -47,9 +123,10 @@ const UpdateWeight = ({
       setSelectedWeightRange(pet.weightRange || "Không xác định");
       setNewPrice(pet.price || 0);
       setPriceDiff(0);
-      // Log để kiểm tra petServiceId
-      console.log("Pet data in UpdateWeight:", pet);
-      console.log("Weight options in UpdateWeight:", weightOptions);
+      if (import.meta.env.DEV) {
+        console.log("Pet data in UpdateWeight:", pet);
+        console.log("Weight options in UpdateWeight:", weightOptions);
+      }
     }
   }, [visible, pet]);
 
@@ -64,7 +141,7 @@ const UpdateWeight = ({
         throw new Error("Không tìm thấy ID dịch vụ của thú cưng");
       }
 
-      const priceResponse = await BookingService.getServicePrice(pet.petServiceId, value);
+      const priceResponse = await getServicePrice(pet.petServiceId, value);
       if (!priceResponse || typeof priceResponse.price !== "number") {
         throw new Error("Giá dịch vụ không hợp lệ");
       }
@@ -107,12 +184,12 @@ const UpdateWeight = ({
       const reason = `Cân nặng thực tế thay đổi từ ${pet.weightRange || "Chưa xác định"} sang ${selectedWeightRange}, giá mới ${newPrice.toLocaleString("vi-VN")}đ (${priceDiff > 0 ? "tăng" : "giảm"} ${Math.abs(priceDiff).toLocaleString("vi-VN")}đ)`;
 
       // Cập nhật cân nặng và giá
-      await BookingService.updatePetWeight(pet.petId, {
+      await updatePetWeight(pet.petId, {
         petWeightId: selectedWeightId,
         price: newPrice,
         appointmentId: pet.appointmentId,
         reason: reason,
-        userId: userId, // Sử dụng userId từ token
+        userId: userId,
       });
 
       // Xử lý chênh lệch giá
@@ -120,7 +197,7 @@ const UpdateWeight = ({
         try {
           if (priceDiff > 0) {
             // Giá tăng: Lưu phí phụ thu
-            await BookingService.createAdditionalFee({
+            await createAdditionalFee({
               appointmentId: pet.appointmentId,
               petId: pet.petId,
               amount: Math.abs(priceDiff),
@@ -131,7 +208,7 @@ const UpdateWeight = ({
             message.info("Đã tạo phí phụ thu: " + Math.abs(priceDiff).toLocaleString("vi-VN") + "đ");
           } else {
             // Giá giảm: Lưu giao dịch hoàn tiền
-            await BookingService.createAdditionalFee({
+            await createAdditionalFee({
               appointmentId: pet.appointmentId,
               petId: pet.petId,
               amount: Math.abs(priceDiff),

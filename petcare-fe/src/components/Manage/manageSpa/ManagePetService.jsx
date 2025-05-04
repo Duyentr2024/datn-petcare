@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import PetServiceService from '../../../service/spaService/PetServiceService';
+import axios from 'axios';
+
+const VITE_API_BASE_URL = 'http://api.petcarect.store';
 
 const ManagePetService = () => {
   const initialFormData = {
@@ -16,7 +18,7 @@ const ManagePetService = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('DOG');
   const [statusFilter, setStatusFilter] = useState('ACTIVE');
-  const [errors, setErrors] = useState({}); // State để lưu trữ lỗi tại các ô input
+  const [errors, setErrors] = useState({});
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
 
   const filteredServices = services.filter(
@@ -25,13 +27,84 @@ const ManagePetService = () => {
       (statusFilter === 'ALL' || service.statusType === statusFilter)
   );
 
+  const getAllServices = async () => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log('Fetching all services...');
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/pet-services`, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('All services response:', response.data);
+      }
+      return response.data || [];
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error fetching services:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể lấy danh sách dịch vụ');
+    }
+  };
+
+  const createService = async (serviceData) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log('Creating service:', serviceData);
+      }
+      const response = await axios.post(`${VITE_API_BASE_URL}/api/pet-services`, serviceData, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Create service response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error creating service:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể thêm dịch vụ');
+    }
+  };
+
+  const updateService = async (id, serviceData) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Updating service ID: ${id}`, serviceData);
+      }
+      const response = await axios.put(`${VITE_API_BASE_URL}/api/pet-services/${id}`, serviceData, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Update service response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error updating service:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể cập nhật dịch vụ');
+    }
+  };
+
   useEffect(() => {
     fetchServices();
   }, []);
 
   const fetchServices = async () => {
     try {
-      const data = await PetServiceService.getAllServices();
+      const data = await getAllServices();
       setServices(
         data.map((service) => ({
           ...service,
@@ -54,7 +127,6 @@ const ManagePetService = () => {
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
-    // Xóa lỗi khi người dùng bắt đầu nhập
     setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
@@ -96,10 +168,10 @@ const ManagePetService = () => {
       };
 
       if (isEditing && formData.id) {
-        await PetServiceService.updateService(formData.id, serviceData);
+        await updateService(formData.id, serviceData);
         setNotification({ show: true, message: 'Cập nhật dịch vụ thành công!', type: 'success' });
       } else {
-        await PetServiceService.createService(serviceData);
+        await createService(serviceData);
         setNotification({ show: true, message: 'Thêm dịch vụ mới thành công!', type: 'success' });
       }
 
@@ -125,7 +197,7 @@ const ManagePetService = () => {
     setErrors({});
   };
 
-  const handleStatusChange = (service, newStatus) => {
+  const handleStatusChange = async (service, newStatus) => {
     const serviceData = {
       serviceName: service.serviceName,
       description: service.description || '',
@@ -133,20 +205,19 @@ const ManagePetService = () => {
       petType: service.petType,
       statusType: newStatus,
     };
-    PetServiceService.updateService(service.id, serviceData)
-      .then(() => {
-        setNotification({
-          show: true,
-          message: newStatus === 'ACTIVE'
-            ? 'Kích hoạt dịch vụ thành công!'
-            : 'Vô hiệu hóa dịch vụ thành công!',
-          type: 'success',
-        });
-        fetchServices();
-      })
-      .catch((error) => {
-        setNotification({ show: true, message: error.message, type: 'error' });
+    try {
+      await updateService(service.id, serviceData);
+      setNotification({
+        show: true,
+        message: newStatus === 'ACTIVE'
+          ? 'Kích hoạt dịch vụ thành công!'
+          : 'Vô hiệu hóa dịch vụ thành công!',
+        type: 'success',
       });
+      fetchServices();
+    } catch (error) {
+      setNotification({ show: true, message: error.message, type: 'error' });
+    }
   };
 
   const resetForm = () => {

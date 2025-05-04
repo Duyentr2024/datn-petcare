@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Radio, Button, Descriptions, Table, Tag, Space, message, Divider } from "antd";
 import { DollarCircleOutlined, CreditCardOutlined } from "@ant-design/icons";
-import BookingService from "../../../service/spaService/BookingService";
+import axios from 'axios';
+
+const VITE_API_BASE_URL = 'http://api.petcarect.store';
 
 const PaymentSpa = ({ visible, onCancel, appointment, petDetails }) => {
   const [paymentMethod, setPaymentMethod] = useState("CASH");
@@ -12,12 +14,84 @@ const PaymentSpa = ({ visible, onCancel, appointment, petDetails }) => {
   const [transactions, setTransactions] = useState([]);
   const [petsList, setPetsList] = useState([]);
 
+  const getPetsByAppointmentId = async (appointmentId) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Fetching pets for appointment ID: ${appointmentId}`);
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/appointments/${appointmentId}/pets`, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Pets response:', response.data);
+      }
+      return response.data || [];
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error fetching pets by appointment ID:', error);
+      }
+      return [];
+    }
+  };
+
+  const getTransactionsByAppointmentId = async (appointmentId) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Fetching transactions for appointment ID: ${appointmentId}`);
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/appointments/${appointmentId}/transactions`, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Transactions response:', response.data);
+      }
+      return response.data || [];
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error fetching transactions by appointment ID:', error);
+      }
+      return [];
+    }
+  };
+
+  const completeService = async (appointmentId, payload) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Completing service for appointment ID: ${appointmentId}`, payload);
+      }
+      const response = await axios.post(`${VITE_API_BASE_URL}/api/appointments/${appointmentId}/complete`, payload, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Complete service response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error completing service:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể hoàn thành thanh toán');
+    }
+  };
+
   const fetchPaymentData = async (appointmentId) => {
     try {
       setLoading(true);
 
-      const petsData = await BookingService.getPetsByAppointmentId(appointmentId);
-      console.log("Pets data from API:", petsData);
+      const petsData = await getPetsByAppointmentId(appointmentId);
+      if (import.meta.env.DEV) {
+        console.log("Pets data from API:", petsData);
+      }
       if (!petsData || petsData.length === 0) {
         message.warning("Không tìm thấy thú cưng cho lịch hẹn này");
         setPetsList([]);
@@ -51,7 +125,7 @@ const PaymentSpa = ({ visible, onCancel, appointment, petDetails }) => {
       const total = processedPets.reduce((sum, pet) => sum + (pet.price || 0), 0);
       setTotalAmount(total);
 
-      const transactionsData = await BookingService.getTransactionsByAppointmentId(appointmentId);
+      const transactionsData = await getTransactionsByAppointmentId(appointmentId);
       setTransactions(transactionsData);
 
       let paid = transactionsData.reduce((sum, transaction) => {
@@ -107,7 +181,7 @@ const PaymentSpa = ({ visible, onCancel, appointment, petDetails }) => {
         amount: remainingAmount > 0 ? remainingAmount : 0,
       };
       
-      await BookingService.completeService(appointment.key, payload);
+      await completeService(appointment.key, payload);
       
       message.success("Thanh toán thành công!");
       onCancel(true);
