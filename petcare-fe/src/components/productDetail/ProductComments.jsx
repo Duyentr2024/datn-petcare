@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import ReviewService from "../../service/reviewService/ReviewService";
 import ProductDetailsService from "../../service/serviceProduct/ProductsService";
 import { useParams } from "react-router-dom";
@@ -13,7 +13,6 @@ const ProductComments = () => {
   const [loading, setLoading] = useState(true);
 
   const productDetailId = localStorage.getItem("ProductDetailId");
-  console.log(productDetailId);
 
   useEffect(() => {
     if (productId) {
@@ -35,9 +34,20 @@ const ProductComments = () => {
       const reviews = await ReviewService.getReviewsByProductDetail(productDetailId);
       if (Array.isArray(reviews)) {
         // Sắp xếp đánh giá theo thời gian giảm dần (mới nhất lên đầu)
-        const sortedReviews = reviews.sort(
-          (a, b) => new Date(b.reviewDate) - new Date(a.reviewDate)
-        );
+        // Nếu reviewDate giống nhau, sẽ sắp xếp theo reviewId giảm dần (ID lớn hơn thường được tạo sau)
+        const sortedReviews = reviews.sort((a, b) => {
+          const dateA = new Date(a.reviewDate).getTime();
+          const dateB = new Date(b.reviewDate).getTime();
+          
+          // Nếu ngày giống nhau, sắp xếp theo ID (giả định ID lớn hơn là mới hơn)
+          if (dateA === dateB) {
+            return b.reviewId - a.reviewId;
+          }
+          
+          // Nếu không, sắp xếp theo ngày
+          return dateB - dateA;
+        });
+        
         setComments(sortedReviews);
       } else {
         setComments([]);
@@ -46,7 +56,7 @@ const ProductComments = () => {
       console.error("Lỗi khi tải đánh giá:", error);
       setComments([]);
     } finally {
-      setLoading(false); // Đảm bảo loading được tắt sau khi fetch
+      setLoading(false);
     }
   };
 
@@ -142,6 +152,7 @@ const ProductComments = () => {
                     <img
                       src={banner}
                       className="w-full h-64 object-cover mt-4 rounded-lg shadow-md"
+                      alt="Banner"
                     />
                   </div>
                 );
@@ -156,29 +167,31 @@ const ProductComments = () => {
             {loading ? (
               <p className="text-gray-500">Đang tải đánh giá...</p>
             ) : comments.length > 0 ? (
-              comments.map((comment) => (
-                <div
-                  key={comment.reviewId}
-                  className="flex items-start space-x-4 mb-4 border-b-2 py-2"
-                >
-                  <img
-                    src={comment.imageUrl || "/default-user.png"}
-                    alt="User"
-                    className="w-12 h-12 rounded-full object-cover"
-                  />
-                  <div>
-                    <h4 className="font-bold text-gray-800">
-                      {comment.userName || "Người dùng ẩn danh"}
-                    </h4>
-                    <p className="text-gray-600">
-                      {comment.comment || "Không có bình luận"}
-                    </p>
-                    <p className="text-sm text-gray-400">
-                      {formatDateTimeVN(comment.reviewDate)}
-                    </p>
+              <div className="space-y-4">
+                {comments.map((comment) => (
+                  <div
+                    key={comment.reviewId}
+                    className="flex items-start space-x-4 p-4 border border-gray-200 rounded-lg bg-white shadow-sm"
+                  >
+                    <img
+                      src={comment.imageUrl || "/default-user.png"}
+                      alt="User"
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                    <div className="flex-1">
+                      <h4 className="font-bold text-gray-800">
+                        {comment.userName || "Người dùng ẩn danh"}
+                      </h4>
+                      <p className="text-gray-600 my-2">
+                        {comment.comment || "Không có bình luận"}
+                      </p>
+                      <p className="text-sm text-gray-400">
+                        {formatDateTimeVN(comment.reviewDate)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             ) : (
               <p className="text-gray-500">Chưa có bình luận nào.</p>
             )}
