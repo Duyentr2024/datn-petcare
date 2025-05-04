@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { FaClock, FaQrcode, FaInfoCircle, FaHome } from 'react-icons/fa';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import BookingService from '../../../service/spaService/BookingService';
+import axios from 'axios';
 import MomoLogo from '../../../assets/images/payment/momo.png';
 import VnpayLogo from '../../../assets/images/payment/vnpay.png';
-import SuccessModal from './SuccessModal'; // Import SuccessModal
+import SuccessModal from './SuccessModal';
+
+const VITE_API_BASE_URL = 'http://api.petcarect.store';
 
 const CheckoutPayment = () => {
     const [selectedPayment, setSelectedPayment] = useState('vnpay');
@@ -12,7 +14,7 @@ const CheckoutPayment = () => {
     const [loading, setLoading] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
-    const [appointmentDetails, setAppointmentDetails] = useState(null); // Lưu thông tin lịch hẹn
+    const [appointmentDetails, setAppointmentDetails] = useState(null);
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -27,7 +29,7 @@ const CheckoutPayment = () => {
         if (Object.keys(bookingData).length === 0) {
             alert("Vui lòng đặt lịch trước khi thanh toán!");
             navigate('/appointment');
-        } else {
+        } else if (import.meta.env.DEV) {
             console.log("bookingData:", bookingData);
         }
     }, [bookingData, navigate]);
@@ -47,68 +49,103 @@ const CheckoutPayment = () => {
 
     const handlePayment = async () => {
         try {
-          setLoading(true);
-      
-          const totalAmount = bookingData.totalAmount || 0;
-          const depositAmount = bookingData.depositAmount || 0;
-          const paidAmount = bookingData.paymentType === 'full' ? totalAmount : depositAmount;
-      
-          // Đảm bảo dữ liệu pets được định dạng đúng cho backend
-          const formattedPets = bookingData.pets.map(pet => {
-            const petServiceId = parseInt(pet.petService?.id || pet.petServiceId || pet.service, 10);
-            const petWeightId = parseInt(pet.petWeight?.petWeightId || pet.petWeightId || pet.weight, 10);
-      
-            if (!petServiceId || !petWeightId) {
-              throw new Error("Dữ liệu dịch vụ hoặc cân nặng không hợp lệ");
-            }
-      
-            return {
-              name: pet.name || `Thú cưng ${bookingData.pets.indexOf(pet) + 1}`,
-              petType: pet.petType.toUpperCase(),
-              petServiceId: petServiceId, // Sử dụng petServiceId thay vì petService
-              petWeightId: petWeightId,   // Sử dụng petWeightId thay vì petWeight
-              note: pet.note || "",
-              price: pet.price || 0
+            setLoading(true);
+
+            const totalAmount = bookingData.totalAmount || 0;
+            const depositAmount = bookingData.depositAmount || 0;
+            const paidAmount = bookingData.paymentType === 'full' ? totalAmount : depositAmount;
+
+            // Format pets data
+            const formattedPets = bookingData.pets.map(pet => {
+                const petServiceId = parseInt(pet.petService?.id || pet.petServiceId || pet.service, 10);
+                const petWeightId = parseInt(pet.petWeight?.petWeightId || pet.petWeightId || pet.weight, 10);
+
+                if (import.meta.env.DEV) {
+                    console.log("Processing pet data:", {
+                        original: pet,
+                        converted: {
+                            name: pet.name || `Thú cưng ${bookingData.pets.indexOf(pet) + 1}`,
+                            petType: pet.petType.toUpperCase(),
+                            petServiceId,
+                            petWeightId,
+                            note: pet.note || "",
+                            price: pet.price || 0
+                        }
+                    });
+                }
+
+                if (isNaN(petServiceId) || isNaN(petWeightId)) {
+                    throw new Error("Dữ liệu dịch vụ hoặc cân nặng không hợp lệ");
+                }
+
+                return {
+                    name: pet.name || `Thú cưng ${bookingData.pets.indexOf(pet) + 1}`,
+                    petType: pet.petType.toUpperCase(),
+                    petServiceId: petServiceId,
+                    petWeightId: petWeightId,
+                    note: pet.note || "",
+                    price: pet.price || 0
+                };
+            });
+
+            const payload = {
+                date: bookingData.date,
+                time: bookingData.time,
+                customerName: bookingData.customerName,
+                phone: bookingData.phone,
+                paymentType: bookingData.paymentType,
+                depositAmount: depositAmount,
+                totalAmount: totalAmount,
+                paidAmount: paidAmount,
+                pets: formattedPets,
+                appointmentSlots: bookingData.appointmentSlots,
+                paymentStatus: 'PENDING',
+                paymentMethod: 'ONLINE',
+                paymentChannel: selectedPayment.toUpperCase(),
             };
-          });
-      
-          const payload = {
-            date: bookingData.date,
-            time: bookingData.time,
-            customerName: bookingData.customerName,
-            phone: bookingData.phone,
-            paymentType: bookingData.paymentType,
-            depositAmount: depositAmount,
-            totalAmount: totalAmount,
-            paidAmount: paidAmount,
-            pets: formattedPets,
-            appointmentSlots: bookingData.appointmentSlots,
-            paymentStatus: 'PENDING',
-            paymentMethod: 'ONLINE',
-            paymentChannel: selectedPayment.toUpperCase(),
-          };
-      
-          console.log("Sending booking payload:", payload);
-          const savedAppointment = await BookingService.bookAppointment(payload);
-      
-          if (savedAppointment.success) {
-            setSuccessMessage("Thanh toán thành công! Lịch hẹn đã được xác nhận.");
-            setAppointmentDetails(payload);
-            setShowSuccessModal(true);
-          } else {
-            throw new Error(savedAppointment.message || "Không thể đặt lịch.");
-          }
+
+            if (import.meta.env.DEV) {
+                console.log("Sending booking payload:", payload);
+            }
+
+            // Gọi API trực tiếp thay cho BookingService.bookAppointment
+            const response = await axios.post(`${VITE_API_BASE_URL}/api/appointments`, payload, {
+                timeout: 10000,
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (import.meta.env.DEV) {
+                console.log('Book appointment response:', response.data);
+            }
+
+            if (response.data) {
+                setSuccessMessage("Thanh toán thành công! Lịch hẹn đã được xác nhận.");
+                setAppointmentDetails(payload);
+                setShowSuccessModal(true);
+            } else {
+                throw new Error("Phản hồi từ server không hợp lệ");
+            }
         } catch (error) {
-          console.error("Payment error:", error);
-          alert(`Lỗi thanh toán: ${error.message || "Đã xảy ra lỗi"}`);
+            console.error("Payment error:", error);
+            let errorMessage = 'Đã xảy ra lỗi khi đặt lịch';
+            if (error.response) {
+                errorMessage = error.response.data?.message || error.response.data || `Lỗi ${error.response.status}: ${error.response.statusText}`;
+            } else if (error.request) {
+                errorMessage = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.';
+            } else {
+                errorMessage = error.message || errorMessage;
+            }
+            alert(`Lỗi thanh toán: ${errorMessage}`);
         } finally {
-          setLoading(false);
+            setLoading(false);
         }
-      };
+    };
 
     const handleConfirm = () => {
         setShowSuccessModal(false);
-        // Chuyển hướng về /appointment mà không có query parameters, truyền ngày qua state
         navigate('/appointment', { state: { selectedDate: bookingData.date } });
     };
 

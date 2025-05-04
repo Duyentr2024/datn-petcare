@@ -1,5 +1,7 @@
 import React, { memo, useEffect } from 'react';
-import BookingService from '../../../service/spaService/BookingService';
+import axios from 'axios';
+
+const VITE_API_BASE_URL = 'http://api.petcarect.store';
 
 const ServiceModal = memo(
   ({
@@ -35,11 +37,13 @@ const ServiceModal = memo(
       };
 
       updatePetForms();
-    }, [selectedSlots.length]);
+    }, [selectedSlots.length, pets, setPets]);
 
-    // Hàm xử lý thay đổi giá trị của thú cưng và cập nhật tên lên DB nếu thú cưng đã có ID trong DB
+    // Hàm xử lý thay đổi giá trị của thú cưng và cập nhật tên lên DB nếu thú cưng đã có ID
     const handlePetChangeWithPersist = (index, field, value) => {
-      console.log(`Changing pet[${index}].${field} to:`, value);
+      if (import.meta.env.DEV) {
+        console.log(`Changing pet[${index}].${field} to:`, value);
+      }
       
       setPets((prevPets) => {
         const newPets = [...prevPets];
@@ -63,13 +67,17 @@ const ServiceModal = memo(
 
           if (selectedService && selectedWeight) {
             updatedPet.price = selectedService.price * selectedWeight.priceMultiplier;
-            console.log(`Calculated price for pet ${index + 1}:`, updatedPet.price);
+            if (import.meta.env.DEV) {
+              console.log(`Calculated price for pet ${index + 1}:`, updatedPet.price);
+            }
           } else {
             updatedPet.price = 0;
-            console.log(`Could not calculate price for pet ${index + 1} due to missing info:`, {
-              service: selectedService,
-              weight: selectedWeight
-            });
+            if (import.meta.env.DEV) {
+              console.log(`Could not calculate price for pet ${index + 1} due to missing info:`, {
+                service: selectedService,
+                weight: selectedWeight
+              });
+            }
           }
         } else {
           updatedPet.price = 0;
@@ -80,15 +88,24 @@ const ServiceModal = memo(
 
         // Nếu thay đổi tên và thú cưng đã có ID trong DB, cập nhật lên server
         if (field === 'name' && updatedPet.id && !isNaN(updatedPet.id) && updatedPet.id > 0) {
-          try {
-            BookingService.updatePetName(updatedPet.id, value)
-              .then(() =>
-                console.log(`Đã cập nhật tên thú cưng ID ${updatedPet.id} thành ${value}`)
-              )
-              .catch((err) => console.error('Lỗi khi cập nhật tên thú cưng:', err));
-          } catch (error) {
-            console.error('Lỗi khi gọi API cập nhật tên thú cưng:', error);
-          }
+          axios
+            .put(`${VITE_API_BASE_URL}/api/pets/${updatedPet.id}/name`, { name: value }, {
+              timeout: 5000,
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+              }
+            })
+            .then(() => {
+              if (import.meta.env.DEV) {
+                console.log(`Đã cập nhật tên thú cưng ID ${updatedPet.id} thành ${value}`);
+              }
+            })
+            .catch((error) => {
+              if (import.meta.env.DEV) {
+                console.error('Lỗi khi cập nhật tên thú cưng:', error);
+              }
+            });
         }
 
         return newPets;
@@ -103,7 +120,7 @@ const ServiceModal = memo(
       }
     };
 
-    // Reset pet.weight nếu giá trị hiện tại không còn hợp lệ (không nằm trong danh sách active)
+    // Reset pet.weight nếu giá trị hiện tại không còn hợp lệ
     useEffect(() => {
       setPets((prevPets) =>
         prevPets.map((pet) => {
