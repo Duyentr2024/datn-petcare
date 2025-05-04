@@ -102,7 +102,7 @@ const MedicalRecords = () => {
             : mode === 'editVisit'
                 ? 'Cập nhật lần khám thành công!'
                 : 'Lưu hồ sơ thành công!',
-        { position: 'top-right', autoClose: 3000 }
+        { position: 'top-right', }
     );
   };
 

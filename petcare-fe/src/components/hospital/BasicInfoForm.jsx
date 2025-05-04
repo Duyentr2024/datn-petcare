@@ -28,7 +28,6 @@ const BasicInfoForm = ({ formData, setFormData, petTypes, filteredWeights, loadi
 
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <h3 className="text-lg font-medium text-[#754826]">Thông tin cơ bản</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -452,7 +452,6 @@ const MedicalRecordForm = ({ onSave, mode = 'create', initialData = null, petId 
                 // await VetOrderService.processPayment(createdOrder.orderId, paymentStatus);
 
                 onSave(newRecord, mode);
-                toast.success('Lưu hồ sơ thành công!', { position: 'top-right', autoClose: 3000 });
 
                 setFormData({
                     name_pet: '',
@@ -503,7 +502,6 @@ const MedicalRecordForm = ({ onSave, mode = 'create', initialData = null, petId 
             case 2:
                 return (
                     <>
-                        <h2 className="text-xl font-semibold text-[#754826] mb-4">Thông Tin Bệnh Án</h2>
                         <MedicalInfoForm
                             formData={formData}
                             setFormData={setFormData}
