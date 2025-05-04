@@ -14,8 +14,21 @@ import vaccineService from '../../service/hospitalService/vaccineService';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-const formatPrice = (price) => {
+// Format number to VND currency for display (e.g., 1234567 -> "1,234,567")
+const formatPrice = (value) => {
+    if (!value && value !== 0) return '';
+    return new Intl.NumberFormat('vi-VN').format(value); // No currency symbol for input
+};
+
+// Format number to VND currency for display in list (e.g., 1234567 -> "1,234,567 ₫")
+const formatPriceWithCurrency = (price) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+};
+
+// Parse formatted input back to number (e.g., "1,234,567" -> 1234567)
+const parsePrice = (value) => {
+    if (!value) return '';
+    return parseFloat(value.replace(/[^0-9]/g, '')) || '';
 };
 
 const formatDate = (date) => {
@@ -60,6 +73,10 @@ const VaccineManagement = () => {
         quantity: '',
         note: '',
     });
+    const [formattedPrices, setFormattedPrices] = useState({
+        sellingPrice: '',
+        importPrice: '',
+    });
     const [errors, setErrors] = useState({});
     const [showForm, setShowForm] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -67,7 +84,15 @@ const VaccineManagement = () => {
     const [isLoading, setIsLoading] = useState(false);
     const vaccinesPerPage = 6;
 
-    // Hàm gọi API getAllVaccines
+    // Sync formatted prices with formData
+    useEffect(() => {
+        setFormattedPrices({
+            sellingPrice: formatPrice(formData.sellingPrice),
+            importPrice: formatPrice(formData.importPrice),
+        });
+    }, [formData.sellingPrice, formData.importPrice]);
+
+    // Fetch vaccines from API
     const fetchVaccines = async () => {
         setIsLoading(true);
         try {
@@ -89,8 +114,21 @@ const VaccineManagement = () => {
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
-        setErrors({ ...errors, [name]: '' });
+
+        if (name === 'sellingPrice' || name === 'importPrice') {
+            // Parse the input value to a number
+            const numericValue = parsePrice(value);
+            // Update formData with raw number
+            setFormData((prev) => ({ ...prev, [name]: numericValue }));
+            // Update formatted display value
+            setFormattedPrices((prev) => ({ ...prev, [name]: formatPrice(numericValue) }));
+            // Clear any errors for this field
+            setErrors((prev) => ({ ...prev, [name]: '' }));
+        } else {
+            // Handle other fields
+            setFormData((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+            setErrors((prev) => ({ ...prev, [name]: '' }));
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -205,7 +243,7 @@ const VaccineManagement = () => {
     };
 
     const handleEditVaccine = (vaccine) => {
-        setFormData({
+        const updatedFormData = {
             ...vaccine,
             manufacturingDate: vaccine.manufacturingDate
                 ? new Date(vaccine.manufacturingDate).toISOString().split('T')[0]
@@ -219,14 +257,14 @@ const VaccineManagement = () => {
             sellingPrice: vaccine.sellingPrice || '',
             importPrice: vaccine.importPrice || '',
             quantity: vaccine.quantity || '',
-        });
+        };
+        setFormData(updatedFormData);
         setShowForm(true);
     };
 
     const handleToggleVaccineStatus = (id, currentStatus, expiryDate, e) => {
-        e.stopPropagation(); // Prevent card click event
+        e.stopPropagation();
 
-        // Kiểm tra nếu vaccine đã hết hạn
         if (isExpired(expiryDate)) {
             toast.error('Không thể bật/tắt vaccine đã hết hạn!', {
                 position: 'top-right',
@@ -244,7 +282,7 @@ const VaccineManagement = () => {
                         onClick={async () => {
                             setIsLoading(true);
                             try {
-                                await vaccineService.deleteVaccine(id); // Assuming this toggles the status
+                                await vaccineService.deleteVaccine(id);
                                 toast.dismiss();
                                 toast.success(`Vaccine đã được ${action} thành công!`, {
                                     position: 'top-right',
@@ -468,15 +506,14 @@ const VaccineManagement = () => {
                                     Giá Bán (VNĐ) <span className="text-red-500">*</span>
                                 </label>
                                 <input
-                                    type="number"
+                                    type="text"
                                     name="sellingPrice"
-                                    value={formData.sellingPrice}
+                                    value={formattedPrices.sellingPrice}
                                     onChange={handleInputChange}
                                     className={`w-full px-4 py-2 rounded-lg border ${
                                         errors.sellingPrice ? 'border-red-500' : 'border-gray-300'
                                     } focus:outline-none focus:ring-2 focus:ring-[#7b4d2b] disabled:bg-gray-100`}
                                     placeholder="Nhập giá bán"
-                                    min="0"
                                     disabled={isLoading}
                                 />
                                 {errors.sellingPrice && (
@@ -488,15 +525,14 @@ const VaccineManagement = () => {
                                     Giá Nhập (VNĐ) <span className="text-red-500">*</span>
                                 </label>
                                 <input
-                                    type="number"
+                                    type="text"
                                     name="importPrice"
-                                    value={formData.importPrice}
+                                    value={formattedPrices.importPrice}
                                     onChange={handleInputChange}
                                     className={`w-full px-4 py-2 rounded-lg border ${
                                         errors.importPrice ? 'border-red-500' : 'border-gray-300'
                                     } focus:outline-none focus:ring-2 focus:ring-[#7b4d2b] disabled:bg-gray-100`}
                                     placeholder="Nhập giá nhập"
-                                    min="0"
                                     disabled={isLoading}
                                 />
                                 {errors.importPrice && (
@@ -641,7 +677,7 @@ const VaccineManagement = () => {
                                         </p>
                                         <p className="text-sm text-gray-600 mb-2">
                                             <span className="font-medium">Giá Bán:</span>{' '}
-                                            {formatPrice(vaccine.sellingPrice)}
+                                            {formatPriceWithCurrency(vaccine.sellingPrice)}
                                         </p>
                                         <p
                                             className={`text-sm mb-2 ${
