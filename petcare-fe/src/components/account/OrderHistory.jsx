@@ -434,7 +434,7 @@ const OrderHistory = () => {
               <strong>Dự kiến giao:</strong> <span className="text-gray-500">Từ 3 - 5 ngày</span>
             </p>
             <p className="text-red-500">
-              <strong>Tổng tiền:</strong> {formatCurrency(selectedOrder.totalAmount + 30000)}
+              <strong>Tổng tiền:</strong> {formatCurrency(selectedOrder.totalAmount)}
             </p>
           </div>
         </div>
