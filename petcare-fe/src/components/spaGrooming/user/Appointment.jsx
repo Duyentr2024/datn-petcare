@@ -625,8 +625,14 @@ const Appointment = () => {
           const depositAmount = calculateDeposit();
           const paidAmount = customerInfo.paymentType === 'full' ? totalAmount : depositAmount;
       
+          // Trích xuất ngày địa phương (local date) để tránh chuyển đổi múi giờ UTC
+          const year = selectedDate.getFullYear();
+          const month = String(selectedDate.getMonth() + 1).padStart(2, "0"); // getMonth() bắt đầu từ 0
+          const day = String(selectedDate.getDate()).padStart(2, "0");
+          const formattedDate = `${year}-${month}-${day}`; // Định dạng YYYY-MM-DD, ví dụ: "2025-05-05"
+
           const payload = {
-            date: selectedDate.toISOString().split("T")[0],
+            date: formattedDate, // Sử dụng ngày địa phương, không bị lệch múi giờ
             time: formatTime(selectedTimeValue),
             customerName: customerInfo.fullName,
             phone: customerInfo.phone,
