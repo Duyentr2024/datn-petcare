@@ -265,9 +265,7 @@ const RecordList = ({
                                                 <p>
                                                     <span className="font-medium">Cân nặng:</span> {pet.weightRange}
                                                 </p>
-                                                <p>
-                                                    <span className="font-medium">Giống:</span> {pet.breed}
-                                                </p>
+
                                                 <p>
                                                     <span className="font-medium">Tuổi:</span> {pet.age} năm
                                                 </p>

@@ -15,6 +15,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import VetOrderService from '../../service/hospitalService/VetOrderService';
 import { getVaccineById } from '../../service/hospitalService/vaccineService';
 import { getVetServiceById } from '../../service/hospitalService/VetServiceService';
+import Cookies from 'js-cookie';
+import {jwtDecode} from 'jwt-decode';
 
 // Hàm định dạng tiền tệ
 const formatPrice = (price) => {
@@ -26,7 +28,7 @@ const formatDate = (date) => {
     return date ? new Date(date).toLocaleDateString('vi-VN') : 'N/A';
 };
 
-const InvoiceManagement = ({ userId = 4 }) => {
+const InvoiceManagement = () => {
     const [invoices, setInvoices] = useState([]);
     const [formData, setFormData] = useState(null);
     const [showModal, setShowModal] = useState(false);
@@ -37,10 +39,28 @@ const InvoiceManagement = ({ userId = 4 }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [expandedDetails, setExpandedDetails] = useState({});
     const [activeTab, setActiveTab] = useState('invoiceInfo');
+    const [userId, setUserId] = useState(null);
     const invoicesPerPage = 6;
+
+    // Lấy userId từ cookie khi component mount
+    useEffect(() => {
+        const token = Cookies.get('accessToken');
+        if (token) {
+            try {
+                const decoded = jwtDecode(token);
+                setUserId(decoded.userId || decoded.id);
+            } catch (error) {
+                toast.error('Không thể giải mã token!', { position: 'top-right', autoClose: 3000 });
+                console.error('Error decoding token:', error);
+            }
+        } else {
+            toast.error('Không tìm thấy token!', { position: 'top-right', autoClose: 3000 });
+        }
+    }, []);
 
     // Hàm lấy danh sách hóa đơn từ API
     const fetchInvoices = async () => {
+        if (!userId) return; // Không gọi API nếu chưa có userId
         setIsLoading(true);
         try {
             const orders = await VetOrderService.getOrdersByUserId(userId);
@@ -71,7 +91,9 @@ const InvoiceManagement = ({ userId = 4 }) => {
     };
 
     useEffect(() => {
-        fetchInvoices();
+        if (userId) {
+            fetchInvoices();
+        }
     }, [userId]);
 
     // Xử lý xem chi tiết hóa đơn và lấy tên vaccine/dịch vụ
@@ -254,8 +276,7 @@ const InvoiceManagement = ({ userId = 4 }) => {
                         type="text"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-64 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#7b4d2b] pl-10 disabled:bg-gray-100"
-                        placeholder="Tìm kiếm khách hàng hoặc số điện thoại..."
+                        className="w-80 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#7b4d2b] pl-10 disabled:bg-gray-100"
                         disabled={isLoading}
                     />
                     <Search className="w-5 h-5 text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -486,9 +507,10 @@ const InvoiceManagement = ({ userId = 4 }) => {
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.3 }}
                 >
-                    <h2 className="text-2xl font-bold text-[#7b4d2b] mb-6">Danh Sách Hóa Đơn</h2>
                     {isLoading ? (
                         <p className="text-gray-500 text-center">Đang tải danh sách hóa đơn...</p>
+                    ) : !userId ? (
+                        <p className="text-red-500 text-center">Không thể tải hóa đơn do lỗi xác thực người dùng.</p>
                     ) : filteredInvoices.length === 0 ? (
                         <p className="text-gray-500 text-center">Chưa có hóa đơn nào.</p>
                     ) : (
