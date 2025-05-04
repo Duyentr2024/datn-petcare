@@ -18,6 +18,7 @@ import "dayjs/locale/vi";
 import locale from "antd/locale/vi_VN";
 import BookingService from "../../../service/spaService/BookingService";
 import UpdateWeight from "./UpdateWeight";
+import PaymentSpa from "./PaymentSpa";
 import "./Calendar.css";
 
 dayjs.locale("vi");
@@ -36,6 +37,8 @@ const Calendar = ({ refreshSlotDate }) => {
   const [loadingStaff, setLoadingStaff] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
+  const [selectedAppointmentForPayment, setSelectedAppointmentForPayment] = useState(null);
 
   useEffect(() => {
     const fetchStaffAndWeights = async () => {
@@ -250,8 +253,8 @@ const Calendar = ({ refreshSlotDate }) => {
           }
         }
 
-        const employeeId = pet.employee?.id || pet.employeeId || null;
-        const employeeName = pet.employee?.full_name || "Không tìm thấy thông tin nhân viên";
+        const employeeId = pet.employeeId || null;
+        const employeeName = pet.employeeName || "Không tìm thấy thông tin nhân viên";
 
         return {
           key: pet.id,
@@ -321,25 +324,31 @@ const Calendar = ({ refreshSlotDate }) => {
   };
 
   const handleCompleteService = async (record) => {
-    try {
-      await BookingService.completeService(record.key);
+    await handleSelectBookedSlot(record);
+    setSelectedAppointmentForPayment(record);
+    setIsPaymentModalVisible(true);
+  };
+
+  const handlePaymentModalClose = (paymentSuccess) => {
+    setIsPaymentModalVisible(false);
+    setSelectedAppointmentForPayment(null);
+    
+    if (paymentSuccess) {
       setBookedSlots((prev) =>
         prev.map((slot) =>
-          slot.key === record.key ? { ...slot, status: "completed" } : slot
+          slot.key === selectedCustomer.key ? { ...slot, status: "completed" } : slot
         )
       );
 
-      if (selectedCustomer && selectedCustomer.key === record.key) {
+      if (selectedCustomer) {
         setSelectedCustomer((prev) => ({
           ...prev,
           status: "completed",
         }));
       }
-
-      message.success("Hoàn thành dịch vụ thành công!");
-    } catch (error) {
-      console.error("Error completing service:", error);
-      message.error("Không thể hoàn thành dịch vụ: " + (error.message || "Lỗi không xác định"));
+      
+      fetchSlotStatus(selectedDate);
+      message.success("Thanh toán và hoàn thành dịch vụ thành công!");
     }
   };
 
@@ -444,7 +453,7 @@ const Calendar = ({ refreshSlotDate }) => {
               Thanh toán
             </Button>
           )}
-          {(record.status === "confirmed" || record.status === "in_progress") && (
+          {record.status === "confirmed" && ( // Ẩn nút Hủy khi trạng thái là in_progress
             <Button
               type="primary"
               danger
@@ -494,8 +503,7 @@ const Calendar = ({ refreshSlotDate }) => {
         const isUsing = bookedSlots.find(slot => slot.key === record.appointmentId)?.status === "in_progress";
         const isCompleted = bookedSlots.find(slot => slot.key === record.appointmentId)?.status === "completed";
 
-        if (staffId) {
-          // Tìm tên nhân viên từ staffOptions nếu staffName không có giá trị
+        if (isUsing || isCompleted) {
           const staff = staffOptions.find(option => option.value === staffId);
           const displayName = staff ? staff.label : record.staffName || "Không tìm thấy thông tin nhân viên";
           return (
@@ -515,7 +523,6 @@ const Calendar = ({ refreshSlotDate }) => {
             loading={loadingStaff}
             disabled={isUsing || isCompleted}
             onChange={(value) => {
-              // Tìm tên nhân viên từ staffOptions dựa trên value (employee_id)
               const selectedStaff = staffOptions.find(option => option.value === value);
               const selectedStaffName = selectedStaff ? selectedStaff.label : "Không tìm thấy thông tin nhân viên";
               setSlotDetails((prev) =>
@@ -524,6 +531,7 @@ const Calendar = ({ refreshSlotDate }) => {
                 )
               );
             }}
+            notFoundContent={staffOptions.length === 0 ? "Không có nhân viên khả dụng" : null}
           />
         );
       },
@@ -755,6 +763,13 @@ const Calendar = ({ refreshSlotDate }) => {
         pet={selectedPetForUpdate}
         weightOptions={selectedPetForUpdate ? weightOptions[selectedPetForUpdate.rawPetType] || [] : []}
         onUpdateSuccess={handleUpdateSuccess}
+      />
+
+      <PaymentSpa
+        visible={isPaymentModalVisible}
+        onCancel={handlePaymentModalClose}
+        appointment={selectedAppointmentForPayment}
+        petDetails={slotDetails}
       />
     </>
   );
