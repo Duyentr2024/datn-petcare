@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import TimeSlotService from '../../../service/spaService/TimeSlotService';
+import axios from 'axios';
 
+const VITE_API_BASE_URL = 'http://api.petcarect.store';
 
 const ManageSlot = () => {
   const timeSlots = Array.from({ length: 12 }, (_, i) => {
@@ -19,13 +20,171 @@ const ManageSlot = () => {
   const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
   const tomorrow = today.getDate() + 1;
   const futureDates = Array.from(
-      { length: daysInMonth - today.getDate() },
-      (_, i) => tomorrow + i
+    { length: daysInMonth - today.getDate() },
+    (_, i) => tomorrow + i
   );
 
   const filteredSlots = slotsConfig.filter(slot =>
-      activeTab === 'all' || (activeTab === 'active' && slot.isActive) || (activeTab === 'inactive' && !slot.isActive)
+    activeTab === 'all' || (activeTab === 'active' && slot.isActive) || (activeTab === 'inactive' && !slot.isActive)
   );
+
+  const getTimeSlots = async (date) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Fetching time slots for date: ${date}`);
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/time-slots`, {
+        params: { date },
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Time slots response:', response.data);
+      }
+      return response.data || { morning: [], afternoon: [] };
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error fetching time slots:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể lấy danh sách slot');
+    }
+  };
+
+  const getAllSlotAdjustmentsInMonth = async (year, month) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Fetching slot adjustments for year: ${year}, month: ${month}`);
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/time-slots/adjustments`, {
+        params: { year, month },
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Slot adjustments response:', response.data);
+      }
+      return response.data || [];
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error fetching slot adjustments:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể lấy danh sách điều chỉnh slot');
+    }
+  };
+
+  const addSlots = async (date, time, quantity) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Adding ${quantity} slots for date: ${date}, time: ${time}`);
+      }
+      const response = await axios.post(`${VITE_API_BASE_URL}/api/time-slots/add`, {
+        date,
+        time,
+        slotCount: quantity
+      }, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Add slots response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error adding slots:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể thêm slot');
+    }
+  };
+
+  const removeSlots = async (date, time, quantity) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Removing ${quantity} slots for date: ${date}, time: ${time}`);
+      }
+      const response = await axios.post(`${VITE_API_BASE_URL}/api/time-slots/remove`, {
+        date,
+        time,
+        slotCount: quantity
+      }, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Remove slots response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error removing slots:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể xóa slot');
+    }
+  };
+
+  const resetToDefault = async (date, time) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Resetting slots to default for date: ${date}, time: ${time}`);
+      }
+      const response = await axios.post(`${VITE_API_BASE_URL}/api/time-slots/reset`, {
+        date,
+        time
+      }, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Reset slots response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error resetting slots:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể khôi phục slot');
+    }
+  };
+
+  const toggleSlotVisibility = async (time, isActive) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Toggling visibility for time: ${time}, isActive: ${isActive}`);
+      }
+      const response = await axios.put(`${VITE_API_BASE_URL}/api/time-slots/visibility`, {
+        time,
+        isActive
+      }, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Toggle visibility response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error toggling slot visibility:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể cập nhật trạng thái hiển thị');
+    }
+  };
 
   useEffect(() => {
     fetchSlotsConfig();
@@ -41,11 +200,10 @@ const ManageSlot = () => {
   const fetchSlotsConfig = async () => {
     try {
       const date = today.toISOString().split('T')[0];
-      const response = await TimeSlotService.getTimeSlots(date);
+      const response = await getTimeSlots(date);
       const apiSlots = [...response.morning, ...response.afternoon];
 
-      const adjustmentsResponse = await TimeSlotService.getAllSlotAdjustmentsInMonth(today.getFullYear(), today.getMonth() + 1);
-      const adjustments = adjustmentsResponse;
+      const adjustments = await getAllSlotAdjustmentsInMonth(today.getFullYear(), today.getMonth() + 1);
 
       const updatedSlots = timeSlots.map(time => {
         const apiSlot = apiSlots.find(slot => slot.hour === time);
@@ -90,7 +248,7 @@ const ManageSlot = () => {
     try {
       for (const day of selectedDates) {
         const date = new Date(today.getFullYear(), today.getMonth(), day).toISOString().split('T')[0];
-        await TimeSlotService.addSlots(date, selectedTimeSlot, slotQuantity);
+        await addSlots(date, selectedTimeSlot, slotQuantity);
       }
       await fetchSlotsConfig();
       showNotification(`Đã thêm ${slotQuantity} slot cho khung giờ ${selectedTimeSlot}`, 'success');
@@ -132,7 +290,7 @@ const ManageSlot = () => {
           });
           setSlotsConfig(updatedSlots);
         } else {
-          await TimeSlotService.removeSlots(date, selectedTimeSlot, slotQuantity);
+          await removeSlots(date, selectedTimeSlot, slotQuantity);
         }
       }
       await fetchSlotsConfig();
@@ -145,7 +303,7 @@ const ManageSlot = () => {
 
   const resetSlotToDefault = async (time, date) => {
     try {
-      await TimeSlotService.resetToDefault(date, time);
+      await resetToDefault(date, time);
       await fetchSlotsConfig();
       showNotification(`Đã khôi phục khung giờ ${time} về mặc định (4 slot) cho ngày ${new Date(date).getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`, 'success');
       if (window.updateAppointment) window.updateAppointment();
@@ -154,15 +312,14 @@ const ManageSlot = () => {
     }
   };
 
-  const toggleSlotVisibility = async (time) => {
+  const toggleSlotVisibilityHandler = async (time) => {
     try {
       const slot = slotsConfig.find((s) => s.time === time);
       if (!slot) return;
 
       const newIsActive = !slot.isActive;
-      // Đồng bộ định dạng thời gian với BE
       const formattedTime = time + ":00"; // Chuyển "09:00" thành "09:00:00"
-      await TimeSlotService.toggleSlotVisibility(formattedTime, newIsActive);
+      await toggleSlotVisibility(formattedTime, newIsActive);
 
       await fetchSlotsConfig();
       if (activeTab === "active" && !newIsActive) setActiveTab("inactive");
@@ -195,10 +352,8 @@ const ManageSlot = () => {
     setNotification({ show: true, message, type });
   };
 
-  // Giữ nguyên phần return (UI) như cũ
   return (
     <div className="bg-white rounded-xl">
-      {/* Notification */}
       {notification.show && (
         <div className="fixed top-4 right-4 z-50 animate-slide-in">
           <div
@@ -235,7 +390,6 @@ const ManageSlot = () => {
         </div>
       )}
 
-      {/* Form Section */}
       <div className="py-5">
         <div className="flex items-center mb-5">
           <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center mr-3">
@@ -320,9 +474,7 @@ const ManageSlot = () => {
               <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-md">
                 <div className="flex">
                   <div className="flex-shrink-0">
-                    <svg className="h-
-
-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                     </svg>
                   </div>
@@ -485,7 +637,7 @@ const ManageSlot = () => {
                           )}
                           {index === 0 && (
                             <button
-                              onClick={() => toggleSlotVisibility(slot.time)}
+                              onClick={() => toggleSlotVisibilityHandler(slot.time)}
                               className={`${slot.isActive ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'} transition-colors duration-200 flex items-center`}
                             >
                               <svg className="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">

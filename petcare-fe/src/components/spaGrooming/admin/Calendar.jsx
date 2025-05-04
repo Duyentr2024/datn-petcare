@@ -13,15 +13,17 @@ import {
   Input,
   message,
 } from "antd";
+import axios from 'axios';
 import dayjs from "dayjs";
 import "dayjs/locale/vi";
 import locale from "antd/locale/vi_VN";
-import BookingService from "../../../service/spaService/BookingService";
 import UpdateWeight from "./UpdateWeight";
 import PaymentSpa from "./PaymentSpa";
 import "./Calendar.css";
 
 dayjs.locale("vi");
+
+const VITE_API_BASE_URL = 'http://api.petcarect.store';
 
 const Calendar = ({ refreshSlotDate }) => {
   const [selectedDate, setSelectedDate] = useState(dayjs());
@@ -40,11 +42,257 @@ const Calendar = ({ refreshSlotDate }) => {
   const [isPaymentModalVisible, setIsPaymentModalVisible] = useState(false);
   const [selectedAppointmentForPayment, setSelectedAppointmentForPayment] = useState(null);
 
+  const getEmployees = async () => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log('Fetching employees...');
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/employees`, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Employees response:', response.data);
+      }
+      if (!response.data || response.data.length === 0) {
+        return [
+          { value: 1, label: "Nhân viên 1", phone: "0123456789", employeeType: "STAFF" },
+          { value: 2, label: "Nhân viên 2", phone: "0987654321", employeeType: "STAFF" }
+        ];
+      }
+      const activeEmployees = response.data.filter(employee => 
+        employee.status && employee.status.toLowerCase() === 'active'
+      );
+      if (activeEmployees.length === 0) {
+        return [
+          { value: 1, label: "Nhân viên 1", phone: "0123456789", employeeType: "STAFF" },
+          { value: 2, label: "Nhân viên 2", phone: "0987654321", employeeType: "STAFF" }
+        ];
+      }
+      return activeEmployees.map(employee => ({
+        value: employee.employeeId,
+        label: employee.fullName,
+        phone: employee.phone,
+        employeeType: employee.employeeType,
+      }));
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error fetching employees:', error);
+      }
+      return [
+        { value: 1, label: "Nhân viên 1", phone: "0123456789", employeeType: "STAFF" },
+        { value: 2, label: "Nhân viên 2", phone: "0987654321", employeeType: "STAFF" }
+      ];
+    }
+  };
+
+  const getPetWeightsByType = async (petType) => {
+    try {
+      const normalizedPetType = petType.toUpperCase() === "CHÓ" || petType.toUpperCase() === "CHO" ? "DOG" : 
+                               petType.toUpperCase() === "MÈO" || petType.toUpperCase() === "MEO" ? "CAT" : 
+                               petType.toUpperCase();
+      if (import.meta.env.DEV) {
+        console.log(`Fetching weights for pet type: ${normalizedPetType}`);
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/pet-weights/by-pet-type`, {
+        params: { petType: normalizedPetType },
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log(`Received weights for ${normalizedPetType}:`, response.data);
+      }
+      return response.data.map((weight) => ({
+        value: weight.petWeightId,
+        label: weight.weightRange,
+        active: weight.statusType === "ACTIVE",
+      }));
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error(`Error fetching weights for pet type ${petType}:`, error);
+      }
+      return [];
+    }
+  };
+
+  const getConfirmedSlots = async (date) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Fetching confirmed slots for date: ${date}`);
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/appointments/confirmed`, {
+        params: { date },
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Confirmed slots response:', response.data);
+      }
+      return response.data || { morning: [], afternoon: [] };
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error fetching confirmed slots:', error);
+      }
+      return { morning: [], afternoon: [] };
+    }
+  };
+
+  const getInProgressSlots = async (date) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Fetching in-progress slots for date: ${date}`);
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/appointments/in-progress`, {
+        params: { date },
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('In-progress slots response:', response.data);
+      }
+      return response.data || { morning: [], afternoon: [] };
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error fetching in-progress slots:', error);
+      }
+      return { morning: [], afternoon: [] };
+    }
+  };
+
+  const getCompletedSlots = async (date) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Fetching completed slots for date: ${date}`);
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/appointments/completed`, {
+        params: { date },
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Completed slots response:', response.data);
+      }
+      return response.data || { morning: [], afternoon: [] };
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error fetching completed slots:', error);
+      }
+      return { morning: [], afternoon: [] };
+    }
+  };
+
+  const getActiveAppointmentsByDateAndTime = async (date, time) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Fetching active appointments for date: ${date}, time: ${time}`);
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/appointments/active`, {
+        params: { date, time },
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Active appointments response:', response.data);
+      }
+      return response.data || [];
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error fetching active appointments:', error);
+      }
+      return [];
+    }
+  };
+
+  const getPetsByAppointmentId = async (appointmentId) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Fetching pets for appointment ID: ${appointmentId}`);
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/appointments/${appointmentId}/pets`, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Pets response:', response.data);
+      }
+      return response.data || [];
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error fetching pets by appointment ID:', error);
+      }
+      return [];
+    }
+  };
+
+  const startService = async (appointmentId, petAssignments) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Starting service for appointment ID: ${appointmentId}`, petAssignments);
+      }
+      const response = await axios.post(`${VITE_API_BASE_URL}/api/appointments/${appointmentId}/start`, {
+        petAssignments
+      }, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Start service response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error starting service:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể bắt đầu dịch vụ');
+    }
+  };
+
+  const cancelConfirmedAppointments = async (payload) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log('Canceling appointments with payload:', payload);
+      }
+      const response = await axios.post(`${VITE_API_BASE_URL}/api/appointments/cancel`, payload, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Cancel appointments response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error canceling appointments:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể hủy lịch hẹn');
+    }
+  };
+
   useEffect(() => {
     const fetchStaffAndWeights = async () => {
       try {
         setLoadingStaff(true);
-        const employees = await BookingService.getEmployees();
+        const employees = await getEmployees();
         setStaffOptions(employees);
       } catch (error) {
         console.error("Lỗi khi lấy dữ liệu:", error);
@@ -58,33 +306,15 @@ const Calendar = ({ refreshSlotDate }) => {
   }, []);
 
   const fetchPetWeightsByType = async (petType) => {
-    try {
-      const normalizedPetType = petType.toUpperCase() === "CHÓ" || petType.toUpperCase() === "CHO" ? "DOG" : 
-                               petType.toUpperCase() === "MÈO" || petType.toUpperCase() === "MEO" ? "CAT" : 
-                               petType.toUpperCase();
-      console.log(`Fetching weights for pet type: ${normalizedPetType}`);
-
-      const weights = await BookingService.getPetWeightsByType(normalizedPetType);
-      console.log(`Received weights for ${normalizedPetType}:`, weights);
-
-      return weights.map((weight) => ({
-        value: weight.petWeightId,
-        label: weight.weightRange,
-        active: weight.statusType === "ACTIVE",
-      }));
-    } catch (error) {
-      console.error(`Error fetching weights for pet type ${petType}:`, error);
-      message.error(`Không thể tải danh sách cân nặng cho ${petType === 'DOG' ? 'chó' : 'mèo'}`);
-      return [];
-    }
+    return await getPetWeightsByType(petType);
   };
 
   const fetchSlotStatus = async (date) => {
     try {
       const [confirmedResponse, inProgressResponse, completedResponse] = await Promise.all([
-        BookingService.getConfirmedSlots(date.format("YYYY-MM-DD")),
-        BookingService.getInProgressSlots(date.format("YYYY-MM-DD")),
-        BookingService.getCompletedSlots(date.format("YYYY-MM-DD"))
+        getConfirmedSlots(date.format("YYYY-MM-DD")),
+        getInProgressSlots(date.format("YYYY-MM-DD")),
+        getCompletedSlots(date.format("YYYY-MM-DD"))
       ]);
 
       const allSlotsConfirmed = [
@@ -132,7 +362,7 @@ const Calendar = ({ refreshSlotDate }) => {
       setLoading(true);
       let appointments = [];
       if (time) {
-        const response = await BookingService.getActiveAppointmentsByDateAndTime(
+        const response = await getActiveAppointmentsByDateAndTime(
           date.format("YYYY-MM-DD"),
           time
         );
@@ -199,8 +429,10 @@ const Calendar = ({ refreshSlotDate }) => {
     setSelectedCustomer(record);
     try {
       setLoadingDetails(true);
-      const response = await BookingService.getPetsByAppointmentId(record.key);
-      console.log('Pet data for appointment ID', record.key, ':', response);
+      const response = await getPetsByAppointmentId(record.key);
+      if (import.meta.env.DEV) {
+        console.log('Pet data for appointment ID', record.key, ':', response);
+      }
       if (!response || response.length === 0) {
         message.warning("Không tìm thấy thú cưng cho lịch hẹn này");
         setSlotDetails([]);
@@ -210,8 +442,10 @@ const Calendar = ({ refreshSlotDate }) => {
       const petTypeWeightsMap = {};
 
       const detailsPromises = response.map(async (pet) => {
-        console.log('Raw pet data:', pet);
-        console.log('All properties of pet:', Object.keys(pet));
+        if (import.meta.env.DEV) {
+          console.log('Raw pet data:', pet);
+          console.log('All properties of pet:', Object.keys(pet));
+        }
 
         let petDisplayName;
         if (typeof pet.namePet === 'string') {
@@ -227,21 +461,27 @@ const Calendar = ({ refreshSlotDate }) => {
         const rawPetType = pet.petType || pet.type || pet.pet_type || "Không xác định";
         const petType = rawPetType === "DOG" ? "Chó" : rawPetType === "CAT" ? "Mèo" : rawPetType;
 
-        console.log('Pet name for pet ID', pet.id, ':', petDisplayName);
-        console.log('Pet type for pet ID', pet.id, ':', petType);
+        if (import.meta.env.DEV) {
+          console.log('Pet name for pet ID', pet.id, ':', petDisplayName);
+          console.log('Pet type for pet ID', pet.id, ':', petType);
+        }
 
         let weightId = pet.petWeightId || pet.weightId || pet.weight_id || null;
         const weightRange = pet.weightRange || pet.weight_range || "Không xác định";
 
-        console.log('Weight info for pet ID', pet.id, ':', {
-          weightId: weightId,
-          weightRange: weightRange,
-        });
+        if (import.meta.env.DEV) {
+          console.log('Weight info for pet ID', pet.id, ':', {
+            weightId: weightId,
+            weightRange: weightRange,
+          });
+        }
 
         if (!petTypeWeightsMap[rawPetType]) {
           const weights = await fetchPetWeightsByType(rawPetType);
           petTypeWeightsMap[rawPetType] = weights;
-          console.log(`Weights for ${rawPetType}:`, weights);
+          if (import.meta.env.DEV) {
+            console.log(`Weights for ${rawPetType}:`, weights);
+          }
 
           if (!weightId && weightRange && weights.length > 0) {
             const matchingOption = weights.find(
@@ -275,7 +515,9 @@ const Calendar = ({ refreshSlotDate }) => {
       });
 
       const petDetails = await Promise.all(detailsPromises);
-      console.log('Processed pet details:', petDetails);
+      if (import.meta.env.DEV) {
+        console.log('Processed pet details:', petDetails);
+      }
       setSlotDetails(petDetails);
       setWeightOptions(petTypeWeightsMap);
     } catch (error) {
@@ -301,7 +543,7 @@ const Calendar = ({ refreshSlotDate }) => {
       });
 
       try {
-        await BookingService.startService(record.key, petAssignments);
+        await startService(record.key, petAssignments);
         setBookedSlots((prev) =>
           prev.map((slot) =>
             slot.key === record.key ? { ...slot, status: "in_progress" } : slot
@@ -358,7 +600,7 @@ const Calendar = ({ refreshSlotDate }) => {
         appointmentIds: [record.key],
         reason: "Hủy bởi quản trị viên"
       };
-      await BookingService.cancelConfirmedAppointments(payload);
+      await cancelConfirmedAppointments(payload);
       setBookedSlots((prev) =>
         prev.map((slot) =>
           slot.key === record.key ? { ...slot, status: "cancelled" } : slot
@@ -476,10 +718,12 @@ const Calendar = ({ refreshSlotDate }) => {
       key: "petName",
       width: 120,
       render: (_, record) => {
-        console.log("Rendering pet details:", {
-          petName: record.petName,
-          petType: record.petType
-        });
+        if (import.meta.env.DEV) {
+          console.log("Rendering pet details:", {
+            petName: record.petName,
+            petType: record.petType
+          });
+        }
         return (
           <div className="whitespace-nowrap overflow-hidden text-ellipsis">
             {record.petName || "Không xác định"} ({record.petType || "Không xác định"})

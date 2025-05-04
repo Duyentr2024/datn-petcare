@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Input, DatePicker, Select, Table, Tag, Button, Modal, message, Tooltip, Space, Skeleton, Empty } from 'antd';
 import { SearchOutlined, CheckOutlined, FileExcelOutlined, InfoCircleOutlined, BankOutlined, WalletOutlined } from '@ant-design/icons';
+import axios from 'axios';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import webSocketService from "../../../service/WebSocketService";
-import BookingService from "../../../service/spaService/BookingService";
 import './AdminAppointment.css';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
+
+const VITE_API_BASE_URL = 'http://api.petcarect.store';
 
 const RefundedAppointments = () => {
   const [searchText, setSearchText] = useState('');
@@ -26,13 +28,35 @@ const RefundedAppointments = () => {
   const [localRefundedData, setLocalRefundedData] = useState([]);
   const webSocketInitialized = useRef(false);
 
+  const getRefundedAppointments = async () => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log('Fetching refunded appointments...');
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/appointments/refunded`, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('API Response:', response.data);
+      }
+      return response.data || { data: [] };
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error fetching refunded appointments:', error);
+      }
+      return { data: [] };
+    }
+  };
+
   useEffect(() => {
     const fetchRefundedAppointments = async () => {
       try {
         setLoading(true);
-        const response = await BookingService.getRefundedAppointments();
-        console.log('API Response:', response);
-
+        const response = await getRefundedAppointments();
+        
         if (response.data && Array.isArray(response.data)) {
           const formattedData = response.data.map(item => ({
             ...item,
@@ -47,9 +71,13 @@ const RefundedAppointments = () => {
           }));
           setLocalRefundedData(formattedData);
           setRefundedData(formattedData);
-          console.log('Updated refundedData:', formattedData);
+          if (import.meta.env.DEV) {
+            console.log('Updated refundedData:', formattedData);
+          }
         } else {
-          console.warn('No valid data returned from API, using empty array');
+          if (import.meta.env.DEV) {
+            console.warn('No valid data returned from API, using empty array');
+          }
           setLocalRefundedData([]);
           setRefundedData([]);
         }
@@ -72,17 +100,23 @@ const RefundedAppointments = () => {
     }
 
     const unsubscribeConnect = webSocketService.onConnect(() => {
-      console.log('RefundedAppointments: WebSocket đã kết nối');
+      if (import.meta.env.DEV) {
+        console.log('RefundedAppointments: WebSocket đã kết nối');
+      }
       setIsWebSocketConnected(true);
     });
 
     const unsubscribeDisconnect = webSocketService.onDisconnect(() => {
-      console.log('RefundedAppointments: WebSocket đã ngắt kết nối');
+      if (import.meta.env.DEV) {
+        console.log('RefundedAppointments: WebSocket đã ngắt kết nối');
+      }
       setIsWebSocketConnected(false);
     });
 
     const handleRefundUpdate = (data) => {
-      console.log('RefundedAppointments: Cập nhật trạng thái hoàn tiền qua WebSocket', data);
+      if (import.meta.env.DEV) {
+        console.log('RefundedAppointments: Cập nhật trạng thái hoàn tiền qua WebSocket', data);
+      }
       if (data.appointmentId && data.refundStatus) {
         message.info(`Trạng thái hoàn tiền cho lịch hẹn #${data.appointmentId} đã được cập nhật`);
         fetchRefundedAppointments();
@@ -344,7 +378,9 @@ const RefundedAppointments = () => {
     return matchSearch && matchStatus && matchDate;
   });
 
-  console.log('Filtered Data:', filteredData);
+  if (import.meta.env.DEV) {
+    console.log('Filtered Data:', filteredData);
+  }
 
   const handleExportExcel = () => {
     message.info('Chức năng xuất Excel đang được phát triển');

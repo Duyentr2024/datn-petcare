@@ -3,8 +3,8 @@ import { Select, Input, DatePicker, Button, Radio, Badge, message, notification,
 import { PlusOutlined, SearchOutlined, LeftOutlined, RightOutlined, BellOutlined, HistoryOutlined, CalendarOutlined, WalletOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
+import axios from 'axios';
 import './AdminAppointment.css';
-import BookingService from "../../../service/spaService/BookingService";
 import AddAppointmentModal from './AddAppointmentModal';
 import OnlineBookingModal from './OnlineBookingModal';
 import Calendar from './Calendar';
@@ -15,6 +15,8 @@ import webSocketService from "../../../service/WebSocketService";
 const { TabPane } = Tabs;
 
 dayjs.locale('vi');
+
+const VITE_API_BASE_URL = 'http://api.petcarect.store';
 
 const AdminAppointment = () => {
   const [searchText, setSearchText] = useState('');
@@ -31,16 +33,29 @@ const AdminAppointment = () => {
 
   const fetchOnlineBookings = async () => {
     try {
-      console.log('Fetching PAID appointments...');
-      const response = await BookingService.getPendingAppointments();
-      console.log('Fetched PAID appointments:', response);
-  
-      if (response && Array.isArray(response.data)) {
+      if (import.meta.env.DEV) {
+        console.log('Fetching PAID appointments...');
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/appointments/pending`, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Fetched PAID appointments:', response.data);
+      }
+
+      if (response.data && Array.isArray(response.data)) {
         setOnlineBookings(response.data);
         setNotificationCount(response.data.length);
-        console.log('Updated onlineBookings:', response.data);
+        if (import.meta.env.DEV) {
+          console.log('Updated onlineBookings:', response.data);
+        }
       } else {
-        console.warn('Invalid response format:', response);
+        if (import.meta.env.DEV) {
+          console.warn('Invalid response format:', response);
+        }
         setOnlineBookings([]);
         setNotificationCount(0);
       }
@@ -48,6 +63,33 @@ const AdminAppointment = () => {
       console.error('Error fetching online bookings:', error);
       setOnlineBookings([]);
       setNotificationCount(0);
+    }
+  };
+
+  const confirmAppointment = async (appointmentId, staffId) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Confirming appointment ID ${appointmentId} with staff ID ${staffId}`);
+      }
+      const response = await axios.post(`${VITE_API_BASE_URL}/api/appointments/confirm`, {
+        appointmentIds: [appointmentId],
+        userId: staffId
+      }, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Confirm appointment response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error confirming appointment:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể xác nhận lịch hẹn');
     }
   };
 
@@ -67,17 +109,23 @@ const AdminAppointment = () => {
     }
 
     const unsubscribeConnect = webSocketService.onConnect(() => {
-      console.log('WebSocket connected via WebSocketService');
+      if (import.meta.env.DEV) {
+        console.log('WebSocket connected via WebSocketService');
+      }
       setIsWebSocketConnected(true);
     });
 
     const unsubscribeDisconnect = webSocketService.onDisconnect(() => {
-      console.log('WebSocket disconnected via WebSocketService');
+      if (import.meta.env.DEV) {
+        console.log('WebSocket disconnected via WebSocketService');
+      }
       setIsWebSocketConnected(false);
     });
 
     const unsubscribeNew = webSocketService.onNewAppointment((data) => {
-      console.log('New appointment received via WebSocketService:', data);
+      if (import.meta.env.DEV) {
+        console.log('New appointment received via WebSocketService:', data);
+      }
       const appointment = data.appointment;
       notification.info({
         message: 'Lịch hẹn mới cần xác nhận',
@@ -99,7 +147,9 @@ const AdminAppointment = () => {
     });
 
     const unsubscribeCancel = webSocketService.onAppointmentCancelled((data) => {
-      console.log('Appointment cancelled via WebSocket:', data);
+      if (import.meta.env.DEV) {
+        console.log('Appointment cancelled via WebSocket:', data);
+      }
       notification.info({
         message: 'Lịch hẹn đã bị hủy',
         description: (
@@ -157,7 +207,7 @@ const AdminAppointment = () => {
     try {
       await Promise.all(
         confirmedBookings.map(booking => 
-          BookingService.confirmAppointment(booking.appointmentId, booking.staffId)
+          confirmAppointment(booking.appointmentId, booking.staffId)
         )
       );
       message.success('Xác nhận lịch hẹn thành công');

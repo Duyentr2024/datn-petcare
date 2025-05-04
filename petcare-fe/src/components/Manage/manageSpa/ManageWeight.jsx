@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import PetWeightService from '../../../service/spaService/PetWeightService';
+import axios from 'axios';
+
+const VITE_API_BASE_URL = 'http://api.petcarect.store';
 
 const ManageWeight = () => {
   const initialFormData = {
@@ -15,7 +17,7 @@ const ManageWeight = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('DOG');
   const [statusFilter, setStatusFilter] = useState('ACTIVE');
-  const [errors, setErrors] = useState({}); // State để lưu trữ lỗi tại các ô input
+  const [errors, setErrors] = useState({});
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
 
   const filteredWeights = weights.filter(
@@ -24,13 +26,130 @@ const ManageWeight = () => {
       (statusFilter === 'ALL' || weight.statusType === statusFilter)
   );
 
+  const getAllPetWeights = async () => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log('Fetching all pet weights...');
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/pet-weights`, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Pet weights response:', response.data);
+      }
+      return response.data || [];
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error fetching pet weights:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể lấy danh sách khoảng cân nặng');
+    }
+  };
+
+  const createPetWeight = async (weightData) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log('Creating pet weight:', weightData);
+      }
+      const response = await axios.post(`${VITE_API_BASE_URL}/api/pet-weights`, weightData, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Create pet weight response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error creating pet weight:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể thêm khoảng cân nặng');
+    }
+  };
+
+  const updatePetWeight = async (id, weightData) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Updating pet weight ID: ${id}`, weightData);
+      }
+      const response = await axios.put(`${VITE_API_BASE_URL}/api/pet-weights/${id}`, weightData, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Update pet weight response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error updating pet weight:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể cập nhật khoảng cân nặng');
+    }
+  };
+
+  const activatePetWeight = async (id) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Activating pet weight ID: ${id}`);
+      }
+      const response = await axios.put(`${VITE_API_BASE_URL}/api/pet-weights/${id}/activate`, {}, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Activate pet weight response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error activating pet weight:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể kích hoạt khoảng cân nặng');
+    }
+  };
+
+  const deactivatePetWeight = async (id) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Deactivating pet weight ID: ${id}`);
+      }
+      const response = await axios.put(`${VITE_API_BASE_URL}/api/pet-weights/${id}/deactivate`, {}, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Deactivate pet weight response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error deactivating pet weight:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể vô hiệu hóa khoảng cân nặng');
+    }
+  };
+
   useEffect(() => {
     fetchWeights();
   }, []);
 
   const fetchWeights = async () => {
     try {
-      const data = await PetWeightService.getAllPetWeights();
+      const data = await getAllPetWeights();
       setWeights(
         data.map((weight) => ({
           ...weight,
@@ -48,7 +167,6 @@ const ManageWeight = () => {
       ...prev,
       [name]: name === 'price_multiplier' ? parseFloat(value) : value,
     }));
-    // Xóa lỗi khi người dùng bắt đầu nhập
     setErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
@@ -89,10 +207,10 @@ const ManageWeight = () => {
       };
 
       if (isEditing && formData.id) {
-        await PetWeightService.updatePetWeight(formData.id, weightData);
+        await updatePetWeight(formData.id, weightData);
         setNotification({ show: true, message: 'Cập nhật khoảng cân nặng thành công!', type: 'success' });
       } else {
-        await PetWeightService.createPetWeight(weightData);
+        await createPetWeight(weightData);
         setNotification({ show: true, message: 'Thêm khoảng cân nặng mới thành công!', type: 'success' });
       }
 
@@ -117,22 +235,21 @@ const ManageWeight = () => {
     setErrors({});
   };
 
-  const handleStatusChange = (weight, newStatus) => {
-    const action = newStatus === 'ACTIVE' ? PetWeightService.activatePetWeight : PetWeightService.deactivatePetWeight;
-    action(weight.petWeightId)
-      .then(() => {
-        setNotification({
-          show: true,
-          message: newStatus === 'ACTIVE'
-            ? 'Kích hoạt khoảng cân nặng thành công!'
-            : 'Vô hiệu hóa khoảng cân nặng thành công!',
-          type: 'success',
-        });
-        fetchWeights();
-      })
-      .catch((error) => {
-        setNotification({ show: true, message: error.message, type: 'error' });
+  const handleStatusChange = async (weight, newStatus) => {
+    try {
+      const action = newStatus === 'ACTIVE' ? activatePetWeight : deactivatePetWeight;
+      await action(weight.petWeightId);
+      setNotification({
+        show: true,
+        message: newStatus === 'ACTIVE'
+          ? 'Kích hoạt khoảng cân nặng thành công!'
+          : 'Vô hiệu hóa khoảng cân nặng thành công!',
+        type: 'success',
       });
+      fetchWeights();
+    } catch (error) {
+      setNotification({ show: true, message: error.message, type: 'error' });
+    }
   };
 
   const resetForm = () => {

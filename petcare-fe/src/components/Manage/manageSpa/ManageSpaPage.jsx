@@ -4,22 +4,75 @@ import ManageSlot from './ManageSlot';
 import ManagePetService from './ManagePetService';
 import ManageWeight from './ManageWeight';
 import ManageSchedule from './ManageSchedule';
-import TimeSlotService from '../../../service/spaService/TimeSlotService';
+import axios from 'axios';
 import { useAuth } from '../../../context/AuthContext.jsx';
+
+const VITE_API_BASE_URL = 'http://api.petcarect.store';
 
 const ManageSpaPage = () => {
   const { user, token, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('slot');
+  const [activeTab, setActiveTab] = useState('petService'); // Đổi mặc định sang 'petService' vì 'slot' bị comment
   const [isBookingEnabled, setIsBookingEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+
+  const getBookingStatus = async () => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log('Fetching booking status...');
+      }
+      const response = await axios.get(`${VITE_API_BASE_URL}/api/booking-enabled`, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      if (import.meta.env.DEV) {
+        console.log('Booking status response:', response.data);
+      }
+      return response.data.enabled || false;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error fetching booking status:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể lấy trạng thái đặt lịch');
+    }
+  };
+
+  const updateBookingStatus = async (enabled, token) => {
+    try {
+      if (import.meta.env.DEV) {
+        console.log(`Updating booking status to: ${enabled}`);
+      }
+      const response = await axios.put(`${VITE_API_BASE_URL}/api/booking-enabled`, 
+        { enabled },
+        {
+          timeout: 10000,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      if (import.meta.env.DEV) {
+        console.log('Update booking status response:', response.data);
+      }
+      return response.data;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error updating booking status:', error);
+      }
+      throw new Error(error.response?.data?.message || 'Không thể cập nhật trạng thái đặt lịch');
+    }
+  };
 
   useEffect(() => {
     const fetchBookingStatus = async () => {
       try {
         setIsLoading(true);
         setErrorMessage(null);
-        const status = await TimeSlotService.getBookingStatus();
+        const status = await getBookingStatus();
         setIsBookingEnabled(status);
       } catch (error) {
         console.error('Lỗi khi lấy trạng thái đặt lịch:', error.message);
@@ -42,7 +95,7 @@ const ManageSpaPage = () => {
     try {
       setIsLoading(true);
       setErrorMessage(null);
-      await TimeSlotService.updateBookingStatus(newStatus, token);
+      await updateBookingStatus(newStatus, token);
       setIsBookingEnabled(newStatus);
     } catch (error) {
       console.error('Lỗi khi cập nhật trạng thái đặt lịch:', error.message);
@@ -131,7 +184,7 @@ const ManageSpaPage = () => {
       <div className="px-6 pt-4">
         <div className="flex justify-center">
           <div className="bg-gray-100 p-1.5 rounded-xl shadow-inner flex space-x-1 w-full max-w-5xl">
-            <button
+            {/* <button
               onClick={() => setActiveTab('slot')}
               className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center space-x-1.5 min-w-[120px] ${
                 activeTab === 'slot'
@@ -143,7 +196,7 @@ const ManageSpaPage = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               <span>Quản lý Slot</span>
-            </button>
+            </button> */}
             <button
               onClick={() => setActiveTab('petService')}
               className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center space-x-1.5 min-w-[140px] ${
@@ -170,7 +223,7 @@ const ManageSpaPage = () => {
               </svg>
               <span>Quản lý Cân nặng</span>
             </button>
-            <button
+            {/* <button
               onClick={() => setActiveTab('schedule')}
               className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center space-x-1.5 min-w-[140px] ${
                 activeTab === 'schedule'
@@ -182,7 +235,7 @@ const ManageSpaPage = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span>Lên lịch bật/tắt</span>
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
