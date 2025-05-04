@@ -15,9 +15,6 @@ import {
 import { Client } from '@stomp/stompjs';
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import axios from 'axios';
-import PetServiceService from "../../../service/spaService/PetServiceService";
-import PetWeightService from "../../../service/spaService/PetWeightService";
-import TimeSlotService from "../../../service/spaService/TimeSlotService";
 import webSocketService from "../../../service/WebSocketService";
 import ServiceModal from "./ServiceModal";
 import CustomerModal from "./CustomerModal";
