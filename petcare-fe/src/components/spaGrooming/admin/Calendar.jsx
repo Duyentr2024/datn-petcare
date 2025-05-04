@@ -453,7 +453,7 @@ const Calendar = ({ refreshSlotDate }) => {
               Thanh toán
             </Button>
           )}
-          {record.status === "confirmed" && ( // Ẩn nút Hủy khi trạng thái là in_progress
+          {record.status === "confirmed" && (
             <Button
               type="primary"
               danger
@@ -543,10 +543,11 @@ const Calendar = ({ refreshSlotDate }) => {
       width: 120,
       render: (weightRange, record) => {
         const isUsing = bookedSlots.find(slot => slot.key === record.appointmentId)?.status === "in_progress";
+        const isCompleted = bookedSlots.find(slot => slot.key === record.appointmentId)?.status === "completed";
         return (
           <div className="flex items-center space-x-2">
             <span>{weightRange || "Không xác định"}</span>
-            {record.weightUpdateCount === 0 && !isUsing && (
+            {record.weightUpdateCount === 0 && !isUsing && !isCompleted && (
               <Button
                 type="link"
                 size="small"
@@ -573,16 +574,19 @@ const Calendar = ({ refreshSlotDate }) => {
       align: "center",
       render: (_, record) => {
         const isUsing = bookedSlots.find(slot => slot.key === record.appointmentId)?.status === "in_progress";
+        const isCompleted = bookedSlots.find(slot => slot.key === record.appointmentId)?.status === "completed";
         return (
-          <Button
-            type="primary"
-            danger
-            size="small"
-            className="bg-red-500 hover:bg-red-600"
-            icon={<X className="w-4 h-4" />}
-            onClick={() => handleDeleteService(record.key)}
-            disabled={isUsing}
-          />
+          !isCompleted && (
+            <Button
+              type="primary"
+              danger
+              size="small"
+              className="bg-red-500 hover:bg-red-600"
+              icon={<X className="w-4 h-4" />}
+              onClick={() => handleDeleteService(record.key)}
+              disabled={isUsing}
+            />
+          )
         );
       },
     },
