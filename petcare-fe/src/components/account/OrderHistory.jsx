@@ -441,7 +441,7 @@ const OrderHistory = () => {
       )}
 
       {selectedOrderReview && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center px-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center px- z-99">
           <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto relative">
             <button
               className="absolute top-4 right-4 text-gray-600 hover:text-red-500 text-2xl"
@@ -484,7 +484,7 @@ const OrderHistory = () => {
       )}
 
       {selectedProductReview && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center px-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center px-4 z-99">
           <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md relative">
             <button
               className="absolute top-4 right-4 text-gray-600 hover:text-red-500 text-2xl"
