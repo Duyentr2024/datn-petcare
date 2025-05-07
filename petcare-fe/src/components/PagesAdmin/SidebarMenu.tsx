@@ -77,15 +77,15 @@ const SidebarMenu = () => {
           </div>
           <ul className="space-y-2">
             {/* Dashboard */}
-            <li>
-              <Link
-                to="/admin"
-                className="flex items-center p-3 bg-[#E0F7FA] text-[#4B5563] rounded-lg hover:bg-[#80DEEA] transition duration-300"
-              >
-                <FiHome className="w-5 h-5 flex-shrink-0" />
-                <span className="ml-3">Trang tổng quan</span>
-              </Link>
-            </li>
+            {/*<li>*/}
+            {/*  <Link*/}
+            {/*    to="/admin"*/}
+            {/*    className="flex items-center p-3 bg-[#E0F7FA] text-[#4B5563] rounded-lg hover:bg-[#80DEEA] transition duration-300"*/}
+            {/*  >*/}
+            {/*    <FiHome className="w-5 h-5 flex-shrink-0" />*/}
+            {/*    <span className="ml-3">Trang tổng quan</span>*/}
+            {/*  </Link>*/}
+            {/*</li>*/}
 
             {/* Statistics Dropdown */}
             <li>
@@ -107,7 +107,7 @@ const SidebarMenu = () => {
                 <ul className="mt-2 ml-6 space-y-2">
                   <li>
                     <Link
-                      to="/admin/sales-statistics"
+                      to="/admin"
                       className="block p-2 rounded-lg hover:bg-[#80DEEA] transition duration-300"
                     >
                       Thống kê bán hàng
@@ -121,14 +121,14 @@ const SidebarMenu = () => {
                       Thống kê Spa
                     </Link>
                   </li>
-                  <li>
-                    <Link
-                      to="/admin/hospital-statistics"
-                      className="block p-2 rounded-lg hover:bg-[#80DEEA] transition duration-300"
-                    >
-                      Thống kê Hospital
-                    </Link>
-                  </li>
+                  {/*<li>*/}
+                  {/*  <Link*/}
+                  {/*    to="/admin/hospital-statistics"*/}
+                  {/*    className="block p-2 rounded-lg hover:bg-[#80DEEA] transition duration-300"*/}
+                  {/*  >*/}
+                  {/*    Thống kê Hospital*/}
+                  {/*  </Link>*/}
+                  {/*</li>*/}
                 </ul>
               )}
             </li>

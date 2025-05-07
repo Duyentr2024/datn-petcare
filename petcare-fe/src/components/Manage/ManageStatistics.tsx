@@ -964,8 +964,8 @@ const ManageStatistics = () => {
           { name: "revenue", label: "Thống kê doanh thu", icon: <FaDollarSign size={11} /> },
           { name: "products", label: "Sản phẩm bán chạy", icon: <FaBoxOpen size={11} /> },
           { name: "customers", label: "Khách hàng thân thiết", icon: <FaUsers size={11} /> },
-          { name: "spa", label: "Quản lý Spa", icon: <FaHospital size={11} /> },
-          { name: "interface", label: "Quản lý giao diện", icon: <FaPalette size={11} /> }
+          // { name: "spa", label: "Quản lý Spa", icon: <FaHospital size={11} /> },
+          // { name: "interface", label: "Quản lý giao diện", icon: <FaPalette size={11} /> }
         ].map((tab) => (
           <button
             key={tab.name}
@@ -1284,29 +1284,29 @@ const ManageStatistics = () => {
           </div>
         )}
 
-        {activeTab === "spa" && (
-          <div className="p-4">
-            <div className="flex flex-col items-center justify-center my-8 text-center">
-              <FaHospital className="text-blue-500 text-4xl mb-4" />
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">Quản lý Spa</h3>
-              <p className="text-gray-500 max-w-md">
-                Tính năng Quản lý Spa đang được phát triển. Vui lòng quay lại sau.
-              </p>
-            </div>
-          </div>
-        )}
+        {/*{activeTab === "spa" && (*/}
+        {/*  <div className="p-4">*/}
+        {/*    <div className="flex flex-col items-center justify-center my-8 text-center">*/}
+        {/*      <FaHospital className="text-blue-500 text-4xl mb-4" />*/}
+        {/*      <h3 className="text-lg font-semibold text-gray-700 mb-2">Quản lý Spa</h3>*/}
+        {/*      <p className="text-gray-500 max-w-md">*/}
+        {/*        Tính năng Quản lý Spa đang được phát triển. Vui lòng quay lại sau.*/}
+        {/*      </p>*/}
+        {/*    </div>*/}
+        {/*  </div>*/}
+        {/*)}*/}
 
-        {activeTab === "interface" && (
-          <div className="p-4">
-            <div className="flex flex-col items-center justify-center my-8 text-center">
-              <FaPalette className="text-purple-500 text-4xl mb-4" />
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">Quản lý giao diện</h3>
-              <p className="text-gray-500 max-w-md">
-                Tính năng Quản lý giao diện đang được phát triển. Vui lòng quay lại sau.
-              </p>
-            </div>
-          </div>
-        )}
+        {/*{activeTab === "interface" && (*/}
+        {/*  <div className="p-4">*/}
+        {/*    <div className="flex flex-col items-center justify-center my-8 text-center">*/}
+        {/*      <FaPalette className="text-purple-500 text-4xl mb-4" />*/}
+        {/*      <h3 className="text-lg font-semibold text-gray-700 mb-2">Quản lý giao diện</h3>*/}
+        {/*      <p className="text-gray-500 max-w-md">*/}
+        {/*        Tính năng Quản lý giao diện đang được phát triển. Vui lòng quay lại sau.*/}
+        {/*      </p>*/}
+        {/*    </div>*/}
+        {/*  </div>*/}
+        {/*)}*/}
       </div>
     </div>
   );

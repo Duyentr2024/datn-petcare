@@ -78,7 +78,7 @@ const ManageSlot = () => {
 
       setSlotsConfig(updatedSlots);
     } catch (error) {
-      showNotification('Lỗi khi tải danh sách slot: ' + error.message, 'error');
+      // showNotification('Lỗi khi tải danh sách slot: ' + error.message, 'error');
     }
   };
 

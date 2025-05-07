@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Input, DatePicker, Select, Table, Tag, Button, Modal, message, Tooltip, Space, Skeleton, Empty } from 'antd';
+import { Input, DatePicker, Select, Table, Tag, Button, Modal, message, Tooltip, Space, Skeleton, Empty, Radio } from 'antd';
 import { SearchOutlined, CheckOutlined, FileExcelOutlined, InfoCircleOutlined, BankOutlined, WalletOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
-import webSocketService from "../../../service/WebSocketService";
+import axios from 'axios';import webSocketService from "../../../service/WebSocketService";
 import BookingService from "../../../service/spaService/BookingService";
 import './AdminAppointment.css';
 
@@ -22,19 +22,23 @@ const RefundedAppointments = () => {
   const [refundNote, setRefundNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
+  const [refundUserId, setRefundUserId] = useState(null); // Lưu userId của nhân viên thực hiện hoàn tiền
   
   const [localRefundedData, setLocalRefundedData] = useState([]);
   const webSocketInitialized = useRef(false);
 
-  useEffect(() => {
-    const fetchRefundedAppointments = async () => {
-      try {
-        setLoading(true);
-        const response = await BookingService.getRefundedAppointments();
-        console.log('API Response:', response);
+  const fetchRefundedAppointments = async () => {
+    try {
+      setLoading(true);
+      // Truyền filter dựa trên statusFilter
+      const filter = statusFilter === 'pending' ? 'pending' : statusFilter === 'completed' ? 'completed' : 'all';
+      const response = await BookingService.getRefundedAppointments(filter);
+      console.log('API Response:', response);
 
-        if (response.data && Array.isArray(response.data)) {
-          const formattedData = response.data.map(item => ({
+      if (response.data && Array.isArray(response.data)) {
+        const formattedData = response.data.map(item => {
+          console.log('Processing item:', item);
+          return {
             ...item,
             date: item.date || '',
             time: item.time ? item.time.substring(0, 5) : '',
@@ -44,25 +48,27 @@ const RefundedAppointments = () => {
             refundMethod: item.refundMethod || null,
             refundNote: item.refundNote || null,
             cancelReason: item.cancelReason || 'Không có'
-          }));
-          setLocalRefundedData(formattedData);
-          setRefundedData(formattedData);
-          console.log('Updated refundedData:', formattedData);
-        } else {
-          console.warn('No valid data returned from API, using empty array');
-          setLocalRefundedData([]);
-          setRefundedData([]);
-        }
-      } catch (error) {
-        console.error('Error fetching refunded appointments:', error);
-        message.error('Không thể tải danh sách lịch hẹn hoàn tiền');
+          };
+        });
+        console.log('Formatted Data:', formattedData);
+        setLocalRefundedData(formattedData);
+        setRefundedData(formattedData);
+      } else {
+        console.warn('No valid data returned from API, using empty array');
         setLocalRefundedData([]);
         setRefundedData([]);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error('Error fetching refunded appointments:', error);
+      message.error('Không thể tải danh sách lịch hẹn hoàn tiền');
+      setLocalRefundedData([]);
+      setRefundedData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchRefundedAppointments();
 
     if (webSocketInitialized.current) return;
@@ -83,7 +89,7 @@ const RefundedAppointments = () => {
 
     const handleRefundUpdate = (data) => {
       console.log('RefundedAppointments: Cập nhật trạng thái hoàn tiền qua WebSocket', data);
-      if (data.appointmentId && data.refundStatus) {
+      if (data.appointmentId) {
         message.info(`Trạng thái hoàn tiền cho lịch hẹn #${data.appointmentId} đã được cập nhật`);
         fetchRefundedAppointments();
       }
@@ -99,7 +105,7 @@ const RefundedAppointments = () => {
       unsubscribeRefundUpdated();
       webSocketInitialized.current = false;
     };
-  }, []);
+  }, [statusFilter]); // Thêm statusFilter vào dependency để gọi lại API khi filter thay đổi
 
   useEffect(() => {
     setRefundedData(localRefundedData);
@@ -117,10 +123,23 @@ const RefundedAppointments = () => {
     setDateRange(dates);
   };
 
-  const showRefundModal = (appointment) => {
+  const showRefundModal = async (appointment) => {
     setSelectedAppointment(appointment);
     setRefundMethod('CASH');
     setRefundNote('');
+    setRefundUserId(null); // Reset userId trước khi lấy mới
+
+    // Lấy userId từ lịch sử hành động nếu lịch hẹn đã được hoàn
+    if (appointment.refundStatus === 'COMPLETED') {
+      try {
+        const userId = await BookingService.getRefundUserId(appointment.appointmentId);
+        setRefundUserId(userId);
+      } catch (error) {
+        console.error('Error fetching refund userId:', error);
+        message.error('Không thể lấy thông tin nhân viên thực hiện hoàn tiền');
+      }
+    }
+
     setIsModalVisible(true);
   };
 
@@ -146,9 +165,37 @@ const RefundedAppointments = () => {
         return;
       }
 
+      // Lấy userId từ token
+      let userId;
+      try {
+        userId = BookingService.getCurrentUserId();
+      } catch (error) {
+        console.error('Error getting userId:', error);
+        message.error('Không thể xác định nhân viên thực hiện hoàn tiền');
+        return;
+      }
+
+      // Gọi API cập nhật trạng thái hoàn tiền
+      await BookingService.updateRefundStatus(selectedAppointment.appointmentId, {
+        refundStatus: 'COMPLETED',
+        refundMethod,
+        refundNote,
+        userId
+      });
+
+      // Cập nhật local state mà không xóa lịch hẹn
       setLocalRefundedData(prev => {
-        const updatedData = prev.filter(item => item.appointmentId !== selectedAppointment.appointmentId);
-        return updatedData;
+        return prev.map(item => {
+          if (item.appointmentId === selectedAppointment.appointmentId) {
+            return {
+              ...item,
+              refundStatus: 'COMPLETED',
+              refundMethod,
+              refundNote
+            };
+          }
+          return item;
+        });
       });
       
       message.success(`Đã hoàn tiền cho lịch hẹn #${selectedAppointment.appointmentId}`);
@@ -157,7 +204,7 @@ const RefundedAppointments = () => {
       webSocketService.notifyRefundStatusUpdated(selectedAppointment.appointmentId);
     } catch (error) {
       console.error('Lỗi khi cập nhật trạng thái hoàn tiền:', error);
-      message.error('Không thể cập nhật trạng thái hoàn tiền');
+      message.error('Không thể cập nhật trạng thái hoàn tiền: ' + (error.response?.data?.message || error.message));
     } finally {
       setIsSubmitting(false);
     }
@@ -338,9 +385,10 @@ const RefundedAppointments = () => {
       (statusFilter === 'pending' ? item.refundStatus === 'PENDING' : item.refundStatus === 'COMPLETED');
     
     const matchDate = dateRange && dateRange[0] && dateRange[1] ? 
-      (dayjs(item.date).isAfter(dateRange[0]) && 
-       dayjs(item.date).isBefore(dateRange[1])) : true;
+      (dayjs(item.date).isAfter(dayjs(dateRange[0]).subtract(1, 'day')) && 
+       dayjs(item.date).isBefore(dayjs(dateRange[1]).add(1, 'day'))) : true;
     
+    console.log('Filtering item:', item, { matchSearch, matchStatus, matchDate });
     return matchSearch && matchStatus && matchDate;
   });
 
@@ -435,68 +483,125 @@ const RefundedAppointments = () => {
       )}
 
       <Modal
-        title="Xác nhận hoàn tiền"
+        title={<div className="text-lg">Xác nhận hoàn tiền</div>}
         open={isModalVisible}
         onCancel={handleModalCancel}
-        footer={[
-          <Button key="cancel" onClick={handleModalCancel}>
-            Hủy
-          </Button>,
-          <Button 
-            key="submit" 
-            type="primary"
-            loading={isSubmitting}
-            onClick={handleRefundConfirm}
-            className="bg-green-500 hover:bg-green-600"
-          >
-            Xác nhận hoàn tiền
-          </Button>
-        ]}
+        footer={null}
+        width={500}
+        centered
       >
         {selectedAppointment && (
-          <div className="space-y-4">
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="font-medium">Lịch hẹn #{selectedAppointment.appointmentId}</p>
-              <p>Khách hàng: {selectedAppointment.customerName}</p>
-              <p className="text-green-600 font-medium">Số tiền hoàn: {formatCurrency(selectedAppointment.refundAmount)}</p>
-              {selectedAppointment.nonRefundedDeposit > 0 && (
-                <p className="text-orange-500">Cọc không hoàn: {formatCurrency(selectedAppointment.nonRefundedDeposit)}</p>
-              )}
+          <div className="space-y-5">
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-base font-medium">Thông tin lịch hẹn</h3>
+                <Tag color="orange">#{selectedAppointment.appointmentId}</Tag>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="text-gray-500">Khách hàng:</div>
+                <div className="font-medium">{selectedAppointment.customerName}</div>
+                
+                <div className="text-gray-500">Số điện thoại:</div>
+                <div>{selectedAppointment.phone || 'Không có'}</div>
+                
+                <div className="text-gray-500">Ngày hẹn:</div>
+                <div>{selectedAppointment.date ? dayjs(selectedAppointment.date).format('DD/MM/YYYY') : '-'}</div>
+                
+                <div className="text-gray-500">Giờ hẹn:</div>
+                <div>{selectedAppointment.time || '-'}</div>
+                
+                <div className="text-gray-500">Số tiền hoàn:</div>
+                <div className="font-medium text-green-600">{formatCurrency(selectedAppointment.refundAmount)}</div>
+                
+                {selectedAppointment.nonRefundedDeposit > 0 && (
+                  <>
+                    <div className="text-gray-500">Cọc không hoàn:</div>
+                    <div className="text-orange-500">{formatCurrency(selectedAppointment.nonRefundedDeposit)}</div>
+                  </>
+                )}
+                
+                <div className="text-gray-500">Lý do hủy:</div>
+                <div className="italic">{selectedAppointment.cancelReason || 'Không có'}</div>
+
+                {selectedAppointment.refundStatus === 'COMPLETED' && (
+                  <>
+                    <div className="text-gray-500">Thực hiện bởi:</div>
+                    <div>{refundUserId ? `Nhân viên ID #${refundUserId}` : 'Không xác định'}</div>
+                  </>
+                )}
+              </div>
             </div>
             
-            <div>
-              <label className="block mb-2 font-medium">Phương thức hoàn tiền</label>
-              <Select
-                value={refundMethod}
-                onChange={handleRefundMethodChange}
-                style={{ width: '100%' }}
-              >
-                <Option value="CASH">
-                  <WalletOutlined className="mr-2" />
-                  Tiền mặt
-                </Option>
-                <Option value="BANK_TRANSFER">
-                  <BankOutlined className="mr-2" />
-                  Chuyển khoản
-                </Option>
-              </Select>
-            </div>
-            
-            {refundMethod === 'BANK_TRANSFER' && (
-              <div>
-                <label className="block mb-2 font-medium">Thông tin chuyển khoản <span className="text-red-500">*</span></label>
-                <Input.TextArea
-                  value={refundNote}
-                  onChange={(e) => setRefundNote(e.target.value)}
-                  placeholder="Nhập thông tin tài khoản ngân hàng, số tiền, nội dung chuyển khoản..."
-                  rows={4}
-                />
-                <div className="mt-1 text-gray-500 text-sm">
-                  <InfoCircleOutlined className="mr-1" />
-                  Thông tin này sẽ được lưu vào ghi chú hoàn tiền
-                </div>
+            {selectedAppointment.refundStatus !== 'COMPLETED' && (
+              <div className="bg-white p-4 rounded-lg border border-gray-200">
+                <h3 className="text-base font-medium mb-3">Phương thức hoàn tiền</h3>
+                
+                <Radio.Group 
+                  value={refundMethod} 
+                  onChange={(e) => handleRefundMethodChange(e.target.value)}
+                  className="w-full space-y-3"
+                >
+                  <Radio value="CASH" className="block border p-3 rounded-lg hover:bg-gray-50">
+                    <div className="flex items-center">
+                      <WalletOutlined className="text-blue-500 mr-2" />
+                      <span className="font-medium">Tiền mặt</span>
+                    </div>
+                    <div className="text-sm text-gray-500 ml-6 mt-1">
+                      Hoàn tiền mặt trực tiếp cho khách hàng
+                    </div>
+                  </Radio>
+                  
+                  <Radio value="BANK_TRANSFER" className="block border p-3 rounded-lg hover:bg-gray-50">
+                    <div className="flex items-center">
+                      <BankOutlined className="text-purple-500 mr-2" />
+                      <span className="font-medium">Chuyển khoản</span>
+                    </div>
+                    <div className="text-sm text-gray-500 ml-6 mt-1">
+                      Hoàn tiền qua tài khoản ngân hàng
+                    </div>
+                  </Radio>
+                </Radio.Group>
+                
+                {refundMethod === 'BANK_TRANSFER' && (
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium mb-1">
+                      Thông tin chuyển khoản <span className="text-red-500">*</span>
+                    </label>
+                    <Input.TextArea
+                      value={refundNote}
+                      onChange={(e) => setRefundNote(e.target.value)}
+                      placeholder="Nhập thông tin tài khoản, số tiền, nội dung..."
+                      rows={3}
+                      className="w-full"
+                    />
+                    <div className="mt-1 text-xs text-gray-500 flex items-center">
+                      <InfoCircleOutlined className="mr-1" />
+                      Vui lòng nhập đầy đủ thông tin để ghi nhận vào hệ thống
+                    </div>
+                  </div>
+                )}
               </div>
             )}
+            
+            <div className="flex justify-end space-x-3 pt-3">
+              <Button 
+                onClick={handleModalCancel}
+                className="min-w-[100px]"
+              >
+                Đóng
+              </Button>
+              {selectedAppointment.refundStatus !== 'COMPLETED' && (
+                <Button 
+                  type="primary" 
+                  onClick={handleRefundConfirm}
+                  loading={isSubmitting}
+                  className="min-w-[100px] bg-green-500 hover:bg-green-600"
+                >
+                  Xác nhận
+                </Button>
+              )}
+            </div>
           </div>
         )}
       </Modal>

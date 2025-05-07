@@ -131,19 +131,19 @@ const ManageSpaPage = () => {
       <div className="px-6 pt-4">
         <div className="flex justify-center">
           <div className="bg-gray-100 p-1.5 rounded-xl shadow-inner flex space-x-1 w-full max-w-5xl">
-            <button
-              onClick={() => setActiveTab('slot')}
-              className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center space-x-1.5 min-w-[120px] ${
-                activeTab === 'slot'
-                  ? 'bg-white text-indigo-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <span>Quản lý Slot</span>
-            </button>
+            {/*<button*/}
+            {/*  onClick={() => setActiveTab('slot')}*/}
+            {/*  className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center space-x-1.5 min-w-[120px] ${*/}
+            {/*    activeTab === 'slot'*/}
+            {/*      ? 'bg-white text-indigo-600 shadow-sm'*/}
+            {/*      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'*/}
+            {/*  }`}*/}
+            {/*>*/}
+            {/*  <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">*/}
+            {/*    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />*/}
+            {/*  </svg>*/}
+            {/*  <span>Quản lý Slot</span>*/}
+            {/*</button>*/}
             <button
               onClick={() => setActiveTab('petService')}
               className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center space-x-1.5 min-w-[140px] ${
@@ -170,19 +170,19 @@ const ManageSpaPage = () => {
               </svg>
               <span>Quản lý Cân nặng</span>
             </button>
-            <button
-              onClick={() => setActiveTab('schedule')}
-              className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center space-x-1.5 min-w-[140px] ${
-                activeTab === 'schedule'
-                  ? 'bg-white text-indigo-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>Lên lịch bật/tắt</span>
-            </button>
+            {/*<button*/}
+            {/*  onClick={() => setActiveTab('schedule')}*/}
+            {/*  className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all duration-200 flex items-center justify-center space-x-1.5 min-w-[140px] ${*/}
+            {/*    activeTab === 'schedule'*/}
+            {/*      ? 'bg-white text-indigo-600 shadow-sm'*/}
+            {/*      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'*/}
+            {/*  }`}*/}
+            {/*>*/}
+            {/*  <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">*/}
+            {/*    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />*/}
+            {/*  </svg>*/}
+            {/*  <span>Lên lịch bật/tắt</span>*/}
+            {/*</button>*/}
           </div>
         </div>
       </div>

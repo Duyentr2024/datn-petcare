@@ -37,13 +37,13 @@ function Admin() {
           <HeaderAdmin />
           <Routes>
             
-            <Route path="/sales-statistics" element={<ManageStatistics/>} />
+            <Route path="/" element={<ManageStatistics/>} />
             <Route path="/spa-statistics" element={<ManageStatisticsSpa/>} />
             <Route path="/warehouse" element={<StockPage />} />
             <Route path="/invoice-management" element={<Invoice />} />
             <Route path="/invoice-online" element={<ManageOnline />} />
             <Route path="/invoice-hospital" element={<ManageHospital />} />
-            <Route path="/" element={<h1>Admin Dashboard</h1>} />
+            {/*<Route path="/" element={<h1>Admin Dashboard</h1>} />*/}
             <Route path="/employee" element={<ManageEmployee />} />
             <Route path="/client" element={<ManageClient />} />
             <Route path="/product-color" element={<ManageProductColor />} />

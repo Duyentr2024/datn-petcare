@@ -1104,91 +1104,127 @@ const BookingService = {
                     })
                 );
                 const filteredWeights = allWeightsResponse.data.filter(weight => 
-                    weight.petType === petType || 
-                    (petType === 'DOG' && weight.petType === 'dog') || 
-                    (petType === 'CAT' && weight.petType === 'cat')
+                    weight.petType.toLowerCase() === petType.toLowerCase()
                 );
                 console.log(`Filtered weights for ${petType}:`, filteredWeights);
                 return filteredWeights;
             } catch (fallbackError) {
-                console.error('Error with fallback method:', fallbackError);
-                console.log(`Returning fallback data for ${petType}`);
-                if (petType === 'DOG' || petType === 'dog') {
-                    return [
-                        { id: 1, weightRange: '< 2kg', petType: 'DOG', active: true, priceMultiplier: 0.8 },
-                        { id: 2, weightRange: '2-5kg', petType: 'DOG', active: true, priceMultiplier: 1.0 },
-                        { id: 3, weightRange: '5-10kg', petType: 'DOG', active: true, priceMultiplier: 1.2 },
-                        { id: 4, weightRange: '10-20kg', petType: 'DOG', active: true, priceMultiplier: 1.5 }
-                    ];
-                } else if (petType === 'CAT' || petType === 'cat') {
-                    return [
-                        { id: 5, weightRange: '< 2kg', petType: 'CAT', active: true, priceMultiplier: 0.8 },
-                        { id: 6, weightRange: '2-5kg', petType: 'CAT', active: true, priceMultiplier: 1.0 },
-                        { id: 7, weightRange: '5-10kg', petType: 'CAT', active: true, priceMultiplier: 1.2 }
-                    ];
-                }
-                throw new Error('Không thể tải danh sách cân nặng');
+                console.error(`Fallback error fetching all pet weights:`, fallbackError);
+                throw new Error(`Không thể tải danh sách cân nặng cho loại thú ${petType}`);
             }
         }
     },
 
-    getServicePrice: async (petServiceId, petWeightId) => {
+    getPetServices: async () => {
         try {
-            console.log(`Fetching service price for petServiceId: ${petServiceId}, petWeightId: ${petWeightId}`);
+            const response = await axios.get(`${API_BASE_URL}/pet-services`, {
+                timeout: 10000,
+            });
+            console.log('Pet services fetched:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching pet services:', error);
+            throw new Error('Không thể tải danh sách dịch vụ');
+        }
+    },
+
+    getPetServicesByType: async (petType) => {
+        try {
+            console.log(`Fetching services for pet type: ${petType}`);
             const response = await retryRequest(() => 
-                axios.get(`${API_BASE_URL}/pet-services/${petServiceId}/price`, {
-                    params: { petWeightId },
+                axios.get(`${API_BASE_URL}/pet-services/by-type/${petType}`, {
                     timeout: 10000,
                 })
             );
-            console.log(`Service price fetched:`, response.data);
-            if (response.status === 400) {
-                throw new Error('Yêu cầu không hợp lệ: ID dịch vụ hoặc cân nặng không hợp lệ');
+            console.log(`Pet services for ${petType} fetched:`, response.data);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching pet services for ${petType}:`, error);
+            try {
+                console.log(`Falling back to fetching all services and filtering by type: ${petType}`);
+                const allServicesResponse = await retryRequest(() => 
+                    axios.get(`${API_BASE_URL}/pet-services`, {
+                        timeout: 10000,
+                    })
+                );
+                const filteredServices = allServicesResponse.data.filter(service => 
+                    service.petType.toLowerCase() === petType.toLowerCase()
+                );
+                console.log(`Filtered services for ${petType}:`, filteredServices);
+                return filteredServices;
+            } catch (fallbackError) {
+                console.error(`Fallback error fetching all pet services:`, fallbackError);
+                throw new Error(`Không thể tải danh sách dịch vụ cho loại thú ${petType}`);
             }
-            return { price: response.data };
-        } catch (error) {
-            console.error(`Error fetching service price for petServiceId ${petServiceId}:`, error);
-            throw new Error(error.message || 'Không thể tải giá dịch vụ');
         }
     },
 
-    updatePetWeight: async (petId, payload) => {
+    getPetServicePrice: async (petServiceId, petWeightId) => {
         try {
-            console.log(`Updating pet weight for petId: ${petId}`, payload);
-            const response = await axios.put(`${API_BASE_URL}/pets/${petId}/weight`, payload, {
-                timeout: 10000,
-            });
-            console.log(`Pet weight updated:`, response.data);
-            return response.data;
+            console.log(`Fetching price for petServiceId: ${petServiceId}, petWeightId: ${petWeightId}`);
+            const response = await retryRequest(() => 
+                axios.get(`${API_BASE_URL}/pet-services/price`, {
+                    params: { petServiceId, petWeightId },
+                    timeout: 10000,
+                })
+            );
+            console.log('Pet service price fetched:', response.data);
+            return response.data.price || 0;
         } catch (error) {
-            console.error(`Error updating pet weight for petId ${petId}:`, error);
-            throw new Error(error.response?.data?.message || 'Không thể cập nhật cân nặng');
+            console.error('Error fetching pet service price:', error);
+            throw new Error('Không thể tải giá dịch vụ');
         }
     },
 
-    createAdditionalFee: async (payload) => {
-        try {
-            console.log('Creating additional fee with payload:', payload);
-            const response = await axios.post(`${API_BASE_URL}/appointments/${payload.appointmentId}/fees`, payload, {
-                timeout: 10000,
-            });
-            console.log('Additional fee created:', response.data);
-            return response.data;
-        } catch (error) {
-            console.error('Error creating additional fee:', error);
-            throw new Error(error.response?.data?.message || 'Không thể tạo phí phụ thu');
-        }
-    },
-
-    getRefundedAppointments: async () => {
+    getRefundedAppointments: async (filter = 'pending') => {
         try {
             const response = await axios.get(`${API_BASE_URL}/appointments/refunded`, {
+                params: { filter }, // Truyền filter vào query params
                 timeout: 10000,
             });
             return { data: response.data };
         } catch (error) {
             console.error('Error fetching refunded appointments:', error);
             throw new Error(error.message || 'Không thể tải danh sách lịch hẹn hoàn tiền');
+        }
+    },
+
+    updateRefundStatus: async (appointmentId, payload) => {
+        try {
+            console.log(`Updating refund status for appointment ${appointmentId} with payload:`, payload);
+            const response = await axios.put(`${API_BASE_URL}/appointments/${appointmentId}/refund`, payload);
+            console.log('Update refund status response:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Error updating refund status:', error);
+            throw new Error(error.response?.data?.message || 'Không thể cập nhật trạng thái hoàn tiền');
+        }
+    },
+
+    getAppointmentHistory: async () => {
+        try {
+            const response = await axios.get(`${API_BASE_URL}/appointments/history`, {
+                timeout: 10000,
+            });
+            return { data: response.data };
+        } catch (error) {
+            console.error('Error fetching appointment history:', error);
+            throw new Error(error.message || 'Không thể tải lịch sử lịch hẹn');
+        }
+    },
+
+    searchHistoryByPhone: async (phone) => {
+        try {
+            console.log(`Searching appointment history for phone: ${phone}`);
+            const response = await axios.get(`${API_BASE_URL}/appointments/history/search`, {
+                params: { phone },
+                timeout: 10000,
+            });
+            console.log('Appointment history search response:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Error searching appointment history by phone:', error);
+            throw new Error(error.response?.data?.message || 'Không thể tìm kiếm lịch sử theo số điện thoại');
         }
     },
 
@@ -1201,25 +1237,6 @@ const BookingService = {
         } catch (error) {
             console.error('Error fetching refunded appointments pending count:', error);
             throw new Error(error.message || 'Không thể tải số lượng lịch hẹn hoàn tiền đang chờ');
-        }
-    },
-
-    updateRefundStatus: async (appointmentId, payload) => {
-        try {
-            const userId = getCurrentUserId();
-            const requestPayload = {
-                refundStatus: payload.refundStatus,
-                refundMethod: payload.refundMethod,
-                refundNote: payload.refundNote,
-                userId: userId
-            };
-            console.log('Updating refund status with payload:', requestPayload);
-            const response = await axios.put(`${API_BASE_URL}/appointments/${appointmentId}/refund`, requestPayload);
-            console.log('Update refund status response:', response.data);
-            return response.data;
-        } catch (error) {
-            console.error('Error updating refund status:', error);
-            throw new Error(error.response?.data?.message || 'Không thể cập nhật trạng thái hoàn tiền');
         }
     },
 
@@ -1236,7 +1253,7 @@ const BookingService = {
             console.log(`Transactions for appointment ${appointmentId}:`, response.data);
             
             if (!response.data) {
-                console.warn(`No transactions found for appointment ${appointmentId}`);
+                console.warn(`No transactions returned for appointment ${appointmentId}`);
                 return [];
             }
             
@@ -1265,7 +1282,23 @@ const BookingService = {
             console.error(`Server error in getTransactionsByAppointmentId: ${errorMsg}`, error.response?.data);
             throw new Error(errorMsg);
         }
-    }
+    },
+
+    getRefundUserId: async (appointmentId) => {
+        try {
+            console.log(`Fetching refund userId for appointment ${appointmentId}`);
+            const response = await axios.get(`${API_BASE_URL}/appointments/${appointmentId}/refund-user`, {
+                timeout: 10000,
+            });
+            console.log(`Refund userId for appointment ${appointmentId}:`, response.data);
+            return response.data; // Trả về userId hoặc null nếu không tìm thấy
+        } catch (error) {
+            console.error(`Error fetching refund userId for appointment ${appointmentId}:`, error);
+            throw new Error(error.response?.data?.message || 'Không thể lấy thông tin nhân viên thực hiện hoàn tiền');
+        }
+    },
+
+    getCurrentUserId,
 };
 
 export default BookingService;
