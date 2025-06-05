@@ -1,0 +1,97 @@
+.custom-datepicker input {
+  text-align: center !important;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  cursor: pointer;
+}
+
+.custom-datepicker:hover {
+  border-color: #60A5FA !important; /* blue-400 */
+}
+
+.custom-datepicker:focus-within {
+  border-color: #3B82F6 !important; /* blue-500 */
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+}
+
+/* Tăng kích thước text trong calendar popup */
+.ant-picker-dropdown {
+  font-size: 16px !important;
+}
+
+.ant-picker-cell-inner {
+  font-weight: 500 !important;
+}
+
+.ant-picker-header {
+  font-weight: 600 !important;
+}
+
+.custom-datepicker .ant-picker-input > input {
+  text-align: center !important;
+  font-size: 11px !important;
+  padding: 0 !important;
+}
+
+.custom-datepicker:hover {
+  border-color: #60a5fa !important;
+}
+
+.custom-datepicker:focus-within {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+}
+
+/* Increase calendar dropdown text size */
+.ant-picker-dropdown {
+  font-size: 16px;
+}
+
+/* Bold headers and date cells */
+.ant-picker-header {
+  font-weight: 600 !important;
+}
+
+.ant-picker-cell {
+  font-weight: 500 !important;
+}
+
+/* Adjust width for narrow container */
+.w-1\/12 .custom-datepicker {
+  width: 100% !important;
+  min-width: auto !important;
+}
+
+/* Make sure placeholder fits as well */
+.custom-datepicker input::placeholder {
+  font-size: 10px !important;
+}
+
+/* Reduce internal padding */
+.custom-datepicker .ant-picker-input {
+  padding: 0 !important;
+}
+
+/* Styling cho dropdown cân nặng */
+.pet-weight-selector .ant-select {
+  min-width: 120px;
+}
+
+.pet-weight-selector .ant-select:hover .ant-select-selector {
+  border-color: #1890ff !important;
+}
+
+.pet-weight-selector .ant-select-focused .ant-select-selector {
+  border-color: #1890ff !important;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
+}
+
+/* Kiểu dáng cho modal xác nhận thay đổi cân nặng */
+.ant-modal-confirm-body .ant-modal-confirm-content {
+  margin-top: 16px !important;
+  margin-left: 0 !important;
+}
+
+.ant-modal-confirm-body .ant-modal-confirm-content strong {
+  color: #1890ff;
+} 

@@ -1,35 +1,60 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import HomePage from "./page/HomePage.jsx";
+import { AuthProvider } from "./context/AuthContext.jsx";
+import Admin from "./page/Admin.jsx";
+import TopButton from "./elements/TopButton";
+import ChatBot from "./components/ChatBot";
+import PrivateRoute from "./context/PrivateRoute.jsx";
+import AdminSpa from "./page/AdminSpa.jsx";
+import ManageSpaPage from "./components/Manage/manageSpa/ManageSpaPage.jsx";
+import OrderOffline from "./components/orderOffline/OrderOffline.jsx";
+import StaffPage from "./page/StaffPage.jsx";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import ManageSlot from "./components/Manage/manageSpa/ManageSlot.jsx";
+import HospitalPage from "./page/HospitalPage.jsx";
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+      <AuthProvider>
+        <Router>
+          <Routes>
+            {/* Route công khai */}
+            <Route path="/*" element={<HomePage />} />
+
+            {/* Chỉ admin và staff vào được */}
+            <Route element={<PrivateRoute requiredRoles={["ADMIN", "STAFF"]} />}>
+              <Route path="/admin/*" element={<Admin />} />
+              <Route path="/hospital/*" element={<HospitalPage />} />
+
+              {/* Staff routes */}
+              <Route path="/staff/*" element={<StaffPage />}>
+                <Route path="orderOffline" element={<OrderOffline />} />
+                <Route path="manage-spa" element={<ManageSpaPage />} />
+                <Route path="admin-spa" element={<AdminSpa />} />
+                <Route path="manage-slot" element={<ManageSlot />} />
+              </Route>
+              
+              {/* Thêm route trực tiếp cho adminspa */}
+              <Route path="/adminspa" element={<AdminSpa />} />
+            </Route>
+          </Routes>
+          <ChatBot />
+          <TopButton />
+        </Router>
+        <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+        />
+      </AuthProvider>
+  );
 }
 
-export default App
+export default App;

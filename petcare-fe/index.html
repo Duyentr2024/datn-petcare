@@ -1,13 +1,41 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
+    <title>PetCare</title>
+    
+    <!-- Chèn hàm timer và updateTime trước khi bất kỳ script nào khác chạy -->
+    <script>
+      // Định nghĩa timer và updateTime trực tiếp tại global scope
+      window.timer = null;
+      var timer = null;
+      window.updateTime = function() { return true; };
+      function updateTime() { return true; }
+      
+      // Tạo hàm xoay vòng để đảm bảo timer tồn tại
+      (function ensureTimerExists() {
+        // Định nghĩa timer và updateTime mỗi 100ms
+        window.timer = window.timer || null;
+        timer = timer || null;
+        window.updateTime = window.updateTime || function() { return true; };
+        updateTime = updateTime || function() { return true; };
+        
+        setTimeout(ensureTimerExists, 100);
+      })();
+    </script>
+    
+    <!-- Thêm CDN vào phần <head> -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
   </head>
   <body>
     <div id="root"></div>
+    <div id="particles-js"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

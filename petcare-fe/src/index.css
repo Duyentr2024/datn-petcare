@@ -1,68 +1,180 @@
-:root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  /* Hiệu ứng đổ màu từ trái qua */
+  .load-img {
+      position: relative;
+      overflow: hidden; /* Đảm bảo lớp phủ màu không ra ngoài ảnh */
+    }
+    
+    .load-img::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: var(--primary-color, rgba(251, 179, 33, 1)); /* Màu nền mặc định */
+      z-index: 10;
+      transform: translateX(-100%); /* Bắt đầu từ trái ra ngoài */
+      transition: transform 1.6s ease-out; /* Hiệu ứng di chuyển từ trái qua */
+    }
+    
+    .load-img.in-view::before {
+      transform: translateX(0); /* Khi vào view, màu đổ từ trái sang phải */
+    }
+    
+    .load-img img {
+      display: block; /* Đảm bảo ảnh được hiển thị */
+      width: 100%;
+      height: auto;
+      transition: opacity 1s ease-out; /* Hiệu ứng mờ dần khi ảnh hiện ra */
+      opacity: 0; /* Ảnh ban đầu ẩn */
+    }
+    
+    .load-img.in-view img {
+      opacity: 1; /* Ảnh hiển thị khi vào view */
+    }
+
+@layer utilities {
+    .rounded-custom {
+      border-radius: 46rem 0 1rem 20rem;
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+/* Tùy chỉnh thanh cuộn cho class custom-scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px; /* Giảm độ dày thanh cuộn để trông nhẹ nhàng hơn */
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent; /* Ẩn track, chỉ để lại thumb */
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #fef0d3; /* Màu vàng nhạt cho thumb */
+  border-radius: 12px; /* Bo tròn mạnh hơn để tự nhiên */
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #fbb321; /* Màu vàng đậm khi hover */
+}
+
+/* Hỗ trợ Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin; /* Thanh cuộn mỏng */
+  scrollbar-color: #fef0d3 transparent; /* Thumb vàng nhạt, track trong suốt */
+}
+/* NewsDetail.css */
+.slide-in-from-left {
+  opacity: 0;
+}
+
+.slide-in-from-left.visible {
+  animation: slideInFromLeft 0.5s ease-out forwards;
+}
+
+@keyframes slideInFromLeft {
+  0% {
+    transform: translateX(-50px);
+    opacity: 0;
   }
-  a:hover {
-    color: #747bff;
+  100% {
+    transform: translateX(0);
+    opacity: 1;
   }
-  button {
-    background-color: #f9f9f9;
+}
+
+/* Các section khác */
+.animate-section {
+  opacity: 0;
+}
+
+.animate-section.visible {
+  animation: slideInFromBottom 0.5s ease-out forwards;
+}
+
+@keyframes slideInFromBottom {
+  0% {
+    transform: translateY(50px);
+    opacity: 0;
   }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes ripple {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(3);
+        opacity: 0;
+    }
+}
+
+.animate-fadeIn {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.animate-ripple {
+    position: relative;
+    display: inline-block;
+}
+
+.ripple-circle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 0, 0, 0.3);
+    border-radius: 50%;
+    animation: ripple 2s infinite;
+}
+
+.ripple-delay-1 {
+    animation-delay: 0.5s;
+}
+
+.ripple-delay-2 {
+    animation-delay: 1s;
 }
